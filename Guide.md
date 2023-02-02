@@ -8,10 +8,10 @@
   /* Open two terminals. */
 
   /* First Terminal:     */
-  > npm run dev
+  > yarn dev
 
   /* Second Terminal */
-  > npm run build:watch
+  > yarn build:watch
 
 
   /* Important Note: */
