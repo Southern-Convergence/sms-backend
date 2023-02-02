@@ -17,8 +17,6 @@
   /* Important Note: */
 ```
 
-For some reason, the tsc command doesn't emit the setup files and handlebar templates, so you'll have to manually move it over to the build folder, don't blame me, you're barking at the wrong tree.
-
 <br />
 
 > That's It, you're good to go!
