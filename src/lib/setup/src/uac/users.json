@@ -1,0 +1,13 @@
+[
+  {
+    "username" : "Ultravisor",
+    "password" : "95*3s46&4C92)2m84)6W96!",
+    "name"    : ["Emmanuel", "Rosales", "Abellana", ""],
+    "type"    : "internal",
+    "access"   : {
+      "domain" : "Southern Convergence",
+      "type"   : "Role Based",
+      "attr"   : "Ultravisor"
+    }
+  }
+]

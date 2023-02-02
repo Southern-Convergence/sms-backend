@@ -1,0 +1,108 @@
+[
+  {
+    "name" : "Southern Convergence",
+    "secret_key": "",
+    "icon": "/sc.svg",
+    "type" : "internal",
+    
+    "access_policies": ["Role Based"],
+    "security_policies": [],
+
+    "subdomains" : [
+      {
+        "name"  : "UAC Control",
+        "desc"  : "",
+        "pages" : [
+          "Domain Management",
+          "User Management",
+          "Policy Management",
+          "Registry"
+        ]
+      },
+      {
+        "name"  : "Account Control",
+        "desc"  : "",
+        "pages" : [
+          "Account Overview",
+          "Personal Information",
+          "Designation Information",
+          "Account Security"
+        ]
+      }
+    ],
+    "pages" : [
+      { "name" : "Domain Management", "desc" : "", "ref" : "/admin", "endpoints" : [
+        "resources:create_subdomain",
+        "resources:get_subdomains",
+        "resources:update_subdomain",
+        "resources:delete_subdomain",
+        "resources:create_page",
+        "resources:get_pages",
+        "resources:update_page",
+        "resources:delete_page",
+        "resources:create_endpoint",
+        "resources:get_endpoints",
+        "resources:update_endpoint",
+        "resources:delete_endpoint"
+      ]},
+      { "name" : "User Management", "desc" : "", "ref" : "/admin/user", "endpoints" : []},
+      { "name" : "Policy Management", "desc" : "", "ref" : "/admin/policy", "endpoints" : [
+        "administrative:create_policy",
+        "administrative:get_policies",
+        "administrative:update_policy",
+        "administrative:delete_policy"
+      ]},
+      { "name" : "Registry", "desc" : "", "ref" : "/admin/registry", "endpoints" : []},
+      { "name" : "Account Overview", "desc" : "", "ref" : "/account/overview", "endpoints" : []},
+      { "name" : "Designation Information", "desc" : "", "ref" : "/account/work-info", "endpoints" : []},
+      { "name" : "Account Security", "desc" : "", "ref" : "/account/security", "endpoints" : []}
+    ],
+    "endpoints" : [
+
+    ],
+    "files" : [],
+
+    "access_templates" : [
+      {
+        "basis": "Role Based",
+        "name": "Ultravisor",
+        "grants": [
+          {
+            "type" : "subdomain",
+            "name" : "Account Control"
+          },
+          {
+            "type" : "subdomain",
+            "name" : "UAC Control"
+          }
+        ]
+      },
+      {
+        "basis"  : "Role Based",
+        "name"   : "Deped HRDD Regular",
+        "grants" : []
+      },
+      {
+        "basis"  : "Role Based",
+        "name"   : "DepEd HRDD Admin",
+        "grants" : []
+      }
+    ]
+  },
+  {
+    "name" : "DepEd",
+    "secret_key" : "",
+    "icon" : "deped.svg",
+    "type" : "external",
+    
+    "access_policies" : ["Role Based"],
+    "security_policies" : [],
+
+    "subdomains" : [],
+    "pages" : [],
+    "endpoints" : [],
+    "files" : [],
+
+    "access_templates" : []
+  }
+]
