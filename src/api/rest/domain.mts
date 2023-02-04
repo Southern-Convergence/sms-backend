@@ -41,7 +41,7 @@ export default REST({
   },
 
   handlers : {
-    GET : {
+    POST : {
       "get-resources"(req, res){
         this.get_resources(req.body.domain_id)
         ?.then((data)=> res.json({data}))

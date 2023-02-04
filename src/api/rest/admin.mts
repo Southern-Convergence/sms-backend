@@ -302,7 +302,23 @@ export default REST({
   controllers : {
     //>>>Start of Domain Management API
     get_domains(){
-      return this.db?.collection("domains").find({}).toArray();
+      return this.db?.collection("domains").aggregate([
+        {
+          '$lookup': {
+            'from': 'policies', 
+            'localField': 'access_policies', 
+            'foreignField': '_id', 
+            'as': 'access_policies'
+          }
+        }, {
+          '$lookup': {
+            'from': 'policies', 
+            'localField': 'security_policies', 
+            'foreignField': '_id', 
+            'as': 'security_policies'
+          }
+        }
+      ]).toArray();
     },
     async create_domain(domain){
       const temp = await this.db?.collection("domains").findOne({name : domain.name});

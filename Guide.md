@@ -19,7 +19,7 @@
 
 <br />
 
-> That's It, you're good to go!
+That's It, you're good to go!
 
 ## Facilities
 > You'll be like a kid in a candy store once you hear all of our facilities and the convenience that they bring.
