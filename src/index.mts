@@ -85,9 +85,10 @@ Database.connect()
   await setup_stages();
 
   const [rest_ns, ws_ns] = await bundler(); 
-
+/* 
   GrantAuthority.build_definitions();
-  GrantAuthority.load_endpoints(rest_ns, ws_ns)
+  GrantAuthority.load_endpoints(rest_ns, ws_ns);
+ */
   Object.entries(rest_ns).forEach(([namespace, module])=>{
     const {validators, handlers, controllers, cfg} = module.__meta__;
 
