@@ -52,6 +52,13 @@ export default REST({
         this.get_subdomains(req.body.domain_id)
         ?.then((data)=> res.json({data}))
         .catch((error)=> res.status(400).json({error}));
+      },
+
+      "create-subdomain"(req, res){
+        const { domain_id, subdomain } = req.body;
+        this.create_subdomain(domain_id, subdomain)
+        .then(()=> res.json({data : "Successfully created subdomain."}))
+        .catch((error)=> res.status(400).json({error}));
       }
     }
   },

@@ -85,10 +85,10 @@ Database.connect()
   await setup_stages();
 
   const [rest_ns, ws_ns] = await bundler(); 
-/* 
-  GrantAuthority.build_definitions();
+
+  //GrantAuthority.build_definitions();
   GrantAuthority.load_endpoints(rest_ns, ws_ns);
- */
+
   Object.entries(rest_ns).forEach(([namespace, module])=>{
     const {validators, handlers, controllers, cfg} = module.__meta__;
 
@@ -101,8 +101,8 @@ Database.connect()
         const validator = validators[k];
         if(!validator)continue;
 
+        console.log(`${base_dir}/${namespace}/${k}`);
         app[method.toLowerCase() as RESTRequestType](`${base_dir}/${namespace}/${k}`, (req, res, next)=>{
-          console.log(`${base_dir}/${namespace}/${k}`);
           //Main Middleware for checking incoming requests.
           /*
             It performs the ff. in sequence.
