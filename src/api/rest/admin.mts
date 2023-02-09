@@ -7,6 +7,9 @@ export default REST({
   validators : {
     //>>>Start of Domain Management API
     "get-domains"   : {},
+    "get-domain"    : {
+      domain_id: object_id,
+    },
 
     "create-domain" : {
       name            : Joi.string().required(),
@@ -184,6 +187,12 @@ export default REST({
     
     POST : {
       //>>>Start of Domain Management API
+      "get-domain"(req, res){
+        const { domain_id } = req.body;
+        this.get_domain(domain_id)
+        ?.then((data) => res.json({data}))
+        .catch(error => res.status(400).json({error}))
+      },
       "create-domain"(req, res){
         this.create_domain(req.body)
         .then(()=> res.json({data : "Successfully created domain."}))
@@ -294,8 +303,9 @@ export default REST({
         this.delete_registry_value(req.body.registry_id)
         .then(()=> res.json({data : "Successfully deleted Registry Value."}))
         .catch((error)=> res.status(400).json({error}));
-      }
+      },
       //>>>End of Registry Actions API
+
     }
   },
 
@@ -319,6 +329,10 @@ export default REST({
           }
         }
       ]).toArray();
+    },
+    async get_domain(domain_id){
+      return await this.db?.collection("domains").findOne({_id: new ObjectId(domain_id)})
+      
     },
     async create_domain(domain){
       const temp = await this.db?.collection("domains").findOne({name : domain.name});

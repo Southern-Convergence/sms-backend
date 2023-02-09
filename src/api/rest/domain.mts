@@ -9,6 +9,8 @@ export default REST({
   },
 
   validators : {
+
+    "get-domain": {},
     "get-resources" : {
       domain_id : object_id
     },
@@ -36,8 +38,20 @@ export default REST({
 
     "delete-subdomain" : {
       domain_id : object_id
-    }
+    },
     //>>>End of Subdomain Management API
+
+    //>>Start of domain policy management
+    "remove-access-policy" : {
+      domain_id: object_id,
+      policy_id: object_id
+    },
+    
+    "add-access-policy" : {
+      domain_id: object_id,
+      policy_id: object_id
+    }
+    //>>End of domain policy management
   },
 
   handlers : {
@@ -59,6 +73,19 @@ export default REST({
         this.create_subdomain(domain_id, subdomain)
         .then(()=> res.json({data : "Successfully created subdomain."}))
         .catch((error)=> res.status(400).json({error}));
+      },
+      //>> Domain policy management
+      "remove-access-policy"(req, res){
+        const { domain_id, policy_id } = req.body;
+        this.remove_domain_access_policy(domain_id, policy_id)
+        .then((result) => res.json({data: result}))
+        .catch((error) => res.status(400).json({error}))
+      },
+      "add-access-policy"(req, res){
+        const { domain_id, policy_id } = req.body;
+        this.add_domain_access_policy(domain_id, policy_id)
+        .then((result) => res.json({data: result}))
+        .catch((error)=> res.status(400).json({error}))
       }
     }
   },
@@ -85,7 +112,20 @@ export default REST({
 
       if(!temp?.deletedCount)return Promise.reject("Failed to delete subdomain, subdomain not found.");
       return Promise.resolve(true);
-    }
+    },
     //>>>End of Subdomain Management API
+
+    //>>Start domain policy management
+    async remove_domain_access_policy(domain_id: string, policy_id: string){
+      const result = await this.db?.collection('domains').updateOne({ _id: new ObjectId(domain_id)}, { $pull: { access_policies: {$eq: new ObjectId(policy_id)}}})
+      if(result?.modifiedCount) return Promise.resolve("Successfully removed access policy from domain")
+      return Promise.reject("Failed to remove access policy from domain")
+    },
+    async add_domain_access_policy(domain_id: string, policy_id: string){
+      const result = await this.db?.collection('domains').updateOne({_id: new ObjectId(domain_id)}, { $push: { access_policies: new ObjectId(policy_id)}})
+      if(result?.modifiedCount) return Promise.resolve("Successfully added access policy to domain")
+      return Promise.reject("Failed to add access policy to domain")
+    }
+    //>>End domain policy management
   }
 });
