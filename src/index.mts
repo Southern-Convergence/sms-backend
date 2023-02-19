@@ -101,10 +101,10 @@ Database.connect()
         const validator = validators[k];
         if(!validator)continue;
 
-        console.log(`${base_dir}/${namespace}/${k}`);
         app[method.toLowerCase() as RESTRequestType](`${base_dir}/${namespace}/${k}`, (req, res, next)=>{
           //Main Middleware for checking incoming requests.
           /*
+            console.log(`${base_dir}/${namespace}/${k}`);
             It performs the ff. in sequence.
             * Check if the requested endpoint is flagged as publicly accessible.
             * Check if session exists and is valid.
@@ -122,7 +122,10 @@ Database.connect()
 
 
           /* REQUEST BODY VALIDITY CHECK */
-          error = template(validator, req.body);
+          switch(method.toLowerCase()){
+            case "get" : error = template(validator, req.query);break;
+            default    : error = template(validator, req.body);
+          }
           
           if(error)return res.status(400).json({error});
 
