@@ -13,6 +13,9 @@ export default REST({
     "get-resources" : {
       domain_id : object_id
     },
+    "get-resources-by-domain-name" : {
+      name : Joi.string().required()
+    },
 
     //>>>Start of Subdomain Management API
     "get-subdomains": {
@@ -22,8 +25,8 @@ export default REST({
     "create-subdomain": {
       domain_id: object_id,
       subdomain: {
-        name: Joi.string().required(),
-        description: Joi.string(),
+        name : Joi.string().required(),
+        desc : Joi.string(),
       },
     },
 
@@ -31,7 +34,7 @@ export default REST({
       domain_id: object_id,
       subdomain: {
         name: Joi.string(),
-        description: Joi.string(),
+        desc: Joi.string(),
       },
     },
 
@@ -76,6 +79,12 @@ export default REST({
           ?.then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
+
+      "get-resources-by-domain-name"(req, res){
+        this.get_resources_by_domain_name(req.query.name)
+        ?.then((data)=> res.json({data}))
+        .catch((error)=> res.status(400).json({error}));
+      }
     },
     POST: {
       "create-subdomain"(req, res) {
@@ -120,6 +129,23 @@ export default REST({
         .toArray();
     },
 
+    get_resources_by_domain_name(domain_name){
+      return this.db?.collection("domains").aggregate([
+        {
+          '$match': {
+            'name': domain_name
+          }
+        }, {
+          '$lookup': {
+            'from': 'resources', 
+            'localField': '_id', 
+            'foreignField': 'domain_id', 
+            'as': 'resources'
+          }
+        }
+      ]).toArray();
+    },
+
     //>>>Start of Subdomain Management API
     get_subdomains(domain_id) {
       return this.db
@@ -146,7 +172,7 @@ export default REST({
         ?.collection("resources")
         .insertOne({
           domain_id: new ObjectId(domain_id),
-          types: "subdomain",
+          type: "subdomain",
           ...subdomain,
         });
     },
