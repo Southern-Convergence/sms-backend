@@ -129,8 +129,8 @@ export default REST({
         .toArray();
     },
 
-    get_resources_by_domain_name(domain_name){
-      return this.db?.collection("domains").aggregate([
+    async get_resources_by_domain_name(domain_name){
+      const domain = await this.db?.collection("domains").aggregate([
         {
           '$match': {
             'name': domain_name
@@ -144,6 +144,11 @@ export default REST({
           }
         }
       ]).toArray();
+
+
+      if(!domain?.length)return Promise.reject("Failed to fetch resources, no such domain.");
+
+      return domain[0].resources;
     },
 
     //>>>Start of Subdomain Management API
