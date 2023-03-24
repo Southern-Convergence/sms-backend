@@ -10,7 +10,7 @@ export function REST<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : H & C {
   const handlers    : RESTRequestHandlers = struct.handlers    || {};
   const cfg         : SFRConfig           = struct.cfg         || {};
 
-  Object.entries(controllers).map(([k, v])=>controllers[k] = v.bind({ db }));
+  Object.entries(controllers).map(([k, v])=>controllers[k] = v.bind({ db, instance : db.get_connection() }));
   Object.entries(handlers).forEach(([method, handlermap])=>{
     Object.entries(handlermap).forEach(([k, v])=> {
       /* @ts-ignore */

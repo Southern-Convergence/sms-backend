@@ -35,8 +35,4 @@ export default class Database{
   static get_connection(){
     return this.#con;
   }
-
-  static instance(){
-    return this.#db;
-  }
 }
