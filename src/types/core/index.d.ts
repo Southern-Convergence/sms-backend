@@ -1,4 +1,5 @@
 declare type Db = import("mongodb").Db;
+declare type MongoClient = import("mongodb").MongoClient;
 
 declare type RESTHandlerConstructor = { new<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : V & H & C};
 declare type WSHandlerConstructor   = { new<V, H, C>(struct : WSHandlerDescriptor<V, H, C>)   : V & H & C };
@@ -25,7 +26,8 @@ declare interface HandlerFacilities {
 
 //Dependency injection types for Request Controllers are declared here...
 declare interface ControllerFacilities {
-  db? : Db
+  db? : Db,
+  instance : MongoClient,
 }
 
 /**
@@ -92,8 +94,8 @@ declare type Socket = import("socket.io").Socket;
 declare type Db     = import("mongodb").Db;
 
 declare type RequestValidators  = {[name : string] : object};
-declare type RequestControllers = {[name : string] : (...args)=> Promise};
-
+declare type RequestControllers = {[name : string] : RequestController};
+declare type RequestController  = (...args)=> Promise;
 
 //REST Bundler
 declare type RESTRequestHandlers = {

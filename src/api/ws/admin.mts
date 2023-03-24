@@ -1,5 +1,5 @@
 import { WS } from "sfr";
-import {template} from "@lib/eval_utils.mjs";
+import {template} from "@lib/api-utils.mjs";
 import Joi from "joi";
 
 export default WS({
