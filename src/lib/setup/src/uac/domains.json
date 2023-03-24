@@ -7,8 +7,6 @@
     
     "access_policies": ["Role Based"],
     "security_policies": [],
-    
-    "resources" : [],
 
     "access_templates" : [
       {
@@ -31,14 +29,12 @@
   {
     "name" : "DepEd",
     "secret_key" : "",
-    "icon" : "deped.svg",
+    "icon" : "/deped.svg",
     "type" : "external",
     
     "access_policies" : ["Role Based"],
     "security_policies" : [],
-
-    "resources" : [],
-
+    
     "access_templates" : []
   }
 ]
