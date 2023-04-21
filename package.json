@@ -9,7 +9,7 @@
     "dev": "cross-env NODE_ENV=development  nodemon --require dotenv/config --experimental-modules ./build/index.mjs",
     "start": "cross-env NODE_ENV=production node --require dotenv/config --experimental-modules ./build/index.mjs",
     "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
-    "build:watch": "yarn clean && tsc && yarn copy-files && (concurrently \"tsc -w\" \"tsc-alias -w\") "
+    "build:watch": "yarn clean && tsc && yarn copy-files && (concurrently \"tsc -w\" \"tsc-alias -w\")"
   },
   "keywords": [],
   "author": "",
@@ -47,6 +47,7 @@
     "@types/ua-parser-js": "^0.7.36",
     "concurrently": "^7.6.0",
     "copyfiles": "^2.4.1",
+    "nodemon": "^2.0.22",
     "rimraf": "^4.1.2",
     "tsc-alias": "^1.8.2",
     "typescript": "^4.9.3"

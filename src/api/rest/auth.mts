@@ -24,11 +24,16 @@ export default REST({
   handlers : {
     POST : {
       login(req, res){
-        if(req.session.user)return res.status(400).json({error : "Already signed-in"});
+        if(req.session.user){
+          return initiate_session(req.session.user);
+        }
         const { username, password } = req.body;
         
         this.check_credentials(username, password)
-        .then((user)=>{
+        .then(initiate_session)
+        .catch((error)=> res.status(401).json({error}));
+
+        function initiate_session(user :any){
           /* @ts-ignore */
           req.session.user = user as User;
 
@@ -37,13 +42,15 @@ export default REST({
           req.session.agent = temp.getResult();
           req.session.ip = req.ip;
 
-          req.session.save((err)=>{
-            if(err)return res.status(400).json({error : "Failed to create session."});
-            
-            return res.json({ data : req.sessionID });
-          })
-        })
-        .catch((error)=> res.status(401).json({error}));
+          req.session.save((err) => {
+            if (err)
+              return res
+                .status(400)
+                .json({ error: "Failed to create session." });
+
+            return res.json({ data: req.sessionID });
+          });
+        }
       },
 
       "terminate-session"(req, res){
