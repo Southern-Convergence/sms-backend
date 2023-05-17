@@ -63,6 +63,7 @@ export default async()=>{
 
     const { domain, attr } = v.access;
     v.access = AP_MAP[`${domain}${attr}`];
+    v.status = "active";
 
     return v;
   });
