@@ -31,6 +31,7 @@
     "mongodb": "^4.11.0",
     "nodemailer": "^6.8.0",
     "nodemailer-express-handlebars": "^6.0.0",
+    "otp-generator": "^4.0.1",
     "socket.io": "^4.5.3",
     "ua-parser-js": "^1.0.32"
   },
@@ -44,6 +45,7 @@
     "@types/node": "^18.7.23",
     "@types/nodemailer": "^6.4.7",
     "@types/nodemailer-express-handlebars": "^4.0.2",
+    "@types/otp-generator": "^4.0.0",
     "@types/ua-parser-js": "^0.7.36",
     "concurrently": "^7.6.0",
     "copyfiles": "^2.4.1",

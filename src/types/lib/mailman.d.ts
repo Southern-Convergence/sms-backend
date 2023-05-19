@@ -31,14 +31,14 @@ declare class MailMan{
   /**
    * The Post method is the main method used to send out handlebar templates as emails.
    */
-  post(header : PostHeader, body : PostBody) : Promise
+  post(header : PostHeader, body : PostBody) : Promise<any>
 }
 
 type PostHeader = {
-  from    : string;
-  to      : string;
-  subject : string;
-  attachments : any[];
+  from         : string;
+  to           : string;
+  subject?     : string;
+  attachments? : any[];
 }
 
 type PostBody = {

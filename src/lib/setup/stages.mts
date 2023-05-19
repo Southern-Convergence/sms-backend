@@ -5,10 +5,13 @@
 
 import access_defs from "@setup/access-defs.mjs";
 
+import build_indices from "@setup/build-indices.mjs";
+
 export default async function(){
   console.time("Setup Script Runtime");
   try{
     await access_defs();
+    await build_indices();
   }catch(err){
     console.log(err);
   }

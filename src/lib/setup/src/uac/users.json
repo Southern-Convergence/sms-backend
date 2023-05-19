@@ -6,7 +6,8 @@
     "middle_name" : "Rosales",
     "last_name" : "Abellana",
     "appelation" : "",
-    "type"    : "internal",
+    "email"    : "mannyless37@gmail.com",
+    "type"     : "internal",
     "access"   : {
       "domain" : "Southern Convergence",
       "type"   : "Role Based",

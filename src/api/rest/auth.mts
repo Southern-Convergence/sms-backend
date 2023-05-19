@@ -3,8 +3,13 @@ import bcrypt from "bcrypt";
 import { ObjectId } from "mongodb";
 import Joi from "joi";
 import { UAParser } from "ua-parser-js";
+import otpgen from "@lib/otpgen.mjs";
 
 import GrantAuthority from "@lib/grant-authority.mjs";
+import {object_id} from "@lib/api-utils.mjs";
+
+const EXPIRY = 3600000 * 72; //72 Hours
+const SALT = 10;
 
 export default REST({
   cfg: {
@@ -18,6 +23,11 @@ export default REST({
     },
     logout: {},
     recovery: { email: Joi.string().email().required() },
+    "update-password" : {
+      otp : Joi.string().required(),
+      password : Joi.string().min(8).required(),
+      confirm_password : Joi.string().min(8).required()
+    },
     "get-page-grants": {},
     "get-user": {},
     "get-sessions": {},
@@ -66,6 +76,45 @@ export default REST({
           ?.then(() => res.json({ data: "Session Terminated." }))
           .catch((error) => res.status(400).json({ error }));
       },
+
+      async recovery(req, res) {
+        const { email } = req.body;
+        const user = await this.get_user_by_email(email);
+        if(!user)return res.status(400).json({error : "Account recovery failed, no such email."});
+        
+        const otp = otpgen();
+        this.save_otp(otp, user._id)
+        ?.then(()=> {
+          this.mailman.post({
+            from    : "sad@sad.com",
+            to      : (email?.toString() || ""),
+            subject : "Account Recovery"
+          }, {
+            template : "recovery",
+            context  : {
+              otp,
+              first_name : user.first_name,
+              last_name  : user.last_name
+            }
+          })
+          .then(()=> res.json({data : "Successfully issued recovery otp."}))
+          .catch((error)=> res.status(400).json({error : `Failed to issue recovery otp. Please contact an administrator.${error}`}))
+        })
+      },
+
+      async "update-password"(req, res){
+        const { otp, password, confirm_password  } = req.body;
+
+        if(password !== confirm_password)return res.status(400).json({error : "Failed to update password, password's must match."});
+        
+        const matched_otp = await this.get_otp(otp);
+        if(!matched_otp)return res.status(400).json({error : "Failed to update user password, otp not found or has expired."});
+
+        this.delete_otp(matched_otp._id);
+        this.update_user_password(matched_otp.user_id, password)
+        .then(()=> res.json({data : "Successfully updated user password"}))
+        .catch((error)=> res.status(400).json({error}));
+      }
     },
 
     GET: {
@@ -80,10 +129,6 @@ export default REST({
               .json({ error: "Failed to logout of session." });
           res.json({ data: "Successfully logged out." });
         });
-      },
-
-      recovery(_, res) {
-        res.status(404).json({ error: "Endpoint is unavailable" });
       },
 
       async "get-user"(req, res) {
@@ -132,7 +177,7 @@ export default REST({
             password: 1,
             type: 1,
             access: 1,
-          },
+           }
         }
       );
 
@@ -271,5 +316,32 @@ export default REST({
             );
         });
     },
+
+    get_user_by_email(email){
+      return this.db?.collection("users").findOne({email});
+    },
+
+    get_otp(token){
+      return this.db?.collection("otp").findOne({token});
+    },
+
+    save_otp(token, user_id){
+      return this.db?.collection("otp").updateOne({ user_id }, {$set : { token, expiry : new Date(Date.now() + EXPIRY), user_id, stamp : new Date() }}, {upsert : true});
+    },
+
+    delete_otp(token_id){
+      this.db?.collection("otp").deleteOne({_id : token_id});
+    },
+
+    async update_user_password(user_id, password){
+      const hashed_password = bcrypt.hashSync(password, SALT);
+      const result = await this.db?.collection("users").updateOne({_id : new ObjectId(user_id)}, {
+        $set : {
+          password : hashed_password
+        }
+      })
+
+      if(!result?.modifiedCount)return Promise.reject("Failed to update user password, user not found.");
+    }
   },
 });
