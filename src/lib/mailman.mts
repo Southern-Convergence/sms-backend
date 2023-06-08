@@ -1,90 +1,73 @@
 import nodemailer from "nodemailer";
-import handlebars from "handlebars";
 import hbs from "nodemailer-express-handlebars";
-
-import OAuthClient from "./google_api.mjs";
-
 import path from "path";
 import { fileURLToPath } from "url";
 
+import CFG from "@cfg/mailman.json" assert { type : "json" };
+import { NODE_ENV, ALLOWED_ORIGIN, G_API_REDIRECT } from "@cfg/index.mjs";
+import gsuite_client from "@utils/gsuite_client.mjs";
+
+
 const __filename = fileURLToPath(import.meta.url);
 const directory  = path.dirname(__filename);
+const IS_DEV     = NODE_ENV === "production";
 
+export class MailMan {
+  private _cfg      : (TransportCFG | null) = null;
+  /* @ts-ignore TODO: Definite assignment to appropriate transport, I've no time.*/
+  private transport : nodemailer.Transporter;
 
-import {
-  NODE_ENV,
-  ALLOWED_ORIGIN,
-  GOOGLE_API_EMAIL,
-  GOOGLE_API_CLIENT_ID,
-  GOOGLE_API_SECRET,
-  GOOGLE_API_GMAIL_REFRESH_TOKEN,
-  ETHEREAL_EMAIL,
-  ETHEREAL_PASSWORD
-} from "../config.mjs";
-import SMTPTransport from "nodemailer/lib/smtp-transport/index.js";
+  constructor(namespace : string, cfg : TransportCFG){
+    const { user, clientId, clientSecret, refreshToken } = cfg.transport_options.auth;
+        
+    (async()=> {
+      if(!IS_DEV && namespace !== "ethereal")cfg.transport_options.accessToken = await gsuite_client({CLIENT_ID : clientId, REFRESH_TOKEN : refreshToken, SECRET : clientSecret, REDIRECT_URL : G_API_REDIRECT}).getAccessToken();
+      this._cfg = cfg;
 
-export default class MailMan{
-  private static is_dev    = NODE_ENV !== "production";
-  private static transport:nodemailer.Transporter<SMTPTransport.SentMessageInfo>;
+      this.transport = nodemailer.createTransport(!IS_DEV ? cfg.transport_options : CFG["ethereal"].transport_options);
 
-  static async initialize(){
-    console.log(`MailMan transporter is set to ${this.is_dev ? "Ethereal" : "Gmail"}`);
-    
-    if(!this.is_dev){
-      const accessToken = await OAuthClient.getAccessToken();
-      this.transport = nodemailer.createTransport({
-        service : "Gmail",
-        host    : "smtp.gmail.com",
-        auth : {
-          type         : "OAuth2",
-          user         : GOOGLE_API_EMAIL,
-          clientId     : GOOGLE_API_CLIENT_ID,
-          clientSecret : GOOGLE_API_SECRET,
-          accessToken  : (accessToken.token || ""),
-          refreshToken : GOOGLE_API_GMAIL_REFRESH_TOKEN
-        }
-      });
-    }else{
-      this.transport = nodemailer.createTransport({
-        host : "smtp.ethereal.email",
-        port : 587,
-        auth : {
-          user : ETHEREAL_EMAIL,
-          pass : ETHEREAL_PASSWORD
-        }
-      });
-    }
-
-    this.transport.use("compile", hbs({
-      viewEngine : {
-        extname : ".hbs",
-        partialsDir : path.join(directory, "hbs/partials"),
-        defaultLayout : false,
-    
-        helpers : {
-          url_concat : (...args : any[]) => {
-            args.pop();
-            return [...args].toString().replaceAll(",", "/");
+      this.transport.use("compile", hbs({
+        viewEngine : {
+          extname : ".hbs",
+          partialsDir : path.join(directory, "hbs/partials"),
+          defaultLayout : "",
+      
+          helpers : {
+            url_concat : (...args : any[]) => {
+              args.pop();
+              return [...args].toString().replaceAll(",", "/");
+            }
           }
-        }
-      },
-    
-      viewPath : path.join(directory, "hbs/templates"),
-      extName  : ".hbs"
-    }));
-
-    return Promise.resolve(this.transport);
+        },
+      
+        viewPath : path.join(directory, "hbs/templates"),
+        extName  : ".hbs"
+      }));
+    })();
   }
-  
-  static post(header : PostHeader, body : PostBody){
+
+  post(header : PostHeader, body : PostBody){
     body.context = {
       ...body.context,
       domain : ALLOWED_ORIGIN
     }
 
-    /* @ts-ignore */
-    return this.transport.sendMail({...header, ...body, context : body.context });
+    return this.transport?.sendMail({
+      ...this._cfg?.mail_options,
+      ...header,
+      ...body,
+      context : body.context
+    });
   }
+}
 
-  /*  */
+export class PostOffice{
+  static mailmen : TransportDict;
+
+  static initialize(){
+    console.log(`[PostOffice]`)
+    this.mailmen = Object.fromEntries(Object.entries(CFG).map(([namespace, cfg])=> {
+      return [namespace, new MailMan(namespace, cfg)];
+    }));
+  }
 }

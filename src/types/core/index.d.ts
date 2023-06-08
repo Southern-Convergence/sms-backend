@@ -19,9 +19,9 @@ type WSHandlerDescriptor<V, H, C> = {
 
 //Dependency injection types for Request Handlers are declared here...
 declare interface HandlerFacilities {
-  mailman  : MailMan,
-  spaces   : SpacesMgr,
-  gsuite   : GSuiteMgr
+  mailmen    : TransportDict,
+  spaces     : SpacesMgr,
+  gsuite     : GSuiteMgr
 }
 
 //Dependency injection types for Request Controllers are declared here...
@@ -93,7 +93,7 @@ declare type Server = import("socket.io").Server;
 declare type Socket = import("socket.io").Socket;
 declare type Db     = import("mongodb").Db;
 
-declare type RequestValidators  = {[name : string] : object};
+declare type RequestValidators  = {[name : string] : (object | function)};
 declare type RequestControllers = {[name : string] : RequestController};
 declare type RequestController  = (...args)=> Promise;
 

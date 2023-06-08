@@ -1,7 +1,7 @@
 //Previous Name: RequestHandlerFactory
 //Dependencies are imported and used by the functions below...
 import db from "@lib/database.mjs";
-import MailMan from "@lib/mailman.mjs";
+import {PostOffice} from "@lib/mailman.mjs";
 
 
 export function REST<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : H & C {
@@ -14,7 +14,7 @@ export function REST<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : H & C {
   Object.entries(handlers).forEach(([method, handlermap])=>{
     Object.entries(handlermap).forEach(([k, v])=> {
       /* @ts-ignore */
-      handlers[method][k] = v.bind({ ...controllers, mailman : MailMan });
+      handlers[method][k] = v.bind({ ...controllers, mailmen : PostOffice.mailmen });
     });
   });
 
@@ -26,7 +26,7 @@ export function REST<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : H & C {
 export function WS<V, H, C>(struct : WSHandlerDescriptor<V, H, C>) : H & C {
   const validators  : RequestValidators  = struct.validators  || {};
   const controllers : RequestControllers = struct.controllers || {};
-  const handlers    : WSRequestHandlers  = struct.handlers       || {};
+  const handlers    : WSRequestHandlers  = struct.handlers    || {};
 
   //Dependency injection happens here...
   const __meta__ = { validators, controllers, handlers};

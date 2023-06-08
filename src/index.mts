@@ -11,15 +11,18 @@ import bundler from "@core/neo-bundler.mjs";
 import Database from "@lib/database.mjs";
 
 import setup_stages from "@setup/stages.mjs";
-import MailMan from "@lib/mailman.mjs";
+import {PostOffice} from "@lib/mailman.mjs";
 import GrantAuthority from "@lib/grant-authority.mjs";
 import {template} from "@lib/api-utils.mjs";
+
+import { verify_tt } from "@lib/multers.mjs";
 
 const { CONNECTION_STRING, DATABASE } = process.env;
 
 const app = express();
 const server = createServer({}, app);
 
+app.use(express.json({ limit: '100mb'}))
 app.use(express_limiter({
   windowMs: 1 * 60 * 1000, // 15 minutes
   max: 500,                // Limit each IP to 100 requests per `window` (here, per 15 minutes)
@@ -31,10 +34,14 @@ app.disable('x-powered-by');
 app.use(json());
 app.use(express.static("./src/static"));
 app.use(cors({
-  origin :["http://localhost:3000", "http://localhost:3002"],
+  origin :["http://localhost:3000", "http://localhost:3002", "*"],
   credentials : true
 }))
 
+
+// app.use(cors({
+//   origin: "*"
+// }))
 
 app.use(session({
   secret : "Naisho daiyo~",
@@ -81,7 +88,7 @@ server.listen(process.env.PORT, ()=> {
 console.clear();
 Database.connect()
 .then(async()=>{
-  MailMan.initialize();
+  PostOffice.initialize();
   await setup_stages();
 
   const [rest_ns, ws_ns] = await bundler(); 
@@ -99,41 +106,61 @@ Database.connect()
     Object.entries(handlers).forEach(([method, endpoints])=> {
       for(const [k, v] of Object.entries(endpoints)){
         const validator = validators[k];
+        const validator_type = typeof validator === "function" ? "multer" : "joi";
+
+        const dir = `${base_dir}/${namespace}/${k}`;
         if(!validator)continue;
+        
+        //Conditionally insert middlewares based on validator type.
+        if(validator_type === "multer"){
+          app[method.toLowerCase() as RESTRequestType](dir, validator);
+          app[method.toLocaleLowerCase() as RESTRequestType](dir, verify_tt);
 
-        app[method.toLowerCase() as RESTRequestType](`${base_dir}/${namespace}/${k}`, (req, res, next)=>{
-          //Main Middleware for checking incoming requests.
-          /*
-            console.log(`${base_dir}/${namespace}/${k}`);
-            It performs the ff. in sequence.
-            * Check if the requested endpoint is flagged as publicly accessible.
-            * Check if session exists and is valid.
-            * Check if request body is valid and conforms to the endpoint's expected request body.
-          */
-          let error:string | boolean = true;
-          
-          /* PUBLIC ACCESSIBILITY CHECK */
-          if(!is_public){
-            /* SESSION VALIDITY CHECK */
-            if(!req.session.user)return res.status(401).json({error : "Session not found."})
+          app.use((err: Error, _ : Request, res : Response, next : NextFunction)=>{
+            let temp = {error : err.message, details : err.cause};
+            if(err)return res.status(400).json(temp);
+            next();
+          });
+        }
+        
+        if(validator_type === "joi"){
+          app[method.toLowerCase() as RESTRequestType](dir, (req, res, next)=>{
+            //Main Middleware for checking incoming requests.
+            /*
+              console.log(`${base_dir}/${namespace}/${k}`);
+              It performs the ff. in sequence.
+              * Check if the requested endpoint is flagged as publicly accessible.
+              * Check if session exists and is valid.
+              * Check if request body is valid and conforms to the endpoint's expected request body.
+            */
+            let error:string | boolean = true;
+            
+            /* PUBLIC ACCESSIBILITY CHECK */
+            if(!is_public){
+              /* SESSION VALIDITY CHECK */
+              if(!req.session.user)return res.status(401).json({error : "Session not found."})
+  
+              /* AUTHORIZATION CHECK    */
+            }
+  
+  
+            /* REQUEST BODY VALIDITY CHECK */
+            switch(method.toLowerCase()){
+              case "get" : error = template(validator, req.query);break;
+              default    : error = template(validator, req.body);
+            }
+            
+            if(error)return res.status(400).json({error});
+  
+            next();
+          });
+        }
 
-            /* AUTHORIZATION CHECK    */
-          }
-
-
-          /* REQUEST BODY VALIDITY CHECK */
-          switch(method.toLowerCase()){
-            case "get" : error = template(validator, req.query);break;
-            default    : error = template(validator, req.body);
-          }
-          
-          if(error)return res.status(400).json({error});
-
-          next();
-        });
-
-        /* @ts-ignore */
-        app[method.toLowerCase()](`${base_dir}/${namespace}/${k}`, v.bind(controllers));
+        /*
+          Actual Injection of values happens here...
+          Type Injections are done over at /src/core/index.mts
+        */
+        app[method.toLowerCase() as RESTRequestType](dir, v.bind({...controllers, mailmen : PostOffice.mailmen}));
       }
     });
   });
