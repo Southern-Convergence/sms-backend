@@ -82,7 +82,6 @@ export default REST({
         const user = await this.get_user_by_email(email);
         if(!user)return res.status(400).json({error : "Account recovery failed, no such email."});
         
-        console.log(this.mailmen)
         const otp = otpgen();
         this.save_otp(otp, user._id)
         ?.then(()=> {

@@ -22,8 +22,10 @@
     "transport_options" : {
       "host" : "smtp.ethereal.email",
       "port" : 587,
-      "auth" : "Hipolito Smitham",
-      "pass" : "KWfU1CkQkKb1K9xU7E"
+      "auth" : {
+        "user" : "dan10@ethereal.email",
+        "pass" : "eFDRDSNcs4WAED1kBy"
+      }
     }
   }
 }
