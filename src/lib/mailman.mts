@@ -3,7 +3,7 @@ import hbs from "nodemailer-express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import CFG from "@cfg/mailman.json" assert { type : "json" };
+import CFG from "@cfg/mailman.mjs";
 import { NODE_ENV, ALLOWED_ORIGIN, G_API_REDIRECT } from "@cfg/index.mjs";
 import gsuite_client from "@utils/gsuite_client.mjs";
 
@@ -43,7 +43,8 @@ export class MailMan {
         viewPath : path.join(directory, "hbs/templates"),
         extName  : ".hbs"
       }));
-    })();
+    })()
+    .catch((err)=> console.log(`Failed to initialize MailMan.\n${namespace}.${err}`))
   }
 
   post(header : PostHeader, body : PostBody){

@@ -1,4 +1,4 @@
-[
+export default [
   {
     "name" : "Southern Convergence",
     "secret_key": "",

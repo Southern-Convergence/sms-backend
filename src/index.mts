@@ -16,6 +16,7 @@ import GrantAuthority from "@lib/grant-authority.mjs";
 import {template} from "@lib/api-utils.mjs";
 
 import { verify_tt } from "@lib/multers.mjs";
+import JobKomissar from "@lib/jobkomissar.mjs";
 
 const { CONNECTION_STRING, DATABASE } = process.env;
 
@@ -89,6 +90,7 @@ console.clear();
 Database.connect()
 .then(async()=>{
   PostOffice.initialize();
+  JobKomissar.init(io);
   await setup_stages();
 
   const [rest_ns, ws_ns] = await bundler(); 

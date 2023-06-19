@@ -4,7 +4,7 @@ import uuid from "uuid"
 
 import multers from "@lib/multers.mjs";
 
-const m = multers["hris"];
+const m = multers["hris-documents"];
 
 /* Joi/Multer Validation Example*/
 export default REST({

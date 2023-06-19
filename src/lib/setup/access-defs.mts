@@ -1,13 +1,14 @@
 import Database from "@lib/database.mjs";
-import { named_imports } from "@lib/import-helper.mjs";
+
+import domains from "@setup/src/uac/domains.mjs";
+import policies from "@setup/src/uac/policies.mjs";
+import users from "@setup/src/uac/users.mjs";
 
 import bcrypt from "bcrypt";
 
 const SALT = 10;
 
 export default async()=>{
-  const [ domains, policies, users ] = await named_imports(["domains", "policies", "users"], "uac");
-  
   const collections = await Database.get_instance()?.collections();
 
   const cols = collections?.map((v)=> v.collectionName);
@@ -62,7 +63,10 @@ export default async()=>{
     v.password = bcrypt.hashSync(v.password, SALT);
 
     const { domain, attr } = v.access;
+
+    /* @ts-ignore */
     v.access = AP_MAP[`${domain}${attr}`];
+    /* @ts-ignore */
     v.status = "active";
 
     return v;

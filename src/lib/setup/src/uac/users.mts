@@ -1,4 +1,4 @@
-[
+export default [
   {
     "username" : "Ultravisor",
     "password" : "95*3s46&4C92)2m84)6W96!",
