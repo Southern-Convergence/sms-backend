@@ -41,7 +41,7 @@ export default REST({
 
         this.save_otp(reissued_otp, user_id)
         ?.then(()=> {
-          this.mailmen["ethereal"].post({
+          this.postoffice["ethereal"].post({
             from : "sad@sad.com",
             to   : user.email,
             subject : "Account-Recovery"

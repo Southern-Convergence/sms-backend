@@ -85,7 +85,7 @@ export default REST({
         const otp = otpgen();
         this.save_otp(otp, user._id)
         ?.then(()=> {
-          this.mailmen["ethereal"].post({
+          this.postoffice["ethereal"].post({
             from    : "sad@sad.com",
             to      : (email?.toString() || ""),
             subject : "Account Recovery"

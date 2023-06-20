@@ -19,7 +19,7 @@ type WSHandlerDescriptor<V, H, C> = {
 
 //Dependency injection types for Request Handlers are declared here...
 declare interface HandlerFacilities {
-  mailmen    : TransportDict,
+  postoffice    : TransportDict,
   spaces     : SpacesMgr,
   gsuite     : GSuiteMgr
 }

@@ -7,12 +7,11 @@
   the value as an executable function.
   
 */
-import { Agenda, Processor } from "agenda";
+import { Agenda } from "agenda";
 import {AgendaConfig} from "agenda/dist/agenda/index.js";
 
 import JobTable from "@cfg/jobtable.mjs";
 import { PostOffice } from "@lib/mailman.mjs";
-import Database from "@lib/database.mjs";
 
 const { CONNECTION_STRING } = process.env
 
@@ -32,26 +31,22 @@ export default class JobKomissar{
   static instance = new Agenda(cfg);
   static jobtable = JobTable;
 
-  static init(io : Server){
-    console.log("Initializing JobKomissar with the following configuration:",  cfg);
+  static init(io : Server, db : Db){
+    console.log("Initializing JobKomissar");
     this.instance.start()
     .then(()=> {
       //Loops over JobTable to initiate scheds with it's own corresponding cfg and fns.
       Object.entries(this.jobtable).forEach(([sched, jobs])=> {
         Object.entries(jobs).forEach(([job, {options, action}])=> {
-          action.bind({
-            postoffice : PostOffice,
-            db         : Database,
+          this.instance.define(job, options, action.bind({
+            postoffice : PostOffice.get_instances(),
+            db,
             io
-          });
-
-          /* @ts-ignore */
-          this.instance.define(job, options, action);
+          }));
           this.instance.every(sched, job);
         });
       });
     })
     .catch((err)=> console.log("Failed to initialize JobKomissar", err.reason));
   }
-
 }

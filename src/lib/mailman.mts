@@ -63,12 +63,16 @@ export class MailMan {
 }
 
 export class PostOffice{
-  static mailmen : TransportDict;
+  static #instances : TransportDict;
 
   static initialize(){
     console.log(`PostOffice Initialized`)
-    this.mailmen = Object.fromEntries(Object.entries(CFG).map(([namespace, cfg])=> {
-      return [namespace, new MailMan(namespace, cfg)];
+    this.#instances = Object.fromEntries(Object.entries(CFG).map(([namespace, cfg])=> {
+    return [namespace, new MailMan(namespace, cfg)];
     }));
+  }
+
+  static get_instances(){
+    return this.#instances;
   }
 }

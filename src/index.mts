@@ -88,9 +88,9 @@ server.listen(process.env.PORT, ()=> {
 
 console.clear();
 Database.connect()
-.then(async()=>{
+.then(async(db)=>{
   PostOffice.initialize();
-  JobKomissar.init(io);
+  JobKomissar.init(io, db);
   await setup_stages();
 
   const [rest_ns, ws_ns] = await bundler(); 
@@ -162,7 +162,7 @@ Database.connect()
           Actual Injection of values happens here...
           Type Injections are done over at /src/core/index.mts
         */
-        app[method.toLowerCase() as RESTRequestType](dir, v.bind({...controllers, mailmen : PostOffice.mailmen}));
+        app[method.toLowerCase() as RESTRequestType](dir, v.bind({...controllers, postoffice : PostOffice.get_instances()}));
       }
     });
   });
