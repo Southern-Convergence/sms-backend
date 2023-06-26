@@ -8,6 +8,7 @@ const JOBTABLE:KomissarJobs = {
       },
 
       async action(){
+        /* 
         console.log("Step Increment Runner")
         this.postoffice["ethereal"].post({
           from : "manny@mail.com",
@@ -21,6 +22,7 @@ const JOBTABLE:KomissarJobs = {
           },
           template : "recovery"
         });
+        */
       }
     }
   }
