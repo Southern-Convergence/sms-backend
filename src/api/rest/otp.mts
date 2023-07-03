@@ -40,7 +40,7 @@ export default REST({
         const reissued_otp = otpgen();
 
         this.save_otp(reissued_otp, user_id)
-        ?.then(()=> {
+        .then(()=> {
           this.postoffice["ethereal"].post({
             from : "sad@sad.com",
             to   : user.email,
@@ -59,22 +59,22 @@ export default REST({
 
   controllers : {
     async verify_otp(token){
-      const match = await this.db?.collection("otp").findOne({token});
+      const match = await this.db.collection("otp").findOne({token});
       if(!match)return Promise.reject("OTP not found");
       //Has Expired?
       if(Date.now() > new Date(match.expiry).getTime())return Promise.reject(match.user_id);
     },
 
     get_user(user_id){
-      return this.db?.collection("users").findOne({_id : new ObjectId(user_id)})
+      return this.db.collection("users").findOne({_id : new ObjectId(user_id)})
     },
 
     save_otp(token, user_id){
-      return this.db?.collection("otp").updateOne({ user_id }, {$set : { token, expiry : new Date(Date.now() + EXPIRY), user_id }}, {upsert : true});
+      return this.db.collection("otp").updateOne({ user_id }, {$set : { token, expiry : new Date(Date.now() + EXPIRY), user_id }}, {upsert : true});
     },
 
     delete_otps(user_id){
-      this.db?.collection("otp").deleteMany({user_id : new ObjectId(user_id)})
+      this.db.collection("otp").deleteMany({user_id : new ObjectId(user_id)})
     }
   }
 })

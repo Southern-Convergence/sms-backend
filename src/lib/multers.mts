@@ -9,58 +9,44 @@ const SIGNATURE_MIME_WHITELIST = [
 ];
 
 export default {
-  "hris-documents": multer({
-    storage: multer.memoryStorage(),
-
-    limits: {
-      fieldNameSize: 92,
-      fieldSize: 32_000_000,
-      fileSize: 32_000_000,
-      headerPairs: 24,
-      fields: 24,
-      files: 5,
+  "hris-documents": mmmmmm(
+    {
+      field_name_size: 92,
+      field_size  : 2_048_000,
+      file_size   : 2_048_000,
+      header_pair : 24,
+      fields      : 24,
+      files       : 5,
     },
+    SIGNATURE_MIME_WHITELIST
+  ),
 
-    /* [File-Type Verification Middlewares] */
-    fileFilter: async (_, file, cb) => {
-      //1st Step: Content-Type Check
-      if (!SIGNATURE_MIME_WHITELIST.includes(file.mimetype))
-        return cb(
-          new Error("Upload Rejection", {
-            cause: `File type not supported, consider sending it in either these formats: ${SIGNATURE_MIME_WHITELIST.toString()}`,
-          })
-        );
-
-      cb(null, true);
+  "hris-signatures" : mmmmmm(
+    {
+      field_name_size: 92,
+      field_size  : 2_048_000,
+      file_size   : 2_048_000,
+      header_pair : 24,
+      fields      : 24,
+      files       : 5,
     },
-  }),
+    SIGNATURE_MIME_WHITELIST
+  ),
 
-  "hris-signatures" : multer({
-    storage: multer.memoryStorage(),
-
-    limits: {
-      fieldNameSize: 92,
-      fieldSize: 2_048_000,
-      fileSize: 2_048_000,
-      headerPairs: 24,
-      fields: 24,
-      files: 5,
+  "letter-of-intent" : mmmmmm(
+    {
+      field_name_size: 92,
+      field_size  : 2_048_000,
+      file_size   : 2_048_000,
+      header_pair : 24,
+      fields      : 24,
+      files       : 5,
     },
-
-    /* [File-Type Verification Middlewares] */
-    fileFilter: async (_, file, cb) => {
-      console.log(file);
-      //1st Step: Content-Type Check
-      if (!SIGNATURE_MIME_WHITELIST.includes(file.mimetype))
-        return cb(
-          new Error("Upload Rejection", {
-            cause: `File type not supported, consider sending it in either these formats: ${SIGNATURE_MIME_WHITELIST.toString()}`,
-          })
-        );
-
-      cb(null, true);
-    },
-  }),
+    [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ]
+  )
 };
 
 //2nd Step: Buffer Magic Number Checking
@@ -79,4 +65,35 @@ export const verify_tt:RequestHandler = async(req, _, next)=>{
   }
  */
   next(null);
+}
+
+function mmmmmm(limits : Limits, whitelist : string[]){
+  return multer({
+    storage: multer.memoryStorage(),
+
+    limits,
+
+    /* [File-Type Verification Middlewares] */
+    fileFilter: async (_, file, cb) => {
+      //1st Step: Content-Type Check
+      if (!whitelist.includes(file.mimetype))
+        return cb(
+          new Error("Upload Rejection", {
+            cause: `File type not supported, consider sending it in either these formats: ${whitelist.toString()}`,
+          })
+        );
+
+      cb(null, true);
+    },
+  })
+}
+
+type Limits = {
+  field_name_size : number;
+  field_size      : number;
+
+  file_size   : number;
+  header_pair : number;
+  fields      : number;
+  files       : number;
 }

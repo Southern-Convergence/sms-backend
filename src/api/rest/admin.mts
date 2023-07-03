@@ -139,12 +139,12 @@ export default REST({
       //>>>Start of Domain Management API
       "get-domains"(_, res){
         this.get_domains()
-        ?.then((data)=> res.json({data}))
+        .then((data)=> res.json({data}))
         .catch((error)=> res.status(400).json({error}));
       },
       "get-users"(_, res){
         this.get_users()
-        ?.then((data)=> res.json({data}))
+        .then((data)=> res.json({data}))
         .catch((error)=> res.status(400).json({error}));
       },
       //>>>End of Domain Management API
@@ -157,12 +157,12 @@ export default REST({
       },
       "get-access-policies"(_, res){
         this.get_access_policies()
-        ?.then((data)=> res.json({data}))
+        .then((data)=> res.json({data}))
         .catch((error)=> res.status(400).json({error}));
       },
       "get-security-policies"(_, res){
         this.get_security_policies()
-        ?.then((data)=> res.json({data}))
+        .then((data)=> res.json({data}))
         .catch((error)=> res.status(400).json({error}));
       },
       //>>>Start of Policy Management API
@@ -172,13 +172,13 @@ export default REST({
       "get-registry-values"(req, res){
         const { classification_id } = req.body;
         this.get_registry_values(classification_id)
-        ?.then((data)=> res.json({data}))
+        .then((data)=> res.json({data}))
         .catch((error)=> res.status(400).json({error}));
       },
 
       "get-registry-classifications"(_, res){
         this.get_registry_classifications()
-        ?.then((data)=> res.json({data}))
+        .then((data)=> res.json({data}))
         .catch((error)=> res.status(400).json({error}));
       },
 
@@ -190,7 +190,7 @@ export default REST({
       "get-domain"(req, res){
         const { domain_id } = req.body;
         this.get_domain(domain_id)
-        ?.then((data) => res.json({data}))
+        .then((data) => res.json({data}))
         .catch(error => res.status(400).json({error}))
       },
       "create-domain"(req, res){
@@ -285,7 +285,7 @@ export default REST({
 
       "get-registry-values"(req, res){
         this.get_registry_values(req.body)
-        ?.then((data)=> res.json({data}))
+        .then((data)=> res.json({data}))
         .catch((error)=> res.status(400).json({error}));
       },
 
@@ -312,7 +312,7 @@ export default REST({
   controllers : {
     //>>>Start of Domain Management API
     get_domains(){
-      return this.db?.collection("domains").aggregate([
+      return this.db.collection("domains").aggregate([
         {
           '$lookup': {
             'from': 'policies', 
@@ -331,127 +331,126 @@ export default REST({
       ]).toArray();
     },
     async get_domain(domain_id){
-      return await this.db?.collection("domains").findOne({_id: new ObjectId(domain_id)})
-      
+      return await this.db.collection("domains").findOne({_id: new ObjectId(domain_id)});
     },
     async create_domain(domain){
-      const temp = await this.db?.collection("domains").findOne({name : domain.name});
+      const temp = await this.db.collection("domains").findOne({name : domain.name});
       if(temp)return Promise.reject("Failed to create domain, domain already exists.");
 
-      return this.db?.collection("domains").insertOne(domain);
+      return this.db.collection("domains").insertOne(domain);
     },
     async update_domain(domain_id, domain){
-      const temp = await this.db?.collection("domains").updateOne({_id : new ObjectId(domain_id)}, { $set : domain});
-      if(!temp?.matchedCount)return Promise.reject("Failed to update domain, domain does not exist.");
+      const temp = await this.db.collection("domains").updateOne({_id : new ObjectId(domain_id)}, { $set : domain});
+      if(!temp.matchedCount)return Promise.reject("Failed to update domain, domain does not exist.");
     },
     async delete_domain(domain_id){
-      const temp = await this.db?.collection("domains").deleteOne({_id : new ObjectId(domain_id)});
+      const temp = await this.db.collection("domains").deleteOne({_id : new ObjectId(domain_id)});
 
-      if(!temp?.deletedCount)return Promise.reject("Failed to delete domain, domain does not exist.");
+      if(!temp.deletedCount)return Promise.reject("Failed to delete domain, domain does not exist.");
     },
     //>>>End of Domain Management API
 
 
     //>>>Start of User Management API
     get_users(){
-      return this.db?.collection("users").find({ username : { $not : { $eq : "Ultravisor"} }}).toArray();
+      return this.db.collection("users").find({ username : { $not : { $eq : "Ultravisor"} }}).toArray();
     },
     async create_user(user){
-      const temp = await this.db?.collection("users").findOne({ $or : [{ username : user.username }, { email : user.email }]})
+      const temp = await this.db.collection("users").findOne({ $or : [{ username : user.username }, { email : user.email }]})
       if(temp)return Promise.reject("Failed to create user, user already exists.");
 
-      this.db?.collection("users").insertOne(user);
+      this.db.collection("users").insertOne(user);
     },
     async update_user(user_id, user){
-      const temp = await this.db?.collection("users").updateOne({ _id : new ObjectId(user_id)}, { $set : user });
+      const temp = await this.db.collection("users").updateOne({ _id : new ObjectId(user_id)}, { $set : user });
 
-      if(!temp?.matchedCount)return Promise.reject("Failed to update user, user does not exist.");
+      if(!temp.matchedCount)return Promise.reject("Failed to update user, user does not exist.");
     },
     async delete_user(user_id){
-      const temp = await this.db?.collection("users").deleteOne({ _id : new ObjectId(user_id)});
+      const temp = await this.db.collection("users").deleteOne({ _id : new ObjectId(user_id)});
 
-      if(!temp?.deletedCount)return Promise.reject("Failed to delete user, user does not exist.");
+      if(!temp.deletedCount)return Promise.reject("Failed to delete user, user does not exist.");
     },
     //>>>End of User Management API
 
 
     //>>>Start of Policy Management API
     get_access_policies(){
-      return this.db?.collection("policies").find({type : "access"}).toArray();
+      return this.db.collection("policies").find({type : "access"}).toArray();
     },
     async create_access_policy(access_policy){
-      let temp = await this.db?.collection("policies").findOne({ name : access_policy.name, type : "access" });
+      let temp = await this.db.collection("policies").findOne({ name : access_policy.name, type : "access" });
       if(temp)return Promise.reject("Failed to create Access Policy, Access Policy already exists.");
 
-      this.db?.collection("policies").insertOne({...access_policy, type : "access"});
+      this.db.collection("policies").insertOne({...access_policy, type : "access"});
     },
     async update_access_policy(policy_id, access_policy){
-      let temp = await this.db?.collection("policies").updateOne({ _id : new ObjectId(policy_id) }, { $set : access_policy });
-      if(!temp?.matchedCount)return Promise.reject("Failed to update Access Policy, Access Policy does not exist.");
+      let temp = await this.db.collection("policies").updateOne({ _id : new ObjectId(policy_id) }, { $set : access_policy });
+      if(!temp.matchedCount)return Promise.reject("Failed to update Access Policy, Access Policy does not exist.");
     },
     async delete_access_policy(policy_id){
-      let temp = await this.db?.collection("policies").deleteOne({ _id : new ObjectId(policy_id) });
-      if(!temp?.deletedCount)return Promise.reject("Failed to delete Access Policy, Access Policy does not exist.");
+      let temp = await this.db.collection("policies").deleteOne({ _id : new ObjectId(policy_id) });
+      if(!temp.deletedCount)return Promise.reject("Failed to delete Access Policy, Access Policy does not exist.");
     },
 
     get_security_policies(){
-      return this.db?.collection("policies").find({type : "security"}).toArray();
+      return this.db.collection("policies").find({type : "security"}).toArray();
     },
     async create_security_policy(security_policy){
-      let temp = await this.db?.collection("policies").findOne({ name : security_policy.name, type : "security" });
+      let temp = await this.db.collection("policies").findOne({ name : security_policy.name, type : "security" });
       if(temp)return Promise.reject("Failed to create Security Policy, Security Policy already exists.");
 
-      this.db?.collection("policies").insertOne({...security_policy, type : "security"});
+      this.db.collection("policies").insertOne({...security_policy, type : "security"});
     },
     async update_security_policy(policy_id, security_policy){
-      let temp = await this.db?.collection("policies").updateOne({ _id : new ObjectId(policy_id) }, { $set : security_policy });
-      if(!temp?.matchedCount)return Promise.reject("Failed to update Security Policy, Security Policy does not exist.");
+      let temp = await this.db.collection("policies").updateOne({ _id : new ObjectId(policy_id) }, { $set : security_policy });
+      if(!temp.matchedCount)return Promise.reject("Failed to update Security Policy, Security Policy does not exist.");
     },
     async delete_security_policy(policy_id){
-      let temp = await this.db?.collection("policies").deleteOne({ _id : new ObjectId(policy_id) });
-      if(!temp?.deletedCount)return Promise.reject("Failed to delete Security Policy, Security Policy does not exist.");
+      let temp = await this.db.collection("policies").deleteOne({ _id : new ObjectId(policy_id) });
+      if(!temp.deletedCount)return Promise.reject("Failed to delete Security Policy, Security Policy does not exist.");
     },
     //>>>End of Policy Management API
 
     
     //>>>Start of Registry Actions API
     get_registry_classifications(){
-      return this.db?.collection("registry").find({}).toArray();
+      return this.db.collection("registry").find({}).toArray();
     },
 
     async create_registry_classification(classification){
-      let temp = await this.db?.collection("registry").findOne({ name : classification.name });
+      let temp = await this.db.collection("registry").findOne({ name : classification.name });
       if(temp)return Promise.reject("Failed to create Registry Classification, Classification already exists.");
 
-      return this.db?.collection("registry").insertOne(classification);
+      return this.db.collection("registry").insertOne(classification);
     },
 
     async update_registry_classification(data){
-      let temp = await this.db?.collection("registry").updateOne({ _id : new ObjectId(data.classification_id)}, { $set : {...data.classification}});
-      if(!temp?.matchedCount)return Promise.reject("Failed to update Registry Classification, Registry Classification does not exist.");
+      let temp = await this.db.collection("registry").updateOne({ _id : new ObjectId(data.classification_id)}, { $set : {...data.classification}});
+      if(!temp.matchedCount)return Promise.reject("Failed to update Registry Classification, Registry Classification does not exist.");
     },
 
     async delete_registry_classification(data){
-      let temp = await this.db?.collection("registry").deleteOne({ _id : new ObjectId(data.classification_id) });
-      if(!temp?.deletedCount)return Promise.reject("Failed to delete Registry Classification, Registry Classification does not exist.");
+      let temp = await this.db.collection("registry").deleteOne({ _id : new ObjectId(data.classification_id) });
+      if(!temp.deletedCount)return Promise.reject("Failed to delete Registry Classification, Registry Classification does not exist.");
     },
 
     get_registry_values(classification_id){
-      return this.db?.collection("registry").findOne({_id : new ObjectId(classification_id)});
+      return this.db.collection("registry").findOne({_id : new ObjectId(classification_id)});
     },
     async create_registry_value(registry_value){
-      let temp = await this.db?.collection("registry").findOne({ key : registry_value.key });
+      let temp = await this.db.collection("registry").findOne({ key : registry_value.key });
       if(temp)return Promise.reject("Failed to create Registry Value, Registry Value already exists.");
 
-      return this.db?.collection("registry").insertOne(registry_value);
+      return this.db.collection("registry").insertOne(registry_value);
     },
     async update_registry_value(registry_id, registry_value){
-      let temp = await this.db?.collection("registry").updateOne({ _id : new ObjectId(registry_id) }, { $set : registry_value });
-      if(!temp?.matchedCount)return Promise.reject("Failed to update Registry Value, Registry Value does not exist.");
+      let temp = await this.db.collection("registry").updateOne({ _id : new ObjectId(registry_id) }, { $set : registry_value });
+      if(!temp.matchedCount)return Promise.reject("Failed to update Registry Value, Registry Value does not exist.");
     },
     async delete_registry_value(registry_id){
-      let temp = await this.db?.collection("registry").deleteOne({ _id : new ObjectId(registry_id) });
-      if(!temp?.deletedCount)return Promise.reject("Failed to delete Registry Value, Registry Value does not exist.");
+      let temp = await this.db.collection("registry").deleteOne({ _id : new ObjectId(registry_id) });
+      if(!temp.deletedCount)return Promise.reject("Failed to delete Registry Value, Registry Value does not exist.");
     },
     //>>>End of Registry Actions API
   }

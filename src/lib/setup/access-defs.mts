@@ -42,8 +42,8 @@ export default async()=>{
   let ap_templates = domains.flatMap((v : {[key : string] : any})=>{
     /* @ts-ignore */
     return v.access_templates.map((a)=>{
-      const { basis, name, grants } = a;
-      return { basis : POLICY_MAP[basis], domain_id : DOMAIN_MAP[v.name], name, grants };
+      const { basis, name, resources } = a;
+      return { basis : POLICY_MAP[basis], domain_id : DOMAIN_MAP[v.name], name, resources };
     });
   });
   

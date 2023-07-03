@@ -1,7 +1,7 @@
 import Database from "@lib/database.mjs";
 
 /*
-  A singleton class which allows for efficient lookups of access grants from
+  A singleton class which allows for efficient lookups of access resources from
   a pre-allocated dictionary of all declared Access Policies.
 
   Details:
@@ -46,7 +46,7 @@ export default class GrantAuthority{
       this.#resources[_id] = Object.fromEntries(resources.map((r : any)=>  [r._id, r]));
 
       ap.forEach((t : any)=> {
-        const { _id, domain_id, grants } = t;
+        const { _id, domain_id, resources } = t;
 
         /*
           This is where the magic happens. :D
@@ -58,7 +58,7 @@ export default class GrantAuthority{
         */
         let pages: {[key : string] : object} = {};
         let endpoints : {[key : string] : boolean} = {};
-        grants.map((g : any)=>[this.#resources[domain_id][g.resource], g.write]).forEach((v : [any, boolean])=>{
+        resources.map((g : any)=>[this.#resources[domain_id][g.resource], g.write]).forEach((v : [any, boolean])=>{
           switch(v[0].type){
             case "subdomain" : {
               //Fuck this is horribly coded. it's 4:35A.M, I'm tired.
@@ -107,10 +107,11 @@ export default class GrantAuthority{
           const obj = {
             name : `[AUTO] ${v.toUpperCase()}`,
             desc : "",
-            ref  : `${method}/${namespace}/${v}`,
+            ref  : `${namespace}/${v}`,
             op   : "",
             
             protocol  : "REST",
+            method,
             domain_id : cfg.domain ? domain_map[cfg.domain] : domain_map[this.#default_domain],
             type      : "endpoint"
           };
@@ -131,7 +132,7 @@ export default class GrantAuthority{
     return `${Math.floor(size)} ${bytes2mem(size)}`;
   }
 
-  static get_page_grants(access : string){ 
+  static get_page_resources(access : string){ 
     const match = this.#get_template(access);
     if(match === "A01")return [];
     return Object.values(match.pages);

@@ -144,7 +144,7 @@ Database.connect()
   
               /* AUTHORIZATION CHECK    */
             }
-  
+
   
             /* REQUEST BODY VALIDITY CHECK */
             switch(method.toLowerCase()){

@@ -11,7 +11,7 @@ declare type User = {
     name      : string;
     basis     : ObjectId;
     domain_id : ObjectId;
-    grants    : {
+    resources    : {
       resource : ObjectId,
       write    : Boolean
     }[]
@@ -69,7 +69,7 @@ declare type AccessTemplate = {
   basis  : string;
   name   : string;
 
-  grants : {
+  resources : {
     [subdomain : string] : {
       pages : {[page : string] : boolean}
     }

@@ -26,7 +26,7 @@ declare interface HandlerFacilities {
 
 //Dependency injection types for Request Controllers are declared here...
 declare interface ControllerFacilities {
-  db? : Db,
+  db       : Db,
   instance : MongoClient,
 }
 

@@ -28,7 +28,7 @@ export default REST({
       password : Joi.string().min(8).required(),
       confirm_password : Joi.string().min(8).required()
     },
-    "get-page-grants": {},
+    "get-page-resources": {},
     "get-user": {},
     "get-sessions": {},
     "terminate-session": { session_id: Joi.string().required() },
@@ -73,7 +73,7 @@ export default REST({
         const { session_id } = req.body;
 
         this.terminate_session(session_id)
-          ?.then(() => res.json({ data: "Session Terminated." }))
+          .then(() => res.json({ data: "Session Terminated." }))
           .catch((error) => res.status(400).json({ error }));
       },
 
@@ -84,10 +84,10 @@ export default REST({
         
         const otp = otpgen();
         this.save_otp(otp, user._id)
-        ?.then(()=> {
+        .then(()=> {
           this.postoffice["ethereal"].post({
             from    : "sad@sad.com",
-            to      : (email?.toString() || ""),
+            to      : (email.toString() || ""),
             subject : "Account Recovery"
           }, {
             template : "recovery",
@@ -138,10 +138,10 @@ export default REST({
         res.json({ data: matched_user });
       },
 
-      "get-page-grants"(req, res) {
+      "get-page-resources"(req, res) {
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "No Session Found." });
-        res.json({ data: GrantAuthority.get_page_grants(user.access) });
+        res.json({ data: GrantAuthority.get_page_resources(user.access) });
       },
 
       async "get-sessions"(req, res) {
@@ -150,7 +150,7 @@ export default REST({
         const { id, user } = req.session;
         let temp = await this.get_user_sessions(user._id);
 
-        let data = temp?.map((v) => {
+        let data = temp.map((v) => {
           if (v._id.toString() === id.toString()) v.current = true;
           let temp = v.session;
           delete v.session;
@@ -168,7 +168,7 @@ export default REST({
 
   controllers: {
     async check_credentials(username: string, password: string) {
-      let matched_user = await this.db?.collection("users").findOne(
+      let matched_user = await this.db.collection("users").findOne(
         { username },
         {
           projection: {
@@ -205,8 +205,8 @@ export default REST({
 
     async get_user(user_id: string) {
       const matched_user = await this.db
-        ?.collection("users")
-        ?.aggregate([
+        .collection("users")
+        .aggregate([
           {
             $match: {
               _id: new ObjectId(user_id),
@@ -291,13 +291,13 @@ export default REST({
         ])
         .toArray();
 
-      if (!matched_user?.length) return Promise.reject("User not found");
+      if (!matched_user.length) return Promise.reject("User not found");
       return matched_user[0];
     },
 
     get_user_sessions(user_id) {
       return this.db
-        ?.collection("sessions")
+        .collection("sessions")
         .find(
           { "session.user._id": new ObjectId(user_id) },
           { projection: { "session.cookie": 0 } }
@@ -307,41 +307,38 @@ export default REST({
 
     terminate_session(_id) {
       return this.db
-        ?.collection("sessions")
+        .collection("sessions")
         .deleteOne({ _id })
         .then((v) => {
-          if (!v.deletedCount)
-            return Promise.reject(
-              "Failed to terminate session, Session not found."
-            );
+          if (!v.deletedCount)return Promise.reject("Failed to terminate session, Session not found.");
         });
     },
 
     get_user_by_email(email){
-      return this.db?.collection("users").findOne({email});
+      return this.db.collection("users").findOne({email});
     },
 
     get_otp(token){
-      return this.db?.collection("otp").findOne({token});
+      return this.db.collection("otp").findOne({token});
     },
 
     save_otp(token, user_id){
-      return this.db?.collection("otp").updateOne({ user_id }, {$set : { token, expiry : new Date(Date.now() + EXPIRY), user_id, stamp : new Date() }}, {upsert : true});
+      return this.db.collection("otp").updateOne({ user_id }, {$set : { token, expiry : new Date(Date.now() + EXPIRY), user_id, stamp : new Date() }}, {upsert : true});
     },
 
     delete_otp(token_id){
-      this.db?.collection("otp").deleteOne({_id : token_id});
+      this.db.collection("otp").deleteOne({_id : token_id});
     },
 
     async update_user_password(user_id, password){
       const hashed_password = bcrypt.hashSync(password, SALT);
-      const result = await this.db?.collection("users").updateOne({_id : new ObjectId(user_id)}, {
+      const result = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
         $set : {
           password : hashed_password
         }
       })
 
-      if(!result?.modifiedCount)return Promise.reject("Failed to update user password, user not found.");
+      if(!result.modifiedCount)return Promise.reject("Failed to update user password, user not found.");
     }
   },
 });

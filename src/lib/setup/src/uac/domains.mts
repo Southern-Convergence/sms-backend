@@ -12,17 +12,17 @@ export default [
       {
         "basis": "Role Based",
         "name": "Ultravisor",
-        "grants": []
+        "resources": []
       },
       {
         "basis"  : "Role Based",
         "name"   : "Deped HRDD Regular",
-        "grants" : []
+        "resources" : []
       },
       {
         "basis"  : "Role Based",
         "name"   : "DepEd HRDD Admin",
-        "grants" : []
+        "resources" : []
       }
     ]
   },
