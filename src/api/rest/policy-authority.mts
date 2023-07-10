@@ -90,11 +90,12 @@ export default REST({
       resources: Joi.array(),
     },
     "update-apt": {
+      apt_id : object_id,
       name: Joi.string(),
       resources: Joi.array(),
     },
-    "remove-apt": {
-      id: object_id,
+    "delete-apt": {
+      apt_id: object_id,
     },
     "grant-resources": {
       apt_id    : object_id,
@@ -226,6 +227,12 @@ export default REST({
         .then(()=> res.json({data : "Successfully deleted Security Policy."}))
         .catch((error)=> res.status(400).json({error}));
       },
+
+      "delete-apt"(req, res){
+        this.delete_apt(req.body.apt_id)
+        .then(()=> res.json({data : "Successfully deleted APT."}))
+        .catch((error)=> res.status(400).json({error}));
+      }
     }
   },
 
@@ -330,7 +337,7 @@ export default REST({
         return Promise.resolve(
           "Successfully removed access policy from domain"
         );
-      return Promise.reject("Failed to remove access policy from domain");
+      return Promise.reject("Failed to delete access policy from domain");
     },
     async enforce_security_policy(domain_id: string, security_id: string) {
       const result = await this.db
@@ -357,7 +364,7 @@ export default REST({
         return Promise.resolve(
           "Successfully removed security policy from domain"
         );
-      return Promise.reject("Failed to remove security policy from domain");
+      return Promise.reject("Failed to delete security policy from domain");
     },
     get_apts(domain_id) {
       return this.db
@@ -407,13 +414,16 @@ export default REST({
       if(temp)return Promise.reject("Failed to create apt, already exists.");
       return this.db.collection("ap-templates").insertOne({...body, desc : apt.desc || "", resources : []});
     },
+    async delete_apt(apt_id){
+      const result = await this.db.collection("ap-templates").deleteOne({_id : new ObjectId(apt_id)})
+      if(!result.deletedCount)return Promise.reject("Failed to delete APT, no such APT.");
+    },
 
 
 
     async grant_resources(apt_id, resource_ids) {
       const ids = resource_ids.map((v : any)=> ({_id : new ObjectId(v)}));
       const resource = await this.db.collection("resources").find({$or : ids}).toArray();
-
       if (resource.length !== ids.length)return Promise.reject("Failed to grant resources, one or more included resources does not exist.");
 
       return this.db

@@ -42,7 +42,7 @@ export default REST({
     "resource-assignment" : {
       parent : object_id,
       child  : object_id
-    }
+    },
   },
 
   handlers   : {

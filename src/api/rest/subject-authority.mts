@@ -14,10 +14,16 @@ export default REST({
     },
 
     "invite-user" : {
-      domain_id   : object_id,
-      user_type   : Joi.string().allow("human", "npe").required(),
+      domain      : {
+        id   : object_id,
+        name : Joi.string().required() 
+      },
+      group       : {
+        id   : object_id,
+        name : Joi.string().required()
+      },
+
       apts        : Joi.array().required(),
-      group       : object_id,
       user_info   : Joi.object().required(),
       email       : Joi.string().email().required()
     },
@@ -53,31 +59,15 @@ export default REST({
     },
     POST : {
       "invite-user"(req, res){
-        this.create_user(req.body)
-        .then(async ()=> {
-          await this.postoffice["ethereal"].post({
-            from : "someone@mail.com",
-            to : "emy@mail.com",
-            subject : "System Invite"
-          },
-          {
-            context  : {
-              invited_by_name  : "Emmanuel Abellana",
-              invited_by_email : "mannyless37@gmail.com",
-              invited_domain   : "Southern Convergence",
-  
-              name  : "Emylinda Abellana",
-              roles : "Hypervisor",
-              group : "UAC-Administrators",
-              code  : "WHXZ8"
-            },
-            layout   : "default",
-            template : "uac-invite"
-          });
+        //Unwrap variables
+        const { domain, group, apts, user_info, email } = req.body;
+        console.log(req.session.user)
 
-          res.json({data : "Successfully sent invitation"});
-        })
-        .catch((error)=> res.status(400).json({error : "Failed to send invitation"}));
+        res.json({data : "Fuck"})
+      },
+
+      "invite-service"(req, res){
+
       },
 
       "create-user-group"(req, res){
