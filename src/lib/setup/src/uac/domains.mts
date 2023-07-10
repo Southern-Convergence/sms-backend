@@ -12,16 +12,19 @@ export default [
       {
         "basis": "Role Based",
         "name": "Ultravisor",
+        "desc" : "The All-Seeing Eye",
         "resources": []
       },
       {
         "basis"  : "Role Based",
         "name"   : "Deped HRDD Regular",
+        "desc" : "",
         "resources" : []
       },
       {
         "basis"  : "Role Based",
         "name"   : "DepEd HRDD Admin",
+        "desc" : "",
         "resources" : []
       }
     ]

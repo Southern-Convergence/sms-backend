@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import hbs from "nodemailer-express-handlebars";
+import { engine, create } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -12,52 +12,46 @@ const __filename = fileURLToPath(import.meta.url);
 const directory  = path.dirname(__filename);
 const IS_DEV     = NODE_ENV === "production";
 
+const hbs = create({
+  extname       : ".hbs",
+  partialsDir   : path.join(directory, "hbs/partials"),
+  layoutsDir    : path.join(directory, "hbs/layouts"),
+  encoding : "utf-8",
+  
+  defaultLayout : "default",
+
+  helpers : {
+    url_concat : (...args : any[]) => {
+      args.pop();
+      return [...args].toString().replaceAll(",", "/");
+    }
+  }
+})
+
 export class MailMan {
   private _cfg      : (TransportCFG | null) = null;
   /* @ts-ignore TODO: Definite assignment to appropriate transport, I've no time.*/
   private transport : nodemailer.Transporter;
 
   constructor(namespace : string, cfg : TransportCFG){
-    const { user, clientId, clientSecret, refreshToken } = cfg.transport_options.auth;
-        
+    const { clientId, clientSecret, refreshToken } = cfg.transport_options.auth;
+    
     (async()=> {
       if(!IS_DEV && namespace !== "ethereal")cfg.transport_options.accessToken = await gsuite_client({CLIENT_ID : clientId, REFRESH_TOKEN : refreshToken, SECRET : clientSecret, REDIRECT_URL : G_API_REDIRECT}).getAccessToken();
       this._cfg = cfg;
 
-      this.transport = nodemailer.createTransport(!IS_DEV ? cfg.transport_options : CFG["ethereal"].transport_options);
-
-      this.transport.use("compile", hbs({
-        viewEngine : {
-          extname : ".hbs",
-          partialsDir : path.join(directory, "hbs/partials"),
-          defaultLayout : "",
-      
-          helpers : {
-            url_concat : (...args : any[]) => {
-              args.pop();
-              return [...args].toString().replaceAll(",", "/");
-            }
-          }
-        },
-      
-        viewPath : path.join(directory, "hbs/templates"),
-        extName  : ".hbs"
-      }));
+      this.transport = nodemailer.createTransport(!IS_DEV ? cfg.transport_options : CFG["ethereal"].transport_options)
     })()
     .catch((err)=> console.log(`Failed to initialize MailMan.\n${namespace}.${err}`))
   }
 
-  post(header : PostHeader, body : PostBody){
-    body.context = {
-      ...body.context,
-      domain : ALLOWED_ORIGIN
-    }
-
+  async post(header : PostHeader, body : PostBody){
+    const { context, layout, template } = body;
+    const html = await hbs.render(path.join(directory, `hbs/templates/${template}.hbs`), {...context, domain : ALLOWED_ORIGIN}, { layout });
     return this.transport?.sendMail({
       ...this._cfg?.mail_options,
       ...header,
-      ...body,
-      context : body.context
+      html
     });
   }
 }
@@ -68,7 +62,7 @@ export class PostOffice{
   static initialize(){
     console.log(`PostOffice Initialized`)
     this.#instances = Object.fromEntries(Object.entries(CFG).map(([namespace, cfg])=> {
-    return [namespace, new MailMan(namespace, cfg)];
+      return [namespace, new MailMan(namespace, cfg)];
     }));
   }
 

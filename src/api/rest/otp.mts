@@ -47,6 +47,7 @@ export default REST({
             subject : "Account-Recovery"
           }, {
             template : "recovery",
+            layout   : "default",
             context  : {first_name : user.first_name, last_name : user.last_name, otp : reissued_otp }
           })
           .then(()=> res.json({data : "Successfully re-issued token."}))

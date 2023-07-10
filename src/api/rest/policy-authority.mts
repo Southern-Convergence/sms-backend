@@ -85,7 +85,8 @@ export default REST({
       domain_id: object_id,
       basis: object_id,
 
-      name: Joi.string().required(),
+      name : Joi.string().required(),
+      desc : Joi.string(),
       resources: Joi.array(),
     },
     "update-apt": {
@@ -190,6 +191,12 @@ export default REST({
         this.revoke_security_policy(domain_id, security_id)
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
+      },
+
+      "create-apt"(req, res){
+        this.create_apt(req.body)
+        .then(()=> res.json({data : "Successfully created apt."}))
+        .catch((error)=> res.status(400).json({error}));
       },
 
       "grant-resources"(req, res){
@@ -355,7 +362,7 @@ export default REST({
     get_apts(domain_id) {
       return this.db
         .collection("ap-templates")
-        .find({ domain_id: new ObjectId(domain_id) })
+        .find({ domain_id: new ObjectId(domain_id), name : { $ne : "Ultravisor"} })
         .toArray();
     },
     async get_apt_details(apt_id) {
@@ -392,6 +399,17 @@ export default REST({
 
       return output;
     },
+    async create_apt(apt){
+      const { domain_id, basis, name } = apt;
+      const body = {domain_id : new ObjectId(domain_id), basis : new ObjectId(basis), name};
+      const temp = await this.db.collection("ap-templates").findOne(body);
+
+      if(temp)return Promise.reject("Failed to create apt, already exists.");
+      return this.db.collection("ap-templates").insertOne({...body, desc : apt.desc || "", resources : []});
+    },
+
+
+
     async grant_resources(apt_id, resource_ids) {
       const ids = resource_ids.map((v : any)=> ({_id : new ObjectId(v)}));
       const resource = await this.db.collection("resources").find({$or : ids}).toArray();

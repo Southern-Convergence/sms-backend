@@ -12,6 +12,7 @@ type PostHeader = {
 
 type PostBody = {
   template    : string;
+  layout      : string;
   context     : {[key : string] : string}; 
 }
 

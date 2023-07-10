@@ -14,7 +14,7 @@ export function REST<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : H & C {
   Object.entries(handlers).forEach(([method, handlermap])=>{
     Object.entries(handlermap).forEach(([k, v])=> {
       /* @ts-ignore */
-      handlers[method][k] = v.bind({ ...controllers, postoffice : PostOffice.postoffice });
+      handlers[method][k] = v.bind({ ...controllers, postoffice : PostOffice.get_instances() });
     });
   });
 

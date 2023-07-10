@@ -91,6 +91,7 @@ export default REST({
             subject : "Account Recovery"
           }, {
             template : "recovery",
+            layout   : "default",
             context  : {
               otp,
               first_name : user.first_name,
