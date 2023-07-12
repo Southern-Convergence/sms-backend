@@ -369,7 +369,29 @@ export default REST({
     get_apts(domain_id) {
       return this.db
         .collection("ap-templates")
-        .find({ domain_id: new ObjectId(domain_id), name : { $ne : "Ultravisor"} })
+        .aggregate([
+          {
+            $match: {
+              domain_id : new ObjectId(domain_id),
+              name      : { $ne: "Ultravisor" }
+            }
+          },
+          {
+            $lookup: {
+              from         : "policies",
+              localField   : "basis",
+              foreignField : "_id",
+              pipeline     : [{$project:{name:1,icon:1}}],
+              as           : "basis"
+            },
+          },
+          {
+            $unwind : "$basis"
+          },
+          {
+            $project: { resources: 0 }
+          }
+        ])
         .toArray();
     },
     async get_apt_details(apt_id) {

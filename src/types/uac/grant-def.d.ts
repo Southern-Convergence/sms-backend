@@ -3,21 +3,31 @@ declare type ObjectId = import("mongodb").ObjectId;
 declare type User = {
   _id      : string;
   username : string;
+  email    : string;
   name     : string[];
   type     : string;
+  status   : UserStatus
   access   : {
     //Derived from AP-Template lookup
     _id       : string;
     name      : string;
     basis     : ObjectId;
     domain_id : ObjectId;
-    resources    : {
-      resource : ObjectId,
-      write    : Boolean
-    }[]
+    resources : []
   }
 }
 
+declare type UserStatus = (
+  "active"     | 
+  "suspended"  |
+  "terminated" | 
+  "invited"    
+);
+
+declare type UserType = (
+  "internal" |
+  "npe"      
+);
 
 declare type GrantTable = {
   [domain : string] : {

@@ -17,27 +17,14 @@ export default REST({
       sample(_, res){
         this.postoffice["ethereal"].post({
           from : "someone@mail.com",
-          to : "emy@mail.com",
-          subject : "System Invite"
+          to   : "manny@mail.com",
+          subject : "You've been caught"
         },
         {
-          context  : {
-            invited_by_name  : "Emmanuel Abellana",
-            invited_by_email : "mannyless37@gmail.com",
-            invited_domain   : "Southern Convergence",
-
-            name  : "Emylinda Abellana",
-            roles : "Hypervisor",
-            group : "UAC-Administrators",
-            code  : "WHXZ8"
-          },
-          layout   : "default",
-          template : "uac-invite"
-        })
-        .then(()=>{
-          res.json({data : "Successfully sent invitation"})
-        })
-        .catch((error)=> res.json({error : `Failed to send invitation `}))
+          context  : {},
+          template : "uac-internal-invite",
+          layout   : "default" 
+        }).then((html)=> res.send(html))
       }
     }
   }

@@ -173,11 +173,12 @@ export default REST({
         { username },
         {
           projection: {
-            _id: 1,
-            username: 1,
-            password: 1,
-            type: 1,
-            access: 1,
+            _id      : 1,
+            username : 1,
+            password : 1,
+            email    : 1,
+            type     : 1,
+            access   : 1
            }
         }
       );

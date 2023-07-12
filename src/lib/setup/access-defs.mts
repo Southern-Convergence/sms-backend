@@ -5,6 +5,7 @@ import policies from "@setup/src/uac/policies.mjs";
 import users from "@setup/src/uac/users.mjs";
 
 import bcrypt from "bcrypt";
+import {ObjectId} from "mongodb";
 
 const SALT = 10;
 
@@ -68,6 +69,8 @@ export default async()=>{
     v.access = [AP_MAP[`${domain}${attr}`]];
     /* @ts-ignore */
     v.status = "active";
+    /* @ts-ignore */
+    v.domain_id = new ObjectId(DOMAIN_MAP[v.domain_id]);
 
     return v;
   });

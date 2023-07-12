@@ -11,6 +11,7 @@ export declare module "express-session" {
     user : {
       _id      : string;
       username : string;
+      email    : string;
       type     : string;
       access   : string;
     },

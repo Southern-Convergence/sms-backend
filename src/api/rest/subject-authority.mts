@@ -2,6 +2,9 @@ import { object_id, handle_res } from "@lib/api-utils.mjs";
 import Joi from "joi";
 import {ObjectId} from "mongodb";
 import { REST } from "sfr";
+import {v4} from "uuid";
+
+const { ALLOWED_ORIGIN } = process.env;
 
 export default REST({
   cfg : {
@@ -18,20 +21,18 @@ export default REST({
         id   : object_id,
         name : Joi.string().required() 
       },
-      group       : {
-        id   : object_id,
-        name : Joi.string().required()
-      },
+
+      user_type : Joi.string().allow("internal", "npe").required(), 
+      group     : Joi.object(),
 
       apts        : Joi.array().required(),
-      user_info   : Joi.object().required(),
-      email       : Joi.string().email().required()
+      user_info   : Joi.object().required()
     },
-
+ 
     "create-user-group" : {
       domain_id : object_id,
       name      : Joi.string().required(),
-      desc      : Joi.string()
+      desc      : Joi.string().allow("")
     },
 
     "update-user" : {
@@ -60,10 +61,50 @@ export default REST({
     POST : {
       "invite-user"(req, res){
         //Unwrap variables
-        const { domain, group, apts, user_info, email } = req.body;
-        console.log(req.session.user)
+        let { domain, group, apts, user_info, user_type } = req.body;
+        
+        const {user} = req.session;
+        if(!user)return res.status(400).json({error : "Failed to invite user, invalid session."});
 
-        res.json({data : "Fuck"})
+        const invitation_code = v4();
+
+        //Turn hex strings to ObjectIds
+        
+
+        this.invite_user({
+          domain,
+          group,
+          apts,
+          user : user_info,
+          type : user_type,
+          invited_by : {
+            id       : user._id,
+            username : user.username,
+            email    : user.email,
+            access   : user.access
+          },
+          code : invitation_code
+        })
+        .then(()=>{
+          this.postoffice["ethereal"].post({
+            from : "systems@mail.com",
+            to   : user_info.email
+          }, {
+            template : "uac-internal-invite",
+            layout   : "default",
+            context  : {
+              invited_by_name  : user.username,
+              invited_by_email : user.email,
+              
+              name  : `${user_info.first_name} ${user_info.last_name}`,
+              roles : apts.map((v : any)=> v.name).toString(),
+              group : group ? group.name : "None",
+              link  : `${ALLOWED_ORIGIN}/onboarding?ref=${invitation_code}`
+            }
+          })
+          .then(()=> res.json({data : "Successfully sent invitation"}));
+        })
+        .catch((error)=> res.status(400).json({error}));
       },
 
       "invite-service"(req, res){
@@ -95,7 +136,30 @@ export default REST({
       //Aggregate/De-duped Accesses
       const [user_groups, users] = await Promise.all([
         this.db.collection("user-groups").find({domain_id : new ObjectId(domain_id)}).toArray(),
-        this.db.collection("users").find({ username : { $ne : "Ultravisor" } }).toArray()
+        this.db.collection("users").aggregate([
+          { $match : {username : { $ne : "Ultravisor" }} },
+          {
+            $project : {
+              first_name  : 1,
+              middle_name : 1,
+              last_name   : 1,
+
+              email     : 1,
+              status    : 1,
+              domain_id : 1,
+              access    : 1
+            }
+          },
+          {
+            $lookup: {
+              from         : "ap-templates",
+              localField   : "access",
+              foreignField : "_id",
+              pipeline     : [{$project:{name:1}}],
+              as           : "access"
+            }
+          }
+        ]).toArray()
       ]);
 
       const groups = Object.fromEntries(user_groups.map((v)=> [v._id.toString(), {...v, name : v.name, users : [] as any[]}]));
@@ -113,12 +177,39 @@ export default REST({
         users : v.users
       }]))
     },
-    async create_user(user){
-      user.domain_id = new ObjectId(user.domain_id);
-      const temp = await this.db.collection("users").findOne({ domain_id : user.domain_id,  $or : [{ username : user.username }, { email : user.email }]})
-      if(temp)return Promise.reject("Failed to create user, user already exists.");
 
-      this.db.collection("users").insertOne(user);
+    async invite_user({domain, group, apts, user, invited_by, code, type}){
+      const domain_id = new ObjectId(domain.id);
+      if(group)group.id = new ObjectId(group.id);
+      apts = apts.map((v : any)=> ({...v, id : new ObjectId(v.id)}));
+      invited_by.id = new ObjectId(invited_by.id);
+      console.log(user)
+      const [user_res, invite_res] = await Promise.all([
+        this.db.collection("users").findOne({ domain_id, email : user.email }),
+        this.db.collection("invites").findOne({ domain_id, "user.email" : user.email })
+      ])
+
+      if(user_res)return Promise.reject("Failed to invite user, user already exists.");
+      if(invite_res)return Promise.reject("Failed to invite user, invitation already sent.");
+
+      const session = this.instance.startSession();
+
+      return session.withTransaction(async()=> {
+        const temp = await this.db.collection("users").insertOne({
+          username    : null,
+          password    : null,
+          email       : user.email,
+          access      : apts.map((v : any)=> v.id),
+          status      : "invited",
+          first_name  : user.first_name, 
+          middle_name : user.middle_name, 
+          last_name   : user.last_name, 
+          
+          domain_id,
+          type
+        });
+        this.db.collection("invites").insertOne({ created : new Date(), code, domain_id, group, apts, user : {...user, id : temp.insertedId}, invited_by });
+      }).finally(()=> session.endSession());
     },
 
     async get_user_groups(domain_id){

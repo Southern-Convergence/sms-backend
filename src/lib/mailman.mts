@@ -52,7 +52,7 @@ export class MailMan {
       ...this._cfg?.mail_options,
       ...header,
       html
-    });
+    }).then(()=> html);
   }
 }
 

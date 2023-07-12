@@ -17,14 +17,14 @@ export default [
       },
       {
         "basis"  : "Role Based",
-        "name"   : "Deped HRDD Regular",
-        "desc" : "",
+        "name"   : "Hypervisor",
+        "desc" : "Like Ultravisor, but with a smaller d*ck",
         "resources" : []
       },
       {
         "basis"  : "Role Based",
-        "name"   : "DepEd HRDD Admin",
-        "desc" : "",
+        "name"   : "Supervisor",
+        "desc" : "Role for the beta cucks out there",
         "resources" : []
       }
     ]
