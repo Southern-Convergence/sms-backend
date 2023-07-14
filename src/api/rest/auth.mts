@@ -9,6 +9,7 @@ import GrantAuthority from "@lib/grant-authority.mjs";
 import {handle_res, object_id} from "@lib/api-utils.mjs";
 
 const MIN_PASSWORD_LENGTH = 8;
+const MIN_USERNAME_LENGTH = 6;
 const EXPIRY = 3600000 * 72; //72 Hours
 const SALT_ROUNDS = 10;
 
@@ -40,12 +41,13 @@ export default REST({
 
     "finalize" : {
       user_id     : object_id,
+      invite_id   : Joi.string().required(),
 
       first_name  : Joi.string().required(),
-      middle_name : Joi.string(),
+      middle_name : Joi.string().allow(""),
       last_name   : Joi.string().required(),
 
-      email : Joi.string().email().required(),
+      username : Joi.string().min(MIN_USERNAME_LENGTH).required(),
       password : Joi.string().min(MIN_PASSWORD_LENGTH).required(),
     }
   },
@@ -377,22 +379,29 @@ export default REST({
       return temp;
     },
 
-    async finalize_user(user){
-      const { user_id, username, password, first_name, middle_name, last_name, email } = user;
-      const user_res = await this.db.collection("users").findOne({username});
-      
-      if(user_res)return Promise.reject("Username is already taken");
+    finalize_user(user){
+      const { user_id, invite_id, username, password, first_name, middle_name, last_name } = user;
 
-      return bcrypt.hash(password, SALT_ROUNDS)
-      .then((hashed_password)=> {
-        return this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
-          username,
-          email,
-          
-          password : hashed_password,
-          first_name, middle_name, last_name
-        })
-      });
+      const session = this.instance.startSession();
+
+      return session.withTransaction(async()=> {
+        const user_res = await this.db.collection("users").findOne({username});
+      
+        if(user_res)return Promise.reject("Username is already taken");
+        const hashed_password = await bcrypt.hash(password, SALT_ROUNDS);
+        this.db.collection("invites").deleteOne({code : invite_id});
+        const update_op = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
+          $set : {
+            username,
+            status : "active",
+            
+            password : hashed_password,
+            first_name, middle_name, last_name
+          }
+        });
+
+        if(!update_op.modifiedCount)return Promise.reject("Failed to finalize account");
+      }).finally(()=> session.endSession());
     }
   },
 });

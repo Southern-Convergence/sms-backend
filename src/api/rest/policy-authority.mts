@@ -97,7 +97,7 @@ export default REST({
     "delete-apt": {
       apt_id: object_id,
     },
-    "grant-resources": {
+    "set-resources": {
       apt_id    : object_id,
       resources : Joi.array(),
     },
@@ -200,10 +200,10 @@ export default REST({
         .catch((error)=> res.status(400).json({error}));
       },
 
-      "grant-resources"(req, res){
+      "set-resources"(req, res){
         const { apt_id, resources } = req.body;
 
-        this.grant_resources(apt_id, resources)
+        this.set_resources(apt_id, resources)
         .then(()=> res.json({data : "Successfully granted resources to APT."}))
         .catch((error)=> res.status(400).json({error}));
       }
@@ -387,9 +387,6 @@ export default REST({
           },
           {
             $unwind : "$basis"
-          },
-          {
-            $project: { resources: 0 }
           }
         ])
         .toArray();
@@ -443,19 +440,19 @@ export default REST({
 
 
 
-    async grant_resources(apt_id, resource_ids) {
+    async set_resources(apt_id, resource_ids) {
       const ids = resource_ids.map((v : any)=> ({_id : new ObjectId(v)}));
-      const resource = await this.db.collection("resources").find({$or : ids}).toArray();
-      if (resource.length !== ids.length)return Promise.reject("Failed to grant resources, one or more included resources does not exist.");
-
+      if(ids.length){
+        const resource = await this.db.collection("resources").find({$or : ids}).toArray();
+        if (resource.length !== ids.length)return Promise.reject("Failed to grant resources, one or more included resources does not exist.");
+      }
+      
       return this.db
         .collection("ap-templates")
         .updateOne({ _id: new ObjectId(apt_id) },
           {
-            $addToSet: {
-              resources : {
-                $each : ids.map((v:any)=> v["_id"])
-              }
+            $set: {
+              resources : ids.map((v:any)=> v["_id"])
             },
           }
         );

@@ -57,9 +57,9 @@ export default REST({
 
 
     /* APT Assignment */
-    "assign-apts" : {
+    "set-apts" : {
       user_id : object_id,
-      apts    : Joi.array().items(Joi.string()).min(1).required()
+      apts    : Joi.array().items(Joi.string())
     },
     "revoke-apt" :{
       user_id : object_id,
@@ -146,9 +146,9 @@ export default REST({
         .catch((error)=> res.status(400).json({error}));
       },
 
-      "assign-apts"(req, res){
+      "set-apts"(req, res){
         const { user_id, apts } = req.body;
-        this.assign_apts(user_id, apts)
+        this.set_apts(user_id, apts)
         .then(()=> res.json({data : "Successfully assigned APTs."}))
         .catch((error)=> res.status(400).json({error}));
       },
@@ -168,7 +168,7 @@ export default REST({
       const [user_groups, users] = await Promise.all([
         this.db.collection("user-groups").find({domain_id : new ObjectId(domain_id)}).toArray(),
         this.db.collection("users").aggregate([
-          { $match : {username : { $ne : "Ultravisor" }} },
+          { $match : {username : { $ne : "Ultravisor" }, domain_id : new ObjectId(domain_id)} },
           {
             $project : {
               first_name  : 1,
@@ -263,10 +263,9 @@ export default REST({
       if(!temp.deletedCount)return Promise.reject("Failed to delete user, user does not exist.");
     },
 
-    async assign_apts(user_id, apts){
+    async set_apts(user_id, apts){
       apts = apts.map((v : string)=> new ObjectId(v));
-
-      const temp = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {$addToSet : {"access" : {$each : apts}}})
+      const temp = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, { $set : {access : apts}})
       if(!temp.modifiedCount)return Promise.reject("Failed to assign APTs.");
     },
 
