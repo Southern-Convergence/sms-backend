@@ -6,10 +6,11 @@ import { UAParser } from "ua-parser-js";
 import otpgen from "@lib/otpgen.mjs";
 
 import GrantAuthority from "@lib/grant-authority.mjs";
-import {object_id} from "@lib/api-utils.mjs";
+import {handle_res, object_id} from "@lib/api-utils.mjs";
 
+const MIN_PASSWORD_LENGTH = 8;
 const EXPIRY = 3600000 * 72; //72 Hours
-const SALT = 10;
+const SALT_ROUNDS = 10;
 
 export default REST({
   cfg: {
@@ -25,13 +26,28 @@ export default REST({
     recovery: { email: Joi.string().email().required() },
     "update-password" : {
       otp : Joi.string().required(),
-      password : Joi.string().min(8).required(),
-      confirm_password : Joi.string().min(8).required()
+      password : Joi.string().min(MIN_PASSWORD_LENGTH).required(),
+      confirm_password : Joi.string().min(MIN_PASSWORD_LENGTH).required()
     },
     "get-page-resources": {},
     "get-user": {},
     "get-sessions": {},
     "terminate-session": { session_id: Joi.string().required() },
+
+    "verify-invitation-code" : {
+      code : Joi.string().required()
+    },
+
+    "finalize" : {
+      user_id     : object_id,
+
+      first_name  : Joi.string().required(),
+      middle_name : Joi.string(),
+      last_name   : Joi.string().required(),
+
+      email : Joi.string().email().required(),
+      password : Joi.string().min(MIN_PASSWORD_LENGTH).required(),
+    }
   },
 
   handlers: {
@@ -115,6 +131,12 @@ export default REST({
         this.update_user_password(matched_otp.user_id, password)
         .then(()=> res.json({data : "Successfully updated user password"}))
         .catch((error)=> res.status(400).json({error}));
+      },
+
+      "finalize"(req, res){
+        this.finalize_user(req.body)
+        .then(()=> res.json({data : "Successfully finalized user account."}))
+        .catch((error)=> res.status(400).json({error}));
       }
     },
 
@@ -164,7 +186,12 @@ export default REST({
 
         res.json({ data });
       },
-    },
+
+      "verify-invitation-code"(req, res){
+        const { code } = req.query;
+        handle_res(this.get_finalization_details(code), res);
+      },
+    }
   },
 
   controllers: {
@@ -333,7 +360,7 @@ export default REST({
     },
 
     async update_user_password(user_id, password){
-      const hashed_password = bcrypt.hashSync(password, SALT);
+      const hashed_password = bcrypt.hashSync(password, SALT_ROUNDS);
       const result = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
         $set : {
           password : hashed_password
@@ -341,6 +368,31 @@ export default REST({
       })
 
       if(!result.modifiedCount)return Promise.reject("Failed to update user password, user not found.");
+    },
+
+    async get_finalization_details(code){
+      const temp = await this.db.collection("invites").findOne({code : code}, { projection : {user : 1}});
+
+      if(!temp)return Promise.reject("Failed to get invitation details, it is either expired or is invalid.");
+      return temp;
+    },
+
+    async finalize_user(user){
+      const { user_id, username, password, first_name, middle_name, last_name, email } = user;
+      const user_res = await this.db.collection("users").findOne({username});
+      
+      if(user_res)return Promise.reject("Username is already taken");
+
+      return bcrypt.hash(password, SALT_ROUNDS)
+      .then((hashed_password)=> {
+        return this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
+          username,
+          email,
+          
+          password : hashed_password,
+          first_name, middle_name, last_name
+        })
+      });
     }
   },
 });

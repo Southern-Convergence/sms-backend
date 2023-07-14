@@ -6,6 +6,7 @@ import helmet from "helmet";
 import express_limiter from "express-rate-limit";
 import session from "express-session";
 import MongoStore from "connect-mongo";
+import compression from "compression";
 
 import bundler from "@core/neo-bundler.mjs";
 import Database from "@lib/database.mjs";
@@ -17,8 +18,11 @@ import {template} from "@lib/api-utils.mjs";
 
 import { verify_tt } from "@lib/multers.mjs";
 import JobKomissar from "@lib/jobkomissar.mjs";
+import {NODE_ENV} from "config.mjs";
 
-const { CONNECTION_STRING, DATABASE } = process.env;
+const { ALLOWED_ORIGIN, CONNECTION_STRING, DATABASE } = process.env;
+
+const IS_DEV = NODE_ENV === 'development';
 
 const app = express();
 const server = createServer({}, app);
@@ -30,34 +34,50 @@ app.use(express_limiter({
   standardHeaders: true,   // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false,    // Disable the `X-RateLimit-*` headers
 }));
+
+app.use(compression({ filter: (req, res)=> {
+  if (req.headers['x-no-compression'])return false;
+  return compression.filter(req, res);
+}}))
+
+
 app.use(helmet());
 app.disable('x-powered-by');
 app.use(json());
-app.use(express.static("./src/static"));
-app.use(cors({
-  origin :["http://localhost:3000", "http://localhost:3002", "*"],
-  credentials : true
-}))
-
-
-// app.use(cors({
-//   origin: "*"
-// }))
-
-app.use(session({
-  secret : "Naisho daiyo~",
-  store : new MongoStore({
-    mongoUrl : CONNECTION_STRING,
-    dbName : DATABASE,
-    collectionName : "sessions",
-    stringify : false
-  }),
-
-  saveUninitialized : false,
-  cookie : {
-    httpOnly : true,
-    secure : false,
-  }
+app.use(cors({ 
+  origin : ALLOWED_ORIGIN, 
+  methods: ["POST", "PUT", "GET", "OPTIONS", "HEAD"], 
+  allowedHeaders: [ 
+    'Set-Cookie', 
+    'Content-Type',  
+    'Authorization',  
+    'Access-Control-Allow-Headers',  
+    'access-control-allow-origin', 
+    'Access-Control-Allow-Credentials', 
+    "Access-Control-Expose-Headers" , 
+    "Origin",  
+    "X-Requested-With",  
+    "Accept" 
+  ], 
+  exposedHeaders: ['Set-Cookie'], 
+  credentials : true 
+}));
+app.set("trust proxy", 1);
+app.use(session({ 
+  secret : "Naisho daiyo~", 
+  store : new MongoStore({ 
+    mongoUrl       : CONNECTION_STRING, 
+    dbName         : DATABASE, 
+    collectionName : "sessions", 
+    stringify      : false 
+  }), 
+ 
+  saveUninitialized : false, 
+  cookie : { 
+    httpOnly : !IS_DEV, 
+    secure   : !IS_DEV,
+    sameSite : "none" 
+  } 
 }));
 
 const io = new Server(server, {

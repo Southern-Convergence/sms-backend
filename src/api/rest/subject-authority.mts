@@ -6,6 +6,8 @@ import {v4} from "uuid";
 
 const { ALLOWED_ORIGIN } = process.env;
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export default REST({
   cfg : {
     base_dir : "admin"
@@ -28,6 +30,15 @@ export default REST({
       apts        : Joi.array().required(),
       user_info   : Joi.object().required()
     },
+
+    "finalize-user" : {
+      first_name  : Joi.string().required(),
+      middle_name : Joi.string().allow(""),
+      last_name   : Joi.string().required(),
+
+      username : Joi.string(),
+      password : Joi.string().min(MIN_PASSWORD_LENGTH),
+    },
  
     "create-user-group" : {
       domain_id : object_id,
@@ -43,6 +54,17 @@ export default REST({
     "delete-user" : {
       user_id : object_id
     },
+
+
+    /* APT Assignment */
+    "assign-apts" : {
+      user_id : object_id,
+      apts    : Joi.array().items(Joi.string()).min(1).required()
+    },
+    "revoke-apt" :{
+      user_id : object_id,
+      apt     : object_id
+    }
   },
 
   handlers   : {
@@ -54,8 +76,6 @@ export default REST({
       async "get-users-by-group"(req, res){
         const { domain_id } = req.query;
         const user_groups = await this.get_user_groups(domain_id);
-
-        
       }
     },
     POST : {
@@ -67,9 +87,6 @@ export default REST({
         if(!user)return res.status(400).json({error : "Failed to invite user, invalid session."});
 
         const invitation_code = v4();
-
-        //Turn hex strings to ObjectIds
-        
 
         this.invite_user({
           domain,
@@ -107,7 +124,7 @@ export default REST({
         .catch((error)=> res.status(400).json({error}));
       },
 
-      "invite-service"(req, res){
+      "finalize-user"(req, res){
 
       },
 
@@ -128,6 +145,20 @@ export default REST({
         .then(()=> res.json({data : "Successfully deleted user."}))
         .catch((error)=> res.status(400).json({error}));
       },
+
+      "assign-apts"(req, res){
+        const { user_id, apts } = req.body;
+        this.assign_apts(user_id, apts)
+        .then(()=> res.json({data : "Successfully assigned APTs."}))
+        .catch((error)=> res.status(400).json({error}));
+      },
+
+      "revoke-apt"(req, res){
+        const { user_id, apt } = req.body;
+        this.revoke_apt(user_id, apt)
+        .then(()=> res.json({data : "Succesfully unassigned APT."}))
+        .catch((error)=> res.status(400).json({error}));
+      }
     }
   },
   
@@ -183,7 +214,6 @@ export default REST({
       if(group)group.id = new ObjectId(group.id);
       apts = apts.map((v : any)=> ({...v, id : new ObjectId(v.id)}));
       invited_by.id = new ObjectId(invited_by.id);
-      console.log(user)
       const [user_res, invite_res] = await Promise.all([
         this.db.collection("users").findOne({ domain_id, email : user.email }),
         this.db.collection("invites").findOne({ domain_id, "user.email" : user.email })
@@ -232,5 +262,17 @@ export default REST({
 
       if(!temp.deletedCount)return Promise.reject("Failed to delete user, user does not exist.");
     },
+
+    async assign_apts(user_id, apts){
+      apts = apts.map((v : string)=> new ObjectId(v));
+
+      const temp = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {$addToSet : {"access" : {$each : apts}}})
+      if(!temp.modifiedCount)return Promise.reject("Failed to assign APTs.");
+    },
+
+    async revoke_apt(user_id, apt){
+      const temp = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {$pull : {access : new ObjectId(apt)}});
+      if(!temp.modifiedCount)return Promise.reject("Failed to unassign APT");
+    }
   }
 });

@@ -1,6 +1,6 @@
 import { Db, MongoClient } from "mongodb";
 
-const { CONNECTION_STRING, DATABASE, HOSTNAME } = process.env;
+const { CONNECTION_STRING, DATABASE } = process.env;
 
 export default class Database{
   static #con? : MongoClient;
