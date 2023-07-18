@@ -5,7 +5,6 @@ import Joi from "joi";
 import { UAParser } from "ua-parser-js";
 import otpgen from "@lib/otpgen.mjs";
 
-import GrantAuthority from "@lib/grant-authority.mjs";
 import {handle_res, object_id} from "@lib/api-utils.mjs";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -166,7 +165,7 @@ export default REST({
       "get-page-resources"(req, res) {
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "No Session Found." });
-        res.json({ data: GrantAuthority.get_page_resources(user.access) });
+        res.json({ data: []});
       },
 
       async "get-sessions"(req, res) {

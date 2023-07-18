@@ -40,16 +40,14 @@ export default REST({
     "create-access-policy" : {
       name : Joi.string().required(),
       desc : Joi.string(),
-      icon : Joi.string(),
-      attr : Joi.string()
+      icon : Joi.string()
     },
     "update-access-policy" : {
       policy_id : object_id,
       policy : {
         name : Joi.string(),
         desc : Joi.string(),
-        icon : Joi.string(),
-        attr : Joi.string()
+        icon : Joi.string()
       }
     },
     "delete-access-policy" : {
@@ -397,7 +395,7 @@ export default REST({
         .aggregate([
           {
             $match: {
-              _id: new ObjectId(apt_id),
+              _id: new ObjectId(apt_id)
             },
           },
           {

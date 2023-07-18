@@ -2,7 +2,7 @@ declare type Db = import("mongodb").Db;
 declare type MongoClient = import("mongodb").MongoClient;
 
 declare type RESTHandlerConstructor = { new<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : V & H & C};
-declare type WSHandlerConstructor   = { new<V, H, C>(struct : WSHandlerDescriptor<V, H, C>)   : V & H & C };
+declare type WSHandlerConstructor   = { new<V, H, C>(struct : WSHandlerDescriptor<V, H, C>)   : V & H & C};
 
 type RESTHandlerDescriptor<V, H, C> = {
   cfg?         : SFRConfig
@@ -144,7 +144,7 @@ declare type WSNamespaceDeclaration = {
 }
 
 declare type Operation = ("Read" | "Write");
-declare type Protocol  = ("HTTP" | "WS");
+declare type Protocol  = ("REST" | "WS");
 
 declare type LogFragment = {
   domain  : string;

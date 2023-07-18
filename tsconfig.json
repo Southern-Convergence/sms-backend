@@ -8,7 +8,8 @@
       "@utils/*" : ["utils/*"],
       "@setup/*" : ["lib/setup/*"],
       "@cfg/*"   : ["cfg/*"],
-      "sfr"      : ["core/index.mjs"]
+      "sfr"      : ["core/index.mjs"],
+      "auac"     : ["core/auac.mjs"]
     },
 
     /* Projects */

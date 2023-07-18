@@ -1,4 +1,5 @@
 declare type IResult = import("ua-parser-js").IResult;
+declare type ObjectId = import("mongodb").ObjectId;
 
 export declare namespace Express {
   interface Request {
@@ -13,7 +14,7 @@ export declare module "express-session" {
       username : string;
       email    : string;
       type     : string;
-      access   : string;
+      access   : ObjectId[];
     },
 
     start : number;

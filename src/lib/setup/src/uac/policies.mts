@@ -3,28 +3,24 @@ export default [
     "name": "Role Based",
     "type": "access",
     "desc": "Privileges are granted through the assignment of the 'role' attribute.",
-    "attr": "role",
     "icon": "mdi-badge-account"
   },
   {
     "name": "Schedule Based",
     "type": "access",
     "desc": "Privileges are granted within a specified schedule.",
-    "attr": "schedule",
     "icon": "mdi-update"
   },
   {
     "name": "Claim Based",
     "type": "access",
     "desc": "Privileges are dependent on resource ownership.",
-    "attr": "ownership",
     "icon": "mdi-hand-extended"
   },
   {
     "name": "Location Based",
     "type": "access",
     "desc": "Privileges are dependent on geographic locality.",
-    "attr": "location",
     "icon": "mdi-map"
   },
   {

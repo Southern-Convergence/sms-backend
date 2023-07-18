@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import { engine, create } from "express-handlebars";
+import { engine,create } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -47,7 +47,7 @@ export class MailMan {
 
   async post(header : PostHeader, body : PostBody){
     const { context, layout, template } = body;
-    const html = await hbs.render(path.join(directory, `hbs/templates/${template}.hbs`), {...context, domain : ALLOWED_ORIGIN}, { layout });
+    const html = await render_hbs(template, {...context, domain : ALLOWED_ORIGIN}, layout);
     return this.transport?.sendMail({
       ...this._cfg?.mail_options,
       ...header,
@@ -69,4 +69,10 @@ export class PostOffice{
   static get_instances(){
     return this.#instances;
   }
+}
+
+
+/* Util */
+export function render_hbs(template : string, ctx : any, layout : string){
+  return hbs.render(path.join(directory, `hbs/templates/${template}.hbs`), ctx, { layout });
 }

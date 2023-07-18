@@ -15,6 +15,7 @@ export default REST({
   handlers : {
     GET : {
       sample(_, res){
+        return res.json({data : "Yay"})
         this.postoffice["ethereal"].post({
           from : "someone@mail.com",
           to   : "manny@mail.com",
