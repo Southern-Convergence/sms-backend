@@ -2,7 +2,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
 
-import {assess_namespace, get_stats} from "@utils/dir_fiddlers.mjs";
+import {assess_namespace, get_stats} from "@utils/dir-fiddlers.mjs";
 import Database from "@lib/database.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));

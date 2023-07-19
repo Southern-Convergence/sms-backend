@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 
 import CFG from "@cfg/mailman.mjs";
 import { NODE_ENV, ALLOWED_ORIGIN, G_API_REDIRECT } from "@cfg/index.mjs";
-import gsuite_client from "@utils/gsuite_client.mjs";
+import gsuite_client from "@utils/gsuite-client.mjs";
 import logger from "@lib/logger.mjs";
 
 

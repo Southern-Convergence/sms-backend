@@ -3,7 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
 
-import {assess_namespace, get_stats} from "@utils/dir_fiddlers.mjs";
+import {assess_namespace, get_stats} from "@utils/dir-fiddlers.mjs";
 import Grant from "@lib/grant.mjs";
 import { render_hbs } from "@lib/mailman.mjs";
 import UACException from "@utils/uac-exceptions.mjs";

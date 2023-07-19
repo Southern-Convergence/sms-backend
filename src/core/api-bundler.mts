@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import fs from "fs/promises";
 import morgan from "morgan";
 
-import {assess_namespace, get_stats} from "@utils/dir_fiddlers.mjs";
+import {assess_namespace, get_stats} from "@utils/dir-fiddlers.mjs";
 import { template } from "@lib/api-utils.mjs";
 import { verify_tt } from "@lib/multers.mjs";
 import {PostOffice} from "@lib/mailman.mjs";
