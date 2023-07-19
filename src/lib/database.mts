@@ -11,6 +11,8 @@ export default class Database{
     if(this.#con)return Promise.reject("Only one instance of database is allowed.");
     return new MongoClient(CONNECTION_STRING || "").connect().then((e)=>{
       this.#con = e;
+      db_logger(this.#con);
+
       this.#db  = e.db(DATABASE || "");
       return this.#db;
     });
@@ -35,4 +37,8 @@ export default class Database{
   static get_connection(){
     return this.#con;
   }
+}
+
+function db_logger(c : MongoClient){
+  c.on("commandStarted", console.log)
 }

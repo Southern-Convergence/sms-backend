@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import CFG from "@cfg/mailman.mjs";
 import { NODE_ENV, ALLOWED_ORIGIN, G_API_REDIRECT } from "@cfg/index.mjs";
 import gsuite_client from "@utils/gsuite_client.mjs";
+import logger from "@lib/logger.mjs";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -42,7 +43,7 @@ export class MailMan {
 
       this.transport = nodemailer.createTransport(!IS_DEV ? cfg.transport_options : CFG["ethereal"].transport_options)
     })()
-    .catch((err)=> console.log(`Failed to initialize MailMan.\n${namespace}.${err}`))
+    .catch((err)=> logger.error(`Failed to initialize MailMan: ${namespace}.${err}`))
   }
 
   async post(header : PostHeader, body : PostBody){
@@ -60,7 +61,7 @@ export class PostOffice{
   static #instances : TransportDict;
 
   static initialize(){
-    console.log(`PostOffice Initialized`)
+    logger.info(`PostOffice Initialized`)
     this.#instances = Object.fromEntries(Object.entries(CFG).map(([namespace, cfg])=> {
       return [namespace, new MailMan(namespace, cfg)];
     }));

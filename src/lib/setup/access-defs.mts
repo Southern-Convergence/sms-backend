@@ -5,6 +5,7 @@ import policies from "@setup/src/uac/policies.mjs";
 import users from "@setup/src/uac/users.mjs";
 
 import bcrypt from "bcrypt";
+import logger from "@lib/logger.mjs";
 import {ObjectId} from "mongodb";
 
 const SALT = 10;
@@ -77,5 +78,5 @@ export default async()=> {
 
   await Database.collection("users")?.insertMany(resolved_users);
 
-  console.log("[SETUP]Access-Def Complete");
+  logger.info("[SETUP]Access-Def Complete");
 }

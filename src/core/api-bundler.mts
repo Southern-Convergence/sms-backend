@@ -2,11 +2,13 @@ import { Express, Request, Response, NextFunction } from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs/promises";
+import morgan from "morgan";
 
 import {assess_namespace, get_stats} from "@utils/dir_fiddlers.mjs";
 import { template } from "@lib/api-utils.mjs";
 import { verify_tt } from "@lib/multers.mjs";
 import {PostOffice} from "@lib/mailman.mjs";
+import {services} from "@lib/logger.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const rest_dir  = path.join(directory, "../api/rest");
@@ -46,9 +48,9 @@ export default async(app : Express)=> {
         
         if(validator_type === "joi"){
           app[method.toLowerCase() as RESTRequestType](dir, (req, res, next)=>{
+
             //Main Middleware for checking incoming requests.
             /*
-              console.log(`${base_dir}/${namespace}/${k}`);
               It performs the ff. in sequence.
               * Check if the requested endpoint is flagged as publicly accessible.
               * Check if session exists and is valid.

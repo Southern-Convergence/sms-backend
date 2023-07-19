@@ -12,6 +12,7 @@ import {AgendaConfig} from "agenda/dist/agenda/index.js";
 
 import JobTable from "@cfg/jobtable.mjs";
 import { PostOffice } from "@lib/mailman.mjs";
+import logger from "@lib/logger.mjs";
 
 const { CONNECTION_STRING } = process.env
 
@@ -20,10 +21,10 @@ const cfg:AgendaConfig = {
     address    : CONNECTION_STRING!,
     collection : "agenda"
   },
-  maxConcurrency : 15,
-  defaultConcurrency : 10,
-  lockLimit : 0,
-  defaultLockLimit : 0,
+  maxConcurrency      : 15,
+  defaultConcurrency  : 10,
+  lockLimit           : 0,
+  defaultLockLimit    : 0,
   defaultLockLifetime : 10000
 }
 
@@ -32,7 +33,7 @@ export default class JobKomissar{
   static jobtable = JobTable;
 
   static init(io : Server, db : Db){
-    console.log("Initializing JobKomissar");
+    logger.info("Initializing JobKomissar");
     this.instance.start()
     .then(()=> {
       //Loops over JobTable to initiate scheds with it's own corresponding cfg and fns.
@@ -47,6 +48,6 @@ export default class JobKomissar{
         });
       });
     })
-    .catch((err)=> console.log("Failed to initialize JobKomissar", err.reason));
+    .catch((err)=> logger.error(`Failed to initialize JobKomissar: ${err.reason}`));
   }
 }

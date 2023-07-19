@@ -15,40 +15,71 @@
   
   After a few back&forths, I think I can fashion the Policy-Engine like how SFRs are made.
    
-  Disclaimer: I'm no software engineer, any feedbacks and corrections are highly appreciated.
+  Disclaimer: I'm no seasoned software engineer, any feedbacks and corrections are highly appreciated.
 */
 
+import Grant from "@lib/grant.mjs";
+import {uac} from "@lib/logger.mjs";
+import UACException from "@utils/uac-exceptions.mjs";
 
-const middleware: RequestHandler = (req, res, next)=> {
+export default ({ engine, deconflict = "sequence" }: UACConfig):RequestHandler => {
+  //const PE_ENGINE = Grant.get_engine(engine);
+  //How to find true Happiness: Steps below
+  //Figure out what endpoint is being called
+  //Treat it as a resource request
+  //Get session context
+  //Get APT from session
+  //Get Basis of APT
+  //Use Basis to figure out which PE to use.
+  //profit?????
   
-  next();
-}
+  //Get PE
+  //Get APT Name
+  //Resolve Requisites
+  //Execute Logic Block
+  //Profit???
 
-export default middleware;
+
+  return (req, res, next) => {
+    const PE_ENGINE = Grant.get_engine(engine);
+    const rid = res.getHeader("rid");
+    uac.verbose({message : `UAC - ACM Sequence Started`, rid});
+    //Step 1: Get Resource
+    const resource: any = Grant.get_rest_resource(req.path.replace("/", ""));
+    uac.verbose({ message : `Resolved Resource: ${resource.name}`, rid});
+    //Step 1.1: Is it Publicly accessible?
+    uac.verbose({ message : `Is Public Resource?: ${Boolean(resource.sfr_cfg.public)}`, end : true, allow : true, rid});
+    if (resource.sfr_cfg.public) return next();
+    //Step 2: Get Session
+    const { user } = req.session;
+    //Step 2.2: Get APT From Session
+    const apts = user?.access;
+    uac.verbose({ message : `Has Session?: ${Boolean(user)}`, rid});
+    if (!apts || !apts.length)throw new UACException(UACExceptionCode["PAP-003"]); //Immediately deny access if apt is nil. (by virtue of indeterminate attempts)
+
+    //Step 2.3: Get Basis of APT
+    const pe_def = apts.map((v) => Grant.get_apt_details(v.toString()));
+    
+    //Step 3: Profit??? (No, actually, evaluation takes place here, logic blocks allows us to customize our access decisions)
+    uac.verbose({ message : `Starting APT Resolution (${pe_def.length} found)...`, rid});
+    pe_def.forEach(([_apt, _policy])=> {
+      uac.verbose({ message : `APT Details: Name=${_apt.name} Basis=${_policy.name}`, rid});
+      const { requisites, logic_block } = PE_ENGINE[_policy.name];
+      const attrs = Object.fromEntries(Object.entries(requisites).map(([attr, fn])=> [attr, fn(user, resource._id)]));      
+      logic_block.bind({attrs})();
+      uac.verbose({ message : `APT Decision: Allow`, end : true, allow : true, rid});
+    });
+
+    next();
+  };
+};
 
 
-export function PolicyEngine<R, L>(struct : PolicyEngineDescriptor<R, L>): R & L  {
-  const requisites : RequisiteMap = struct.requisites || {};
-  const logic      : LogicMap     = struct.logic || {};
+export function PolicyEngine(struct: PolicyEngineDescriptor){
+  const requisites: RequisiteMap = struct.requisites || {};
+  const logic: PolicyLogic       = struct.logic || {};
 
   const __meta__ = { requisites, logic };
 
-  return { __meta__, ...__meta__ } as R & L;
+  return { __meta__, ...__meta__ };
 }
-
-
-const PE_SAMPLE = {
-  requisites : {
-    "Family Name Based" : {
-      "l_name" : ["subject", "last_name", true]
-    }
-  },
-
-  logic : {
-    "Family Name Based" : ()=> {
-      //Injected requisites
-    }
-  }
-}
-
-//For the sake of simplicity, APs do not of

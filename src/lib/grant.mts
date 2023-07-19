@@ -20,6 +20,9 @@ export default class Grant{
   static #rest_resources : {[resource_name : string] : ObjectId} = {};
   static #ws_resources   : {[resource_name : string] : ObjectId} = {};
 
+  /* In-Memory Policy Engine Store */
+  static #pe_map : PolicyEngineMap = {};
+
   static build_definitions(policies : Policy[] ,apts : AccessPolicy[], domains : Domain[], resources : Resource[]){
     this.#policies = to_dict(policies);
     this.#apts     = to_dict(apts);
@@ -38,6 +41,10 @@ export default class Grant{
     });
   }
 
+  static build_engine_definitions(PolicyEngine: PolicyEngineMap){
+    this.#pe_map = PolicyEngine;
+  }
+
   static get_rest_resource(ref : string){
     const result = this.#rest_resources[ref];
     if(!result)throw new UACException(UACExceptionCode["PIP-001"]);
@@ -47,23 +54,30 @@ export default class Grant{
 
   static get_attr(_id : string, attr_name : string, mandatory : boolean){
     const resource = this.#resources[_id];
-    if(!resource && mandatory)throw new UACException(UACExceptionCode["PIP-001"]);
+    if(!resource && mandatory)throw new UACException(UACExceptionCode["PIP-001"], _id);
 
     /* @ts-ignore */
     const attr = (resource||{})[attr_name];
-    if(!attr && mandatory)throw new UACException(UACExceptionCode["PIP-002"]);
+    if(!attr && mandatory)throw new UACException(UACExceptionCode["PIP-002"], attr_name);
 
-    return attr;
+    return attr || null;
   }
 
   static get_apt_details(apt_id : string){
     const apt = this.#apts[apt_id];
-    if(!apt)throw new UACException(UACExceptionCode["PAP-003"]);
+    if(!apt)throw new UACException(UACExceptionCode["PAP-003"], apt_id);
 
     const policy = this.#policies[apt.basis];
-    if(!policy)throw new UACException(UACExceptionCode["PAP-002"]);
+    if(!policy)throw new UACException(UACExceptionCode["PAP-002"], apt.basis);
     
     return [apt, policy];
+  }
+
+  static get_engine(engine_name : string){
+    const PE = this.#pe_map[engine_name];
+    if(!PE)throw new UACException(UACExceptionCode["PAP-004"], engine_name);
+
+    return PE;
   }
 }
 

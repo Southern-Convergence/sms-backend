@@ -8,8 +8,7 @@ const JOBTABLE:KomissarJobs = {
       },
 
       async action(){
-        /* 
-        console.log("Step Increment Runner")
+        /*
         this.postoffice["ethereal"].post({
           from : "manny@mail.com",
           to   : "dan10@ethereal.email",

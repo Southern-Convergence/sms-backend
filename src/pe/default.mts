@@ -1,9 +1,14 @@
 import { PolicyEngine } from "@core/auac.mjs";
+import UACException from "@utils/uac-exceptions.mjs";
 
 export default PolicyEngine({
   requisites : {
     "Role Based" : {
-      "access" : ["subject", false]
+      "email"    : ["subject", false],
+      "type"     : ["subject", false],
+      "username" : ["subject", false],
+
+      "nonexistent_property" : ["object", true]
     },
 
     "Family Name Based" : {
@@ -13,10 +18,8 @@ export default PolicyEngine({
 
 
   logic : {
-    "Role Based" : ()=> {
-
-
-      return true;
+    "Role Based"(){
+      
     }
   }
 })
