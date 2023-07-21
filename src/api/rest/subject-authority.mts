@@ -212,7 +212,7 @@ export default REST({
     async invite_user({domain, group, apts, user, invited_by, code, type}){
       const domain_id = new ObjectId(domain.id);
       if(group)group.id = new ObjectId(group.id);
-      apts = apts.map((v : any)=> ({...v, id : new ObjectId(v.id)}));
+      apts = apts.map((v : any)=> ({...v}));
       invited_by.id = new ObjectId(invited_by.id);
       const [user_res, invite_res] = await Promise.all([
         this.db.collection("users").findOne({ domain_id, email : user.email }),
@@ -229,7 +229,7 @@ export default REST({
           username    : null,
           password    : null,
           email       : user.email,
-          access      : apts.map((v : any)=> v.id),
+          access      : apts.map((v : any)=> new ObjectId(v._id)),
           status      : "invited",
           first_name  : user.first_name, 
           middle_name : user.middle_name, 

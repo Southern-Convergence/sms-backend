@@ -12,7 +12,6 @@ const SALT = 10;
 
 export default async()=> {
   const collections = await Database.get_instance()?.collections();
-
   const cols = collections?.map((v)=> v.collectionName);
   
   if(cols?.includes("policies"))return;

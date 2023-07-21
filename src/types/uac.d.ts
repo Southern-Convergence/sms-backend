@@ -128,9 +128,9 @@ declare const enum UACExceptionCode {
   "PAP-002" = "Failed to resolve Policy",
   "PAP-003" = "Failed to resolve APT",
   "PAP-004" = "Failed to resolve Policy Engine",
-  
+
   //PDP Exceptions
-  "PDP-001" = "Deny",
+  "PDP-001" = "Access Denied",
   "PDP-002" = "Indeterminate"
 }
 

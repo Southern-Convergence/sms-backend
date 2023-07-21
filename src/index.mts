@@ -116,7 +116,7 @@ app.use(morgan(":remote-addr :method :url :status :res[content-length] :user-age
 app.use(auac({
   engine     : "default",
   deconflict : "sequence"
-}));
+}))
 
 const io = new Server(server, {
   maxHttpBufferSize : 1e9,

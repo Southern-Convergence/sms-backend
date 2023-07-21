@@ -12,7 +12,7 @@ export default class Grant{
 
   /* ID to Object Mappings */
   static #policies  : { [policy_id : string] : Policy } = {};
-  static #apts      : { [apt_id : string]    : AccessPolicy } = {};
+  static #apts      : { [apt_id : string]    : MappedAccessPolicy } = {};
   static #domains   : { [domain_id : string] : Domain } = {};
   static #resources : { [resource_id : string] : Resource } = {}; 
 
@@ -25,7 +25,6 @@ export default class Grant{
 
   static build_definitions(policies : Policy[] ,apts : AccessPolicy[], domains : Domain[], resources : Resource[]){
     this.#policies = to_dict(policies);
-    this.#apts     = to_dict(apts);
     this.#domains  = to_dict(domains);
 
     resources.forEach((v)=>{
@@ -39,6 +38,11 @@ export default class Grant{
         }
       }
     });
+
+    this.#apts = to_dict(apts.map((v)=> ({
+      ...v,
+      resources : Object.fromEntries(v.resources.map((r)=> [r.toString(), this.#resources[r.toString()]]))
+    })));
   }
 
   static build_engine_definitions(PolicyEngine: PolicyEngineMap){
@@ -79,6 +83,16 @@ export default class Grant{
 
     return PE;
   }
+
+  static get_apt_resource(apt_id : string, resource_id : string){
+    const apt = this.#apts[apt_id];
+    if(!apt)throw new UACException(UACExceptionCode["PAP-003"], apt_id);
+
+    const resource = apt.resources[resource_id];
+    if(!resource)throw new UACException(UACExceptionCode["PDP-001"]);
+
+    return resource;
+  }
 }
 
 function to_dict(items : any[]){
@@ -99,6 +113,14 @@ type AccessPolicy = {
   basis     : string;
   domain_id : string;
   resources : string[]
+}
+
+type MappedAccessPolicy = {
+  _id       : string;
+  name      : string;
+  basis     : string;
+  domain_id : string;
+  resources : {[resource_id : string] : Resource}
 }
 
 declare type Domain = {
