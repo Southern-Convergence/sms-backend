@@ -41,9 +41,9 @@ export default ({ engine, deconflict = "sequence" }: UACConfig):RequestHandler =
 
 
   return (req, res, next) => {
-    const PE_ENGINE = Grant.get_engine(engine);
     const rid = res.getHeader("rid");
     uac.verbose({message : `UAC - ACM Sequence Started`, rid});
+    const PE_ENGINE = Grant.get_engine(engine);
     //Step 1: Get Resource
     const resource: any = Grant.get_rest_resource(req.path.replace("/", ""));
     uac.verbose({ message : `Resolved Resource: ${resource.name}`, rid});

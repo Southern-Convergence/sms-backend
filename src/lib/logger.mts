@@ -24,19 +24,35 @@ const console_transport = new winston.transports.Console({
     winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     winston.format.printf((log) => {
       const {type, timestamp, level, message} = log;
+      
       let str = `[${type}] ${timestamp} ${level}: ${message}`;
-
-      if(type === "http")str += "\n";
         
       return str;
     })
   )
 });
 
+const http_console_transport = new winston.transports.Console({
+  level : IS_DEV ? DEVELOPMENT_LOG_LEVEL : PRODUCTION_LOG_LEVEL,
+
+  format : winston.format.combine(
+    winston.format.colorize({ all : true }),
+    winston.format.timestamp({ format : "YYYY-MM-DD HH:mm:ss" }),
+    winston.format.printf((log) => {
+      const {type, timestamp, level, method, status, message} = log;
+      
+      let str = `[${type}:${method}] ${timestamp} ${level}: ${message} > ${status}`;
+        
+      return str;
+    })
+  )
+})
+
 const mongodb_transport = new ObjectTransport({ level : "debug" });
 const cached_transports = [ IS_DEV ? console_transport : new CachedTransport({ level : "verbose"})];
 
 const transports = [ IS_DEV ? console_transport : mongodb_transport ];
+const http_transports = [ IS_DEV ? http_console_transport : mongodb_transport];
 
 export default winston.createLogger({
   defaultMeta: { type : "SYSTEM" },
@@ -45,7 +61,7 @@ export default winston.createLogger({
 
 export const services = winston.createLogger({ 
   defaultMeta: { type : "API" },
-  transports
+  transports : http_transports
 });
 
 export const setup = winston.createLogger({

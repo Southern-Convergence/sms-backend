@@ -1,4 +1,5 @@
 import { object_id, handle_res } from "@lib/api-utils.mjs";
+import Grant from "@lib/grant.mjs";
 import Joi from "joi";
 import {ObjectId} from "mongodb";
 import { REST } from "sfr";
@@ -138,64 +139,75 @@ export default REST({
         this.create_domain(req.body)
         .then(()=> res.json({data : "Successfully created domain."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
       "update-domain"(req, res){
         this.update_domain(req.body.domain_id, req.body.domain)
         .then(()=> res.json({data : "Successfully updated domain."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
 
       "create-access-policy"(req, res){
         this.create_access_policy(req.body)
         .then(()=> res.json({data : "Successfully created Access Policy."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
       "update-access-policy"(req, res){
         this.update_access_policy(req.body.policy_id, req.body.policy)
         .then(()=> res.json({data : "Successfully Access Policy."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
 
       "create-security-policy"(req, res){
         this.create_security_policy(req.body)
         .then(()=> res.json({data : "Successfully created Security Policy."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
       "update-security-policy"(req, res){
         this.update_security_policy(req.body.policy_id, req.body.policy)
         .then(()=> res.json({data : "Successfully updated Security Policy."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
 
       "enforce-access-policy"(req, res) {
         const { domain_id, policy_id } = req.body;
         this.enforce_access_policy(domain_id, policy_id)
-          .then((result) => res.json({ data: result }))
-          .catch((error) => res.status(400).json({ error }));
+        .then((result) => res.json({ data: result }))
+        .catch((error) => res.status(400).json({ error }));
+        Grant.set_state(false);
       },
       "revoke-access-policy"(req, res) {
         const { domain_id, policy_id } = req.body;
         this.revoke_access_policy(domain_id, policy_id)
-          .then((result) => res.json({ data: result }))
-          .catch((error) => res.status(400).json({ error }));
+        .then((result) => res.json({ data: result }))
+        .catch((error) => res.status(400).json({ error }));
+        Grant.set_state(false);
       },
       "enforce-security-policy"(req, res) {
         const { domain_id, security_id } = req.body;
         this.enforce_security_policy(domain_id, security_id)
-          .then((data) => res.json({ data }))
-          .catch((error) => res.status(400).json({ error }));
+        .then((data) => res.json({ data }))
+        .catch((error) => res.status(400).json({ error }));
+        Grant.set_state(false);
       },
       "revoke-security-policy"(req, res) {
         const { domain_id, security_id } = req.body;
         this.revoke_security_policy(domain_id, security_id)
-          .then((data) => res.json({ data }))
-          .catch((error) => res.status(400).json({ error }));
+        .then((data) => res.json({ data }))
+        .catch((error) => res.status(400).json({ error }));
+        Grant.set_state(false);
       },
 
       "create-apt"(req, res){
         this.create_apt(req.body)
         .then(()=> res.json({data : "Successfully created apt."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
 
       "set-resources"(req, res){
@@ -204,6 +216,7 @@ export default REST({
         this.set_resources(apt_id, resources)
         .then(()=> res.json({data : "Successfully granted resources to APT."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       }
     },
 
@@ -212,24 +225,28 @@ export default REST({
         this.delete_domain(req.body.domain_id)
         .then(()=> res.json({data : "Successfully deleted domain."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
       
       "delete-access-policy"(req, res){
         this.delete_access_policy(req.body.policy_id)
         .then(()=> res.json({data : "Successfully deleted Access Policy."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
 
       "delete-security-policy"(req, res){
         this.delete_security_policy(req.body.policy_id)
         .then(()=> res.json({data : "Successfully deleted Security Policy."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
 
       "delete-apt"(req, res){
         this.delete_apt(req.body.apt_id)
         .then(()=> res.json({data : "Successfully deleted APT."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       }
     }
   },

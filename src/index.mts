@@ -58,7 +58,7 @@ app.use(json());
 app.use(
   cors({
     origin: ALLOWED_ORIGIN,
-    methods: ["POST", "PUT", "GET", "OPTIONS", "HEAD"],
+    methods: ["POST", "PUT", "DELETE", "GET", "OPTIONS", "HEAD"],
     allowedHeaders: [
       "Set-Cookie",
       "Content-Type",

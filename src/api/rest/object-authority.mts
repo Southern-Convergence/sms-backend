@@ -3,6 +3,9 @@ import Joi from "joi";
 import {ObjectId} from "mongodb";
 import { REST } from "sfr";
 
+import Grant from "@lib/grant.mjs";
+import grant_def from "@lib/setup/grant-def.mjs";
+
 export default REST({
   cfg : {
     base_dir : "admin"
@@ -43,12 +46,16 @@ export default REST({
       parent : object_id,
       child  : object_id
     },
+
+    "delete-resource" : {
+      resource_id : object_id
+    }
   },
 
   handlers   : {
     GET : {
       "get-resources"(req, res) {
-        handle_res(this.get_resources(req.query.domain_id), res);
+        handle_res(this.get_resources(req.query.domain_id).catch(console.log), res);
       },
       "get-subdomains"(req, res) {
         handle_res(this.get_subdomains(req.query.domain_id), res);
@@ -58,20 +65,32 @@ export default REST({
       "create-subdomain"(req, res) {
         const { domain_id, subdomain } = req.body;
         this.create_subdomain(domain_id, subdomain)
-          .then(() => res.json({ data: "Successfully created subdomain." }))
-          .catch((error) => res.status(400).json({ error }));
+        .then(() => res.json({ data: "Successfully created subdomain." }))
+        .catch((error) => res.status(400).json({ error }));
+        Grant.set_state(false);
       },
       "create-page"(req, res){
         const { domain_id, page } = req.body;
         this.create_page(domain_id, page)
         .then(()=> res.json({data : "Successfully created page."}))
         .catch((error)=> res.status(400).json({error}));
+        Grant.set_state(false);
       },
       "resource-assignment"(req, res){
         const { parent, child } = req.body;
         this.assign_resource(parent, child)
         .then(()=> res.json({data : "Successfully assigned resource."}))
         .catch(()=> res.status(400).json({error : "Failed to assign resource, resource has already been assigned."}));
+        Grant.set_state(false);
+      }
+    },
+
+    DELETE : {
+      "delete-resource"(req, res){
+        
+        this.delete_resource(req.body.resource_id)
+        .then(()=> res.json({data : "Successfully deleted resource."}))
+        .catch((error)=> res.json({error}));
       }
     }
   },
@@ -79,11 +98,14 @@ export default REST({
   controllers : {
     async get_resources(domain_id) {
       const resources = await this.db.collection("resources").find({ domain_id: new ObjectId(domain_id) }).toArray();
-      
       const resource_map = Object.fromEntries(resources.map((v)=> [v._id.toString(), v]));
       function resolve_resources(item : any){
         if(!item.resources || !item.resources.length)return item;
-        return {...item,resources : item.resources.map((v : string)=> resolve_resources(resource_map[v.toString()]))}
+        return {...item, resources : item.resources.map((v : string)=> {
+          const res = resource_map[v.toString()];
+
+          if(res)resolve_resources(res)
+        })}
       }
 
       return resources.map(resolve_resources);

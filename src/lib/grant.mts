@@ -1,5 +1,9 @@
 import UACException from "@utils/uac-exceptions.mjs";
 
+import grant_def from "@setup/grant-def.mjs";
+
+import { setup } from "@lib/logger.mjs";
+
 export default class Grant{
   //Steps to find happiness.
 
@@ -14,7 +18,8 @@ export default class Grant{
   static #policies  : { [policy_id : string] : Policy } = {};
   static #apts      : { [apt_id : string]    : MappedAccessPolicy } = {};
   static #domains   : { [domain_id : string] : Domain } = {};
-  static #resources : { [resource_id : string] : Resource } = {}; 
+  static #resources : { [resource_id : string] : Resource } = {};
+  static updated   : boolean = false;
 
   /* Name to ID Mappings */
   static #rest_resources : {[resource_name : string] : ObjectId} = {};
@@ -23,10 +28,10 @@ export default class Grant{
   /* In-Memory Policy Engine Store */
   static #pe_map : PolicyEngineMap = {};
 
+  //Executed at runtime
   static build_definitions(policies : Policy[] ,apts : AccessPolicy[], domains : Domain[], resources : Resource[]){
     this.#policies = to_dict(policies);
     this.#domains  = to_dict(domains);
-
     resources.forEach((v)=>{
       this.#resources[v._id.toString()] = v;
       if(v.type === "endpoint"){
@@ -43,10 +48,22 @@ export default class Grant{
       ...v,
       resources : Object.fromEntries(v.resources.map((r)=> [r.toString(), this.#resources[r.toString()]]))
     })));
+
+    Grant.set_state(true);
   }
 
+  //Executed at buildtime
   static build_engine_definitions(PolicyEngine: PolicyEngineMap){
     this.#pe_map = PolicyEngine;
+  }
+
+  static set_state(state : boolean){
+    setup.verbose(state ? "Grant Authority Flagged as loaded." : "Grant Authority Flagged as outdated");
+    if(!state){
+      setup.verbose("Automatically Triggered Grant.build_definitions()");
+      grant_def();
+    }
+    this.updated = state;
   }
 
   static get_rest_resource(ref : string){
@@ -68,6 +85,8 @@ export default class Grant{
   }
 
   static get_apt_details(apt_id : string){
+    if(!this.updated)throw new UACException(UACExceptionCode["PDP-002"]);
+
     const apt = this.#apts[apt_id];
     if(!apt)throw new UACException(UACExceptionCode["PAP-003"], apt_id);
 
@@ -77,7 +96,18 @@ export default class Grant{
     return [apt, policy];
   }
 
+  static get_pages(apt_id : string){
+    if(!this.updated)throw new UACException(UACExceptionCode["PDP-002"]);
+
+    const apt = this.#apts[apt_id];
+    if(!apt)throw new UACException(UACExceptionCode["PAP-003"], apt_id);
+
+    return Object.values(apt.resources).filter((v)=> v.type === "page");
+  }
+
   static get_engine(engine_name : string){
+    if(!this.updated)throw new UACException(UACExceptionCode["PDP-002"]);
+
     const PE = this.#pe_map[engine_name];
     if(!PE)throw new UACException(UACExceptionCode["PAP-004"], engine_name);
 
@@ -85,6 +115,8 @@ export default class Grant{
   }
 
   static get_apt_resource(apt_id : string, resource_id : string){
+    if(!this.updated)throw new UACException(UACExceptionCode["PDP-002"]);
+
     const apt = this.#apts[apt_id];
     if(!apt)throw new UACException(UACExceptionCode["PAP-003"], apt_id);
 

@@ -34,7 +34,7 @@ export default REST({
 
         if(!user){
           this.delete_otps(user_id);
-          return Promise.reject("Failed to re-issue OTP, user not found.");
+          return res.status(400).json({error : "Failed to re-issue OTP, user not found"});
         }
         
         const reissued_otp = otpgen();
