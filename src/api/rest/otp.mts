@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 
 import Joi from "joi";
 import otpgen from "@lib/otpgen.mjs";
+import {EMAIL_TRANSPORT} from "config.mjs";
 
 const EXPIRY = 3600000 * 72; //72 Hours
 
@@ -41,7 +42,7 @@ export default REST({
 
         this.save_otp(reissued_otp, user_id)
         .then(()=> {
-          this.postoffice["ethereal"].post({
+          this.postoffice[EMAIL_TRANSPORT].post({
             from : "sad@sad.com",
             to   : user.email,
             subject : "Account-Recovery"

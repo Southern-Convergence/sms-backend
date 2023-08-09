@@ -257,21 +257,89 @@ export default REST({
         .collection("domains")
         .aggregate([
           {
-            $lookup: {
-              from: "policies",
-              localField: "access_policies",
-              foreignField: "_id",
-              as: "access_policies",
-            },
-          },
-          {
-            $lookup: {
-              from: "policies",
-              localField: "security_policies",
-              foreignField: "_id",
-              as: "security_policies",
-            },
-          },
+            '$lookup': {
+              'from': 'policies', 
+              'localField': 'access_policies', 
+              'foreignField': '_id', 
+              'as': 'access_policies'
+            }
+          }, {
+            '$lookup': {
+              'from': 'policies', 
+              'localField': 'security_policies', 
+              'foreignField': '_id', 
+              'as': 'security_policies'
+            }
+          }, {
+            '$lookup': {
+              'from': 'resources', 
+              'localField': '_id', 
+              'foreignField': 'domain_id', 
+              'pipeline': [
+                {
+                  '$project': {
+                    'domain_id': 0, 
+                    'sfr_cfg': 0
+                  }
+                }
+              ], 
+              'as': 'resources'
+            }
+          }, {
+            '$lookup': {
+              'from': 'ap-templates', 
+              'localField': '_id', 
+              'foreignField': 'domain_id', 
+              'pipeline': [
+                {
+                  '$match': {
+                    'internal': true, 
+                    'name': {
+                      '$ne': 'Ultravisor'
+                    }
+                  }
+                }, {
+                  '$lookup': {
+                    'from': 'users', 
+                    'localField': '_id', 
+                    'foreignField': 'access', 
+                    'as': 'users'
+                  }
+                }, {
+                  '$project': {
+                    'name': 1, 
+                    'desc': 1, 
+                    'users': {
+                      '$size': '$users'
+                    }
+                  }
+                }
+              ], 
+              'as': 'administrators'
+            }
+          }, {
+            '$lookup': {
+              'from': 'users', 
+              'localField': '_id', 
+              'foreignField': 'domain_id', 
+              'pipeline': [
+                {
+                  '$match': {
+                    'username': {
+                      '$ne': 'Ultravisor'
+                    }
+                  }
+                }
+              ], 
+              'as': 'users'
+            }
+          }, {
+            '$addFields': {
+              'users': {
+                '$size': '$users'
+              }
+            }
+          }
         ])
         .toArray();
     },

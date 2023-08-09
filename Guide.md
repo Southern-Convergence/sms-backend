@@ -28,7 +28,7 @@ That's It, you're good to go!
 ~ Create services within a single file, complete with validation, event-handler and controllers! available in both REST and WS protocols.
 * MailMan: A nifty utility class for sending templated emails!
 * Setup-Stages: A better way of writing setup scripts.
-* Spaces and GSuite Support: Convenient way of accessing third-party SSaS.
+* Spaces and GSuite Support: Convenient way of accessing third-party SaaS.
 
 *Note: Each facility has a pre-defined convention already in place, follow it or else!*
 

@@ -2,7 +2,7 @@
 //Dependencies are imported and used by the functions below...
 import db from "@lib/database.mjs";
 import {PostOffice} from "@lib/mailman.mjs";
-
+import spaces from "@lib/spaces.mjs";
 
 export function REST<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : H & C {
   const validators  : RequestValidators   = struct.validators  || {};
@@ -14,7 +14,7 @@ export function REST<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : H & C {
   Object.entries(handlers).forEach(([method, handlermap])=>{
     Object.entries(handlermap).forEach(([k, v])=> {
       /* @ts-ignore */
-      handlers[method][k] = v.bind({ ...controllers, postoffice : PostOffice.get_instances() });
+      handlers[method][k] = v.bind({ ...controllers, postoffice : PostOffice.get_instances(), spaces });
     });
   });
 

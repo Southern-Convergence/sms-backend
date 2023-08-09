@@ -1,5 +1,7 @@
 declare type Db = import("mongodb").Db;
 declare type MongoClient = import("mongodb").MongoClient;
+declare type DOSpace = import("@lib/spaces.mjs").DOSpace;
+declare type VersioningEnabledDOSpace = import("@lib/spaces.mjs").VersioningEnabledDOSpace;
 
 declare type RESTHandlerConstructor = { new<V, H, C>(struct : RESTHandlerDescriptor<V, H, C>) : V & H & C};
 declare type WSHandlerConstructor   = { new<V, H, C>(struct : WSHandlerDescriptor<V, H, C>)   : V & H & C};
@@ -20,7 +22,9 @@ type WSHandlerDescriptor<V, H, C> = {
 //Dependency injection types for Request Handlers are declared here...
 declare interface HandlerFacilities {
   postoffice : TransportDict,
-  spaces     : SpacesMgr,
+  spaces     : {
+    ""
+  },
   gsuite     : GSuiteMgr
 }
 

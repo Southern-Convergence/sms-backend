@@ -9,12 +9,24 @@ export const ALLOWED_ORIGIN = env.ALLOWED_ORIGIN || 'http://localhost:3000';
 export const ETHEREAL_EMAIL = env.ETHEREAL_EMAIL|| '';
 export const ETHEREAL_PASSWORD = env.ETHEREAL_PASSWORD|| '';
 
+export const GMAIL_EMAIL = env.GMAIL_EMAIL || ""
+export const GMAIL_ID = env.GMAIL_ID || "";
+export const GMAIL_REFRESH_TOKEN = env.GMAIL_REFRESH_TOKEN || "";
+export const GMAIL_SECRET = env.GMAIL_SECRET || "";
+
+export const EMAIL_TRANSPORT = env.NODE_ENV === "development" ? "ethereal" : "default";
+
 export const GOOGLE_API_EMAIL = env.GOOGLE_API_EMAIL|| '';
 export const GOOGLE_API_CLIENT_ID = env.GOOGLE_API_CLIENT_ID|| '';
 export const GOOGLE_API_SECRET = env.GOOGLE_API_SECRET|| '';
 export const GOOGLE_API_GMAIL_REFRESH_TOKEN = env.GOOGLE_API_GMAIL_REFRESH_TOKEN|| '';
 export const GOOGLE_API_DRIVE_REFRESH_TOKEN = env.GOOGLE_API_DRIVE_REFRESH_TOKEN|| '';
 export const GOOGLE_API_REDIRECT = env.GOOGLE_API_REDIRECT|| '';
+
+/* VAPID Keys */
+export const PUBLIC_VAPID_KEY  = env.PUBLIC_VAPID_KEY || "";
+export const PRIVATE_VAPID_KEY = env.PRIVATE_VAPID_KEY || "";
+
 
 /* Log Variables */
 export const DEVELOPMENT_LOG_LEVEL = env.DEVELOPMENT_LOG_LEVEL || "verbose"

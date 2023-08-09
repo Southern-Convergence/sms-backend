@@ -26,7 +26,7 @@ export default class Grant{
   static #ws_resources   : {[resource_name : string] : ObjectId} = {};
 
   /* In-Memory Policy Engine Store */
-  static #pe_map : PolicyEngineMap = {};
+  static #pe_map : PolicyDeclaration = {};
 
   //Executed at runtime
   static build_definitions(policies : Policy[] ,apts : AccessPolicy[], domains : Domain[], resources : Resource[]){
@@ -53,7 +53,7 @@ export default class Grant{
   }
 
   //Executed at buildtime
-  static build_engine_definitions(PolicyEngine: PolicyEngineMap){
+  static build_engine_definitions(PolicyEngine: PolicyDeclaration){
     this.#pe_map = PolicyEngine;
   }
 
@@ -112,6 +112,10 @@ export default class Grant{
     if(!PE)throw new UACException(UACExceptionCode["PAP-004"], engine_name);
 
     return PE;
+  }
+
+  static get_engines(){
+    return Object.entries(this.#pe_map);
   }
 
   static get_apt_resource(apt_id : string, resource_id : string){

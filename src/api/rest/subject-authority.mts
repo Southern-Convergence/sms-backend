@@ -1,4 +1,5 @@
 import { object_id, handle_res } from "@lib/api-utils.mjs";
+import {EMAIL_TRANSPORT} from "config.mjs";
 import Joi from "joi";
 import {ObjectId} from "mongodb";
 import { REST } from "sfr";
@@ -103,7 +104,7 @@ export default REST({
           code : invitation_code
         })
         .then(()=>{
-          this.postoffice["ethereal"].post({
+          this.postoffice[EMAIL_TRANSPORT].post({
             from : "systems@mail.com",
             to   : user_info.email
           }, {

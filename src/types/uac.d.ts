@@ -1,3 +1,7 @@
+
+declare type Session      = import("express-session").Session;
+declare type SessionData  = import("express-session").SessionData;
+
 declare type ObjectId = import("mongodb").ObjectId;
 
 /**
@@ -15,34 +19,40 @@ declare type UACConfig = {
   deconflict?: DeconflictMethods;
 };
 declare type PolicyDeclaration = {
-  [engine_name : string] : {
-    __meta__ : {
-      requisites : RequisiteMap;
-      logic      : PolicyLogic;
-    }
-  }
+  [engine_name : string] : PolicyEngineDescriptor
 }
+
 declare type PolicyEngineDescriptor = {
-  requisites : RequisiteMap;
-  logic      : PolicyLogic & ThisType<{attrs : any}>;
+  name    : string;
+  abbrev? : string;
+  author? : string;
+  desc?   : string;
+  icon?   : string;
+
+  requisites : (RequisiteMap | ResolvedRequisiteMap);
+  logic      : PolicyLogic;
+} & ThisType<EngineCtx>
+
+declare type EngineCtx = {
+  attrs   : any,
+  policy  : Policy,
+  apt     : APT,
+  session : Session & Partial<SessionData>
 }
-declare type PolicyEngineMap = {
-  [engine_name : string] : {
-    [policy_name : string] : {
-      requisites  : RequisiteResolver,
-      logic_block : Function
-    }
-  }
+
+declare type ResolvedRequisiteMap = {
+  [requisite_name : string] : Function
 }
+
 declare type AttributeType = (
   "subject"    |
   "object"     |
   "contextual"
 )
-type RequisiteMap         = {[logic_id : string] : {[requisite_name : string] : RequisiteDescription}};
+type RequisiteMap         = {[requisite_name : string] : RequisiteDescription};
 type RequisiteResolver    = (resource_id : string, subject_id : string)=> any;
 type RequisiteDescription = [AttributeType, boolean?];
-type PolicyLogic = {[logic_id : string] : Function}
+type PolicyLogic          = Function
 
 
 /* AUAC User Types */

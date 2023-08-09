@@ -13,6 +13,8 @@ const MIN_USERNAME_LENGTH = 6;
 const EXPIRY = 3600000 * 72; //72 Hours
 const SALT_ROUNDS = 10;
 
+import { EMAIL_TRANSPORT, ALLOWED_ORIGIN } from "config.mjs";
+
 export default REST({
   cfg: {
     public: true,
@@ -49,7 +51,19 @@ export default REST({
 
       username : Joi.string().min(MIN_USERNAME_LENGTH).required(),
       password : Joi.string().min(MIN_PASSWORD_LENGTH).required(),
-    }
+    },
+
+    "update-credentials" : {
+      old_password : Joi.string().min(MIN_PASSWORD_LENGTH),
+      new_password : Joi.string().min(MIN_PASSWORD_LENGTH)
+    },
+
+    "update-user-id" : {
+      email    : Joi.string().email(),
+      username : Joi.string().min(MIN_USERNAME_LENGTH)
+    },
+
+    "profile-completion" : {}
   },
 
   handlers: {
@@ -103,21 +117,19 @@ export default REST({
         const otp = otpgen();
         this.save_otp(otp, user._id)
         .then(()=> {
-          this.postoffice["ethereal"].post({
-            from    : "sad@sad.com",
+          this.postoffice[EMAIL_TRANSPORT].post({
             to      : (email.toString() || ""),
             subject : "Account Recovery"
           }, {
-            template : "recovery",
+            template : "uac-recovery",
             layout   : "default",
             context  : {
-              otp,
-              first_name : user.first_name,
-              last_name  : user.last_name
+              link : `${ALLOWED_ORIGIN}/account-recovery?ref=${otp}`,
+              name : `${user.first_name} ${user.last_name}`
             }
           })
           .then(()=> res.json({data : "Successfully issued recovery otp."}))
-          .catch((error)=> res.status(400).json({error : `Failed to issue recovery otp. Please contact an administrator.${error}`}))
+          .catch((error)=> res.status(400).json({error : `Failed to issue recovery otp. Please contact an administrator.`}))
         })
       },
 
@@ -130,9 +142,49 @@ export default REST({
         if(!matched_otp)return res.status(400).json({error : "Failed to update user password, otp not found or has expired."});
 
         this.delete_otp(matched_otp._id);
-        this.update_user_password(matched_otp.user_id, password)
-        .then(()=> res.json({data : "Successfully updated user password"}))
-        .catch((error)=> res.status(400).json({error}));
+        bcrypt.hash(password, SALT_ROUNDS)
+        .then((pass)=> {
+          this.update_user_password(matched_otp.user_id, pass)
+          .then(()=> res.json({data : "Successfully updated user password"}))
+          .catch((error)=> res.status(400).json({error}));
+        });
+      },
+
+      async "update-credentials"(req, res){
+        if(!req.session.user)return res.status(400).json({error : "No Session Found."});
+        const { old_password, new_password } = req.body;
+
+        const user = await this.get_password(req.session.user._id);
+        if(!user)return res.status(400).json({error : "Failed to update credentials, user not found"});
+
+        const is_match = await bcrypt.compare(old_password, user.password)
+        if(!is_match)return res.status(400).json({error : "Failed to update credentials, old password did not match."});
+
+        bcrypt.hash(new_password, SALT_ROUNDS)
+        .then((pass)=> {
+          this.update_user_password(req.session.user?._id!, pass)
+          .then(()=> res.json({data : "Successfully updated user password"}))
+          .catch((error)=> res.status(400).json({error}));
+        });
+      },
+
+      async "update-user-id"(req, res){
+        if(!req.session.user)return res.status(400).json({error : "No Session Found"});
+        const { username, email } = req.body;
+
+        if(!username && !email)return res.status(400).json({error : "Failed to update credentials, no arguments provided."});
+
+        const user = await this.get_user(req.session.user._id);
+        if(!user)return res.status(400).json({error : "No such user."});
+
+        let temp:any = {};
+
+        if(username)temp.username = username;
+        if(email)temp.email = email;
+        
+        this.update_user(req.session.user._id, temp)
+        .then(()=> res.json({data : "Successfully updated user id."}))
+        .catch(()=> res.status(400).json({error : "Failed to update credentials."}));
       },
 
       "finalize"(req, res){
@@ -195,6 +247,18 @@ export default REST({
         const { code } = req.query;
         handle_res(this.get_finalization_details(code), res);
       },
+
+      "profile-completion"(req, res){
+        //Base score of 100
+        //A criteria object is used as reference for calculating the completion score.
+
+        //For now, I return 100% cuz it's not needed yet.
+
+        res.json({data : {
+          score   : 100,
+          details : {}
+        }});
+      }
     }
   },
 
@@ -356,7 +420,7 @@ export default REST({
     },
 
     save_otp(token, user_id){
-      return this.db.collection("otp").updateOne({ user_id }, {$set : { token, expiry : new Date(Date.now() + EXPIRY), user_id, stamp : new Date() }}, {upsert : true});
+      return this.db.collection("otp").updateOne({ user_id }, {$set : { token, expiry : new Date(Date.now() + EXPIRY), user_id }}, {upsert : true});
     },
 
     delete_otp(token_id){
@@ -364,10 +428,10 @@ export default REST({
     },
 
     async update_user_password(user_id, password){
-      const hashed_password = bcrypt.hashSync(password, SALT_ROUNDS);
+
       const result = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
         $set : {
-          password : hashed_password
+          password
         }
       })
 
@@ -404,6 +468,16 @@ export default REST({
 
         if(!update_op.modifiedCount)return Promise.reject("Failed to finalize account");
       }).finally(()=> session.endSession());
+    },
+
+    get_password(user_id){
+      return this.db.collection("users").findOne({_id : new ObjectId(user_id)}, { projection : {password : 1}});
+    },
+
+    update_user(user_id, obj){
+      return this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
+        $set : { ...obj }
+      })
     }
   },
 });

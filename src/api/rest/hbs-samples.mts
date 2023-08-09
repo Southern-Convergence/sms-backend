@@ -1,3 +1,4 @@
+import {EMAIL_TRANSPORT} from "config.mjs";
 import Joi from "joi";
 import { REST } from "sfr";
 
@@ -16,7 +17,7 @@ export default REST({
     GET : {
       sample(_, res){
         return res.json({data : "Yay"})
-        this.postoffice["ethereal"].post({
+        this.postoffice[EMAIL_TRANSPORT].post({
           from : "someone@mail.com",
           to   : "manny@mail.com",
           subject : "You've been caught"

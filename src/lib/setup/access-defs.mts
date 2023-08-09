@@ -1,12 +1,12 @@
 import Database from "@lib/database.mjs";
 
 import domains from "@setup/src/uac/domains.mjs";
-import policies from "@setup/src/uac/policies.mjs";
 import users from "@setup/src/uac/users.mjs";
 
 import bcrypt from "bcrypt";
 import logger from "@lib/logger.mjs";
 import {ObjectId} from "mongodb";
+import Grant from "@lib/grant.mjs";
 
 const SALT = 10;
 
@@ -15,7 +15,15 @@ export default async()=> {
   const cols = collections?.map((v)=> v.collectionName);
   
   if(cols?.includes("policies"))return;
-  
+
+  const policies = Grant.get_engines().map(([_, engine])=> {
+    const temp:any = Object.assign({type : "access"}, engine);
+    delete temp.requisites;
+    delete temp.logic;
+    
+    return temp;
+  });
+
   let policies_result = await Database.collection("policies")?.insertMany(policies);
 
   /* @ts-ignore */
@@ -42,10 +50,7 @@ export default async()=> {
   
   let ap_templates = domains.flatMap((v : {[key : string] : any})=>{
     /* @ts-ignore */
-    return v.access_templates.map((a)=>{
-      const { basis, name, resources } = a;
-      return { basis : POLICY_MAP[basis], domain_id : DOMAIN_MAP[v.name], name, resources };
-    });
+    return v.access_templates.map((a)=> ({ ...a, basis : POLICY_MAP[a.basis], domain_id : DOMAIN_MAP[v.name]}));
   });
   
   let ap_result = await Database.collection("ap-templates")?.insertMany(ap_templates);

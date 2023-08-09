@@ -9,13 +9,14 @@ import MongoStore from "connect-mongo";
 import compression from "compression";
 import auac from "auac";
 import {v4} from "uuid";
+import web_push from "web-push";
 
 import Database from "@lib/database.mjs";
 import JobKomissar from "@lib/jobkomissar.mjs";
 import { PostOffice } from "@lib/mailman.mjs";
 import setup_stages from "@setup/stages.mjs";
 
-import { ALLOWED_ORIGIN, CONNECTION_STRING, DATABASE, NODE_ENV } from "config.mjs";
+import { ALLOWED_ORIGIN, CONNECTION_STRING, DATABASE, NODE_ENV, PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY } from "config.mjs";
 
 import api_bundler from "@core/api-bundler.mjs";
 import pe_bundler from "@core/pe-bundler.mjs";
@@ -24,6 +25,9 @@ import logger, { uac as auac_logger, services } from "@lib/logger.mjs";
 import morgan from "morgan";
 
 const IS_DEV = NODE_ENV === "development";
+
+web_push.setGCMAPIKey(process.env.PUBLIC_FCM_KEY!);
+web_push.setVapidDetails("mailto:test@test.test", PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY);
 
 const app = express();
 const server = createServer({}, app);
@@ -157,8 +161,8 @@ console.clear();
 Database.connect().then(async (db) => {
   PostOffice.initialize();
   JobKomissar.init(io, db);
+  await pe_bundler();
   await setup_stages();
 
-  pe_bundler();
   api_bundler(app);
 });

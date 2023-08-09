@@ -49,6 +49,10 @@ export default REST({
 
     "delete-resource" : {
       resource_id : object_id
+    },
+
+    "get-resources-by-domain" : {
+      domain_id : object_id
     }
   },
 

@@ -36,14 +36,13 @@ export default async()=> {
           sfr_cfg : cfg,
           desc : "",
           ref  : `${cfg.base_dir ? `${cfg.base_dir}/` : ''}${namespace}/${v}`,
-          op   : "",
 
           protocol  : "REST",
           method,
           domain_id : cfg.domain ? domain_map[cfg.domain] : domain_map[DEFAULT_DOMAIN],
           type      : "endpoint"
         };
-        Database.collection("resources")?.updateOne({ ref : obj.ref}, { $set : obj }, { upsert : true});
+        Database.collection("resources")?.updateOne({ ref : obj.ref }, { $set : obj }, { upsert : true});
       });
     });
   });

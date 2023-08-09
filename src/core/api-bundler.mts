@@ -10,6 +10,8 @@ import { verify_tt } from "@lib/multers.mjs";
 import {PostOffice} from "@lib/mailman.mjs";
 import {services} from "@lib/logger.mjs";
 
+import spaces from "@lib/spaces.mjs";
+
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const rest_dir  = path.join(directory, "../api/rest");
 const ws_dir    = path.join(directory, "../api/ws");
@@ -83,7 +85,7 @@ export default async(app : Express)=> {
           Actual Injection of values happens here...
           Type Injections are done over at /src/core/index.mts
         */
-        app[method.toLowerCase() as RESTRequestType](dir, v.bind({...controllers, postoffice : PostOffice.get_instances()}));
+        app[method.toLowerCase() as RESTRequestType](dir, v.bind({...controllers, postoffice : PostOffice.get_instances(), spaces}));
       }
     });
   });
