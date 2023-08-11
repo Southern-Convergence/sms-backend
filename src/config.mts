@@ -28,6 +28,10 @@ export const PUBLIC_VAPID_KEY  = env.PUBLIC_VAPID_KEY || "";
 export const PRIVATE_VAPID_KEY = env.PRIVATE_VAPID_KEY || "";
 
 
+/* FCM Keys */
+export const PUBLIC_FCM_KEY = env.PUBLIC_FCM_KEY || "";
+export const PRIVATE_FCM_KEY = env.PUBLIC_FCM_KEY || "";
+
 /* Log Variables */
 export const DEVELOPMENT_LOG_LEVEL = env.DEVELOPMENT_LOG_LEVEL || "verbose"
 export const PRODUCTION_LOG_LEVEL = env.PRODUCTION_LOG_LEVEL || "warn"

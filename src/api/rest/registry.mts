@@ -1,9 +1,14 @@
 import { object_id, handle_res } from "@lib/api-utils.mjs";
+import Grant from "@lib/grant.mjs";
 import Joi from "joi";
 import { ObjectId } from "mongodb";
 import { REST } from "sfr";
 
 export default REST({
+  cfg : {
+
+  },
+
   validators: {
     "get-registry-classifications": {},
     "create-registry-classification": {
@@ -38,6 +43,23 @@ export default REST({
     "delete-registry-value": {
       registry_id: object_id,
     },
+
+    "register-service" : {
+      openapi : Joi.string().required(),
+      info : {
+        title : Joi.string().required(),
+        description : Joi.string().allow(""),
+        version : Joi.string()
+      },
+
+      schemes : Joi.array().required(),
+
+      paths : Joi.array()
+    },
+
+    "get-services" : {
+
+    }
   },
 
   handlers: {
@@ -47,6 +69,10 @@ export default REST({
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
+
+      "get-services"(req, res){
+        res.json({data : Grant.get_services()});
+      }
     },
     POST: {
       "create-registry-classification"(req, res) {
@@ -94,6 +120,15 @@ export default REST({
           )
           .catch((error) => res.status(400).json({ error }));
       },
+
+      "register-service"(req, res){
+        try{
+          Grant.register_service(req.body.info.title, req.body);
+          res.json({data : "Successfully registered service."});
+        }catch(error){
+          res.json({error : "Failed to register service."});
+        }
+      }
     },
   },
 

@@ -16,8 +16,6 @@ export default REST({
     "delete-signature" : { name : Joi.string().required() }
   },
 
-
-
   handlers : {
     POST : {
       "save-signature"(req, res){

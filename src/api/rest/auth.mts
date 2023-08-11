@@ -18,6 +18,8 @@ import { EMAIL_TRANSPORT, ALLOWED_ORIGIN } from "config.mjs";
 export default REST({
   cfg: {
     public: true,
+
+    service : "Identity Management"
   },
 
   validators: {

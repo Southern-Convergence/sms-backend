@@ -8,7 +8,9 @@ import grant_def from "@lib/setup/grant-def.mjs";
 
 export default REST({
   cfg : {
-    base_dir : "admin"
+    base_dir : "admin",
+
+    service : "Identity Access Management"
   },
   
   validators : {
@@ -53,6 +55,10 @@ export default REST({
 
     "get-resources-by-domain" : {
       domain_id : object_id
+    },
+
+    "get-services" : {
+      
     }
   },
 

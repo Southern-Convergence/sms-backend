@@ -10,7 +10,9 @@ const EXPIRY = 3600000 * 72; //72 Hours
 
 export default REST({
   cfg : {
-    public : true
+    public : true,
+    
+    service : "Identity Management"
   },
 
   validators : {

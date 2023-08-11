@@ -2,7 +2,7 @@ import UACException from "@utils/uac-exceptions.mjs";
 
 import grant_def from "@setup/grant-def.mjs";
 
-import { setup } from "@lib/logger.mjs";
+import logger, { setup } from "@lib/logger.mjs";
 
 export default class Grant{
   //Steps to find happiness.
@@ -16,10 +16,11 @@ export default class Grant{
 
   /* ID to Object Mappings */
   static #policies  : { [policy_id : string] : Policy } = {};
-  static #apts      : { [apt_id : string]    : MappedAccessPolicy } = {};
+  static #apts      : { [apt_id : string] : MappedAccessPolicy } = {};
   static #domains   : { [domain_id : string] : Domain } = {};
   static #resources : { [resource_id : string] : Resource } = {};
-  static updated   : boolean = false;
+  static #services  : { [service_id : string] : any } = {};
+  static updated    : boolean = false;
 
   /* Name to ID Mappings */
   static #rest_resources : {[resource_name : string] : ObjectId} = {};
@@ -128,6 +129,21 @@ export default class Grant{
     if(!resource)throw new UACException(UACExceptionCode["PDP-001"]);
 
     return resource;
+  }
+
+  static register_service(service_id : string, service_details : any){
+    if(this.#services[service_id])throw new Error("Failed to register service, service already exists");
+    
+    logger.info(`Successfully registered ${service_id} into Service Registry`);
+    this.#services[service_id] = service_details;
+  }
+
+  static get_service(service_id : string){
+    return this.#services[service_id];
+  }
+
+  static get_services(){
+    return this.#services;
   }
 }
 

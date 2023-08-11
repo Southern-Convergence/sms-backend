@@ -1,16 +1,15 @@
 import {EMAIL_TRANSPORT} from "config.mjs";
-import Joi from "joi";
 import { REST } from "sfr";
 
 export default REST({
   cfg : {
-    public : true
+    public  : true,
+    domain  : "",
+    service : "Centralized Emailer"
   },
 
   validators : {
-
-    sample : {}
-
+    sample  : {},
   },
 
   handlers : {
@@ -27,7 +26,15 @@ export default REST({
           template : "uac-internal-invite",
           layout   : "default" 
         }).then((html)=> res.send(html))
+      },
+    
+      sample2(_, res){      
+        res.json({data : "Yay"});
       }
+    },
+
+    POST : {
+
     }
   }
 })

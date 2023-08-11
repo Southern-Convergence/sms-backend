@@ -6,7 +6,9 @@ import { REST } from "sfr";
 
 export default REST({
   cfg : {
-    base_dir : "admin"
+    base_dir : "admin",
+
+    service : "Identity Access Management"
   },
 
   validators: {

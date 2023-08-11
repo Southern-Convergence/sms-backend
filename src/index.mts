@@ -11,26 +11,42 @@ import auac from "auac";
 import {v4} from "uuid";
 import web_push from "web-push";
 
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs/promises";
+
 import Database from "@lib/database.mjs";
 import JobKomissar from "@lib/jobkomissar.mjs";
 import { PostOffice } from "@lib/mailman.mjs";
 import setup_stages from "@setup/stages.mjs";
 
-import { ALLOWED_ORIGIN, CONNECTION_STRING, DATABASE, NODE_ENV, PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY } from "config.mjs";
+import { ALLOWED_ORIGIN, CONNECTION_STRING, DATABASE, NODE_ENV, PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY, PUBLIC_FCM_KEY, PRIVATE_FCM_KEY, } from "config.mjs";
 
 import api_bundler from "@core/api-bundler.mjs";
 import pe_bundler from "@core/pe-bundler.mjs";
 
 import logger, { uac as auac_logger, services } from "@lib/logger.mjs";
 import morgan from "morgan";
+import Grant from "@lib/grant.mjs";
 
+const { DOMAIN, SERVICE, PORT, UAC_KEY } = process.env;
 const IS_DEV = NODE_ENV === "development";
 
-web_push.setGCMAPIKey(process.env.PUBLIC_FCM_KEY!);
+if(!DOMAIN)throw new Error(`Failed to initialize server, please provide a valid "DOMAIN" name.`);
+if(!SERVICE)throw new Error(`Failed to initialize server, please provide a valid "SERVICE" name.`);
+
+//Head does not use UAC_KEY, Headless repo soon to be made.
+//if(!UAC_KEY)throw new Error(`Failed to initialize server, for service discoverability, please provide a valid "UAC_KEY"`);
+
+web_push.setGCMAPIKey(PUBLIC_FCM_KEY!);
 web_push.setVapidDetails("mailto:test@test.test", PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY);
+
+const directory = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const server = createServer({}, app);
+
+
 
 app.use(express.json({ limit: "100mb" }));
 app.use(
@@ -116,6 +132,8 @@ app.use(morgan(":remote-addr :method :url :status :res[content-length] :user-age
   }
 }));
 
+app.use("/docs", express.static(path.join(directory, "static/docs")));
+
 /* UAC Middleware */
 app.use(auac({
   engine     : "default",
@@ -151,10 +169,16 @@ app.use((err: Error, _: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-server.listen(process.env.PORT, () => {
+server.listen(PORT, () => {
   //Workaround, AddressInfo doesn't seem to have declared types yet.
   let temp: { [key: string]: any } = new Object(server.address());
-  logger.info(`HTTP Server is running on port ${temp.port}`);
+  logger.info(`${SERVICE} Server is running on port ${temp.port}`);
+
+  Grant.register_service(`${DOMAIN}:${SERVICE}`, {
+    ADDR : temp,
+    PORT
+    //Idk, still leaning on using etcd, but it may take a while before I can use it proficiently
+  });
 });
 
 console.clear();

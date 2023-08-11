@@ -11,7 +11,9 @@ const MIN_PASSWORD_LENGTH = 8;
 
 export default REST({
   cfg : {
-    base_dir : "admin"
+    base_dir : "admin",
+
+    service : "Identity Access Management"
   },
   
   validators : {

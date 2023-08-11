@@ -7,6 +7,7 @@ declare type RESTHandlerConstructor = { new<V, H, C>(struct : RESTHandlerDescrip
 declare type WSHandlerConstructor   = { new<V, H, C>(struct : WSHandlerDescriptor<V, H, C>)   : V & H & C};
 
 type RESTHandlerDescriptor<V, H, C> = {
+  meta?        : SFRMetadata
   cfg?         : SFRConfig
   validators   : RequestValidators    & V,
   handlers     : RESTRequestHandlers  & H & ThisType<HandlerFacilities & C>,
@@ -23,7 +24,8 @@ type WSHandlerDescriptor<V, H, C> = {
 declare interface HandlerFacilities {
   postoffice : TransportDict,
   spaces     : {
-    ""
+    "std"   : DOSpace,
+    "std-v" : VersioningEnabledDOSpace 
   },
   gsuite     : GSuiteMgr
 }
@@ -84,6 +86,14 @@ declare type SFRConfig = {
    * defaults to the internal domain
    */
   domain?   : string;
+
+  /**
+   * Specifies which service this SFR belongs to,
+   * 
+   * Services are simply a bunch of SFRs grouped together under one server instance.
+   * This categorization is necessary and is a temporary measure, It will be deprecated right after we move to containerized microservices.
+  */
+  service? : string;
 }
 
 //Bundler Related
@@ -113,6 +123,34 @@ declare type RESTRequestHandlers = {
   OPTIONS?  : RESTHandlerMap,
   PROPFIND? : RESTHandlerMap
 };
+
+type PathDeclaration = {
+  GET?      : SFRMetadata,
+  POST?     : SFRMetadata,
+  PUT?      : SFRMetadata,
+  PATCH?    : SFRMetadata,
+  DELETE?   : SFRMetadata,
+  COPY?     : SFRMetadata,
+  HEAD?     : SFRMetadata,
+  OPTIONS?  : SFRMetadata,
+  PROPFIND? : SFRMetadata
+}
+
+/**
+  * Mapping of endpoints and their respective metadata according to OpenAPI standards 
+  *  
+  * Note: Some fields are automatically inferred from the SFR build phase and as such, only a subset of the official parameters are exposed.
+  * 
+  * Link: https://spec.openapis.org/oas/v3.1.0#operation-object
+*/
+declare type SFRMetadata = {
+  [handler : string] : {
+    tags?        : string[],
+    summary?     : string,
+    description? : string,
+    deprecated?  : boolean,
+  }
+}
 
 declare type RESTRequestType = ("get" | "post" | "put" | "patch" | "delete" | "copy" | "head" | "options" | "propfind");
 

@@ -3,13 +3,14 @@
     /* Visit https://aka.ms/tsconfig to read more about this file */
     "baseUrl": "src",
     "paths": {
-      "@core/*"  : ["core/*"],
-      "@lib/*"   : ["lib/*"],
-      "@utils/*" : ["utils/*"],
-      "@setup/*" : ["lib/setup/*"],
-      "@cfg/*"   : ["cfg/*"],
-      "sfr"      : ["core/index.mjs"],
-      "auac"     : ["core/auac.mjs"]
+      "@core/*"   : ["core/*"],
+      "@lib/*"    : ["lib/*"],
+      "@utils/*"  : ["utils/*"],
+      "@setup/*"  : ["lib/setup/*"],
+      "@models/*" : ["models/*"],
+      "@cfg/*"    : ["cfg/*"],
+      "sfr"       : ["core/index.mjs"],
+      "auac"      : ["core/auac.mjs"]
     },
 
     /* Projects */

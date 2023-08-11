@@ -35,6 +35,7 @@ export default async()=> {
     return {
       name, secret_key, icon,
       access_policies   : access_policies.map((a : string)=> POLICY_MAP[a]),
+      active : true,
       security_policies : security_policies.map((a : string)=> POLICY_MAP[a]),
       resources
     }

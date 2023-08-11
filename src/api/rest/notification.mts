@@ -8,6 +8,9 @@ import {ObjectId} from "mongodb";
 import {handle_res} from "@lib/api-utils.mjs";
 
 export default REST({
+  cfg : {
+  },
+
   validators : {
     "get-vapid-key" : {},
     "get-subscriptions" : {},
