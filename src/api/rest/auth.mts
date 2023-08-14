@@ -13,7 +13,7 @@ const MIN_USERNAME_LENGTH = 6;
 const EXPIRY = 3600000 * 72; //72 Hours
 const SALT_ROUNDS = 10;
 
-import { EMAIL_TRANSPORT, ALLOWED_ORIGIN } from "config.mjs";
+import { EMAIL_TRANSPORT, ALLOWED_ORIGIN } from "@cfg/index.mjs";
 
 export default REST({
   cfg: {

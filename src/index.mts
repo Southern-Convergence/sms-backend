@@ -20,7 +20,7 @@ import JobKomissar from "@lib/jobkomissar.mjs";
 import { PostOffice } from "@lib/mailman.mjs";
 import setup_stages from "@setup/stages.mjs";
 
-import { ALLOWED_ORIGIN, CONNECTION_STRING, DATABASE, NODE_ENV, PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY, PUBLIC_FCM_KEY, PRIVATE_FCM_KEY, } from "config.mjs";
+import { ALLOWED_ORIGIN, CONNECTION_STRING, DATABASE, NODE_ENV, PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY, PUBLIC_FCM_KEY, PRIVATE_FCM_KEY, } from "@cfg/index.mjs";
 
 import api_bundler from "@core/api-bundler.mjs";
 import pe_bundler from "@core/pe-bundler.mjs";
@@ -173,12 +173,6 @@ server.listen(PORT, () => {
   //Workaround, AddressInfo doesn't seem to have declared types yet.
   let temp: { [key: string]: any } = new Object(server.address());
   logger.info(`${SERVICE} Server is running on port ${temp.port}`);
-
-  Grant.register_service(`${DOMAIN}:${SERVICE}`, {
-    ADDR : temp,
-    PORT
-    //Idk, still leaning on using etcd, but it may take a while before I can use it proficiently
-  });
 });
 
 console.clear();
@@ -188,5 +182,5 @@ Database.connect().then(async (db) => {
   await pe_bundler();
   await setup_stages();
 
-  api_bundler(app);
+  await api_bundler(app);
 });

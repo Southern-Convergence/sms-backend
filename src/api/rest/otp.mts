@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 
 import Joi from "joi";
 import otpgen from "@lib/otpgen.mjs";
-import {EMAIL_TRANSPORT} from "config.mjs";
+import {EMAIL_TRANSPORT} from "@cfg/index.mjs";
 
 const EXPIRY = 3600000 * 72; //72 Hours
 

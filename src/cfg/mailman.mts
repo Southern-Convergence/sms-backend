@@ -1,4 +1,4 @@
-import { GMAIL_EMAIL, GMAIL_ID, GMAIL_REFRESH_TOKEN, GMAIL_SECRET } from "config.mjs";
+import { GMAIL_EMAIL, GMAIL_ID, GMAIL_REFRESH_TOKEN, GMAIL_SECRET } from "@cfg/index.mjs";
 
 export default {
   default: {

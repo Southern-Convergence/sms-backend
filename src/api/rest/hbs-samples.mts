@@ -1,4 +1,4 @@
-import {EMAIL_TRANSPORT} from "config.mjs";
+import {EMAIL_TRANSPORT} from "@cfg/index.mjs";
 import { REST } from "sfr";
 
 export default REST({

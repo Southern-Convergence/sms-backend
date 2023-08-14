@@ -1,7 +1,7 @@
 import Joi from "joi";
 import { REST } from "sfr";
 
-import { PUBLIC_VAPID_KEY } from "config.mjs";
+import { PUBLIC_VAPID_KEY } from "@cfg/index.mjs";
 
 import web_push from "web-push";
 import {ObjectId} from "mongodb";

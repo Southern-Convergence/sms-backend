@@ -11,7 +11,8 @@ import { PostOffice } from "@lib/mailman.mjs";
 import { facilities } from "@lib/logger.mjs";
 import spaces from "@lib/spaces.mjs";
 import j2s from "joi-to-swagger";
-import { NODE_ENV } from "@cfg/index.mjs";
+import { NODE_ENV, PORT } from "@cfg/index.mjs";
+import Grant from "@lib/grant.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const rest_dir = path.join(directory, "../api/rest");
@@ -22,10 +23,16 @@ const openapi_yaml = path.join(directory, "../../openapi.yml");
 const openapi_docs = path.join(directory, "../static/docs");
 console.log(openapi_docs);
 export default async (app: Express) => {
+  //Reset from last build phase
+  await fs.rm(openapi_docs, { recursive: true, force: true });
+
+  //Build directories
+  await Promise.all([rest_dir, ws_dir, docs_dir, openapi_docs].map((dir)=> fs.mkdir(dir, {recursive : true})));
+       
   const [rest_paths, ws_paths, docs_path] = await Promise.all([
     fs.readdir(rest_dir),
     fs.readdir(ws_dir),
-    fs.readdir(docs_dir),
+    fs.readdir(docs_dir)
   ]);
 
   const [rest, ws, docs] = await Promise.all([
@@ -33,6 +40,10 @@ export default async (app: Express) => {
     get_stats(ws_paths, ws_dir).then((v) => assess_namespace(v, ws_dir)),
     get_stats(docs_path, docs_dir).then((v) => assess_namespace(v, docs_dir)),
   ]);
+
+  facilities.verbose(`Detected ${Object.keys(rest).length} REST SFRs.`);
+  facilities.verbose(`Detected ${Object.keys(ws).length} WS SFRs.`);
+  facilities.verbose(`Detected ${Object.keys(docs).length} OpenAPI Complementary Documents.`);
 
   const REST: RESTNamespaceDeclaration = rest;
   const oas_definitions: any = [];
@@ -134,42 +145,49 @@ export default async (app: Express) => {
     });
   });
 
-  fs.rm(openapi_docs, { recursive: true, force: true }).then(() => {
-    fs.readFile(openapi_yaml).then(async(d) => {
-      let temp: any = yaml.load(d.toString());
-      const refs = await Promise.all(
-        oas_definitions.map(async(v: any) => {
-          const paths = v[0].replace("/", "").split("/");
-  
-          const dir = paths.toString().replaceAll(",", "/");
-          
-          const oas_path = path.join(openapi_docs, dir);
-          const filename = paths.pop();
-          
-          await fs.mkdir(oas_path, { recursive: true });
-          await fs.writeFile(
-            path.join(oas_path, `${filename}.yml`),
-            yaml.dump(v[1]),
-            { flag: "w+" }
-          );
-  
-          return [`/${dir}`, {
-            $ref : `docs/${dir}.yml`
-          }];
-        })
-      );
+  fs.readFile(openapi_yaml).then(async(d) => {
+    let temp: any = yaml.load(d.toString());
+    const refs = await Promise.all(
+      oas_definitions.map(async(v: any) => {
+        const paths = v[0].replace("/", "").split("/");
+
+        const dir = paths.toString().replaceAll(",", "/");
+        
+        const oas_path = path.join(openapi_docs, dir);
+        const filename = paths.pop();
+        
+        await fs.mkdir(oas_path, { recursive: true });
+        await fs.writeFile(
+          path.join(oas_path, `${filename}.yml`),
+          yaml.dump(v[1]),
+          { flag: "w+" }
+        );
+
+        return [`/${dir}`, {
+          $ref : `docs/${dir}.yml`,
+          obj  : v[1]
+        }];
+      })
+    );
+    
+    temp.paths = Object.fromEntries(refs.map((v)=> [v[0], {$ref : v[1].$ref}]));
+    
+    //Write both to project root and to static docs for service discovery API.
+    const _yaml = yaml.dump(temp);
+    
+    Promise.all([
+      fs.writeFile(openapi_yaml, _yaml, { flag : "w+" }),
+      fs.writeFile(path.join(openapi_docs, `index.yml`), _yaml, { flag : "w+" })
+    ])
+    .then(()=> {
+      temp.paths = Object.fromEntries(refs.map((v)=> [v[0], v[1].obj]));
       
-      temp.paths = Object.fromEntries(refs);
-      
-      //Write both to project root and to static docs for service discovery API.
-      const _yaml = yaml.dump(temp);
-      
-      Promise.all([
-        fs.writeFile(openapi_yaml, _yaml, { flag : "w+" }),
-        fs.writeFile(path.join(openapi_docs, `index.yml`), _yaml, { flag : "w+" })
-      ])
-      .then(()=> facilities.verbose(`Successfully generated OpenAPI Spec Document from SFRs.`))
-    });
+      Grant.register_service(temp.info.title, {
+        ...temp,
+        PORT
+        //Idk, still leaning on using etcd, but it may take a while before I can use it proficiently
+      });
+    })
   });
 
   function build_oas_definitions(doc_address: string[], validator: any, cfg : SFRConfig) {

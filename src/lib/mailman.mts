@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import CFG from "@cfg/mailman.mjs";
-import { NODE_ENV, ALLOWED_ORIGIN, G_API_REDIRECT } from "@cfg/index.mjs";
+import { NODE_ENV, ALLOWED_ORIGIN, GOOGLE_API_REDIRECT } from "@cfg/index.mjs";
 import gsuite_client from "@utils/gsuite-client.mjs";
 import logger from "@lib/logger.mjs";
 
@@ -38,7 +38,7 @@ export class MailMan {
     const { clientId, clientSecret, refreshToken } = cfg.transport_options.auth;
     
     (async()=> {
-      if(!IS_DEV && namespace !== "ethereal")cfg.transport_options.accessToken = await gsuite_client({CLIENT_ID : clientId, REFRESH_TOKEN : refreshToken, SECRET : clientSecret, REDIRECT_URL : G_API_REDIRECT}).getAccessToken();
+      if(!IS_DEV && namespace !== "ethereal")cfg.transport_options.accessToken = await gsuite_client({CLIENT_ID : clientId, REFRESH_TOKEN : refreshToken, SECRET : clientSecret, REDIRECT_URL : GOOGLE_API_REDIRECT}).getAccessToken();
       this._cfg = cfg;
 
       this.transport = nodemailer.createTransport(!IS_DEV ? cfg.transport_options : CFG["ethereal"].transport_options)

@@ -1,5 +1,5 @@
 import { object_id, handle_res } from "@lib/api-utils.mjs";
-import {EMAIL_TRANSPORT} from "config.mjs";
+import {EMAIL_TRANSPORT} from "@cfg/index.mjs";
 import Joi from "joi";
 import {ObjectId} from "mongodb";
 import { REST } from "sfr";

@@ -3,7 +3,7 @@ import "winston-mongodb";
 
 import {ObjectTransport, CachedTransport} from "@utils/custom-transports.mjs";
 
-import { NODE_ENV, DEVELOPMENT_LOG_LEVEL, PRODUCTION_LOG_LEVEL } from "config.mjs";
+import { NODE_ENV, DEVELOPMENT_LOG_LEVEL, PRODUCTION_LOG_LEVEL } from "@cfg/index.mjs";
 
 const IS_DEV = NODE_ENV === "development";
 
