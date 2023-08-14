@@ -21,7 +21,6 @@ const docs_dir = path.join(directory, "../api/docs");
 
 const openapi_yaml = path.join(directory, "../../openapi.yml");
 const openapi_docs = path.join(directory, "../static/docs");
-console.log(openapi_docs);
 export default async (app: Express) => {
   //Reset from last build phase
   await fs.rm(openapi_docs, { recursive: true, force: true });

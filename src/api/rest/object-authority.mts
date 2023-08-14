@@ -1,10 +1,17 @@
 import { object_id, handle_res } from "@lib/api-utils.mjs";
 import Joi from "joi";
 import {ObjectId} from "mongodb";
+import { generateKeyPair } from "node:crypto";
 import { REST } from "sfr";
 
 import Grant from "@lib/grant.mjs";
-import grant_def from "@lib/setup/grant-def.mjs";
+import multers from "@lib/multers.mjs";
+
+import { assemble_upload_params } from "@utils/index.mjs";
+
+const { UAC_PASSPHRASE } = process.env;
+
+const icon = multers["domain-logo"];
 
 export default REST({
   cfg : {
@@ -14,6 +21,8 @@ export default REST({
   },
   
   validators : {
+    "create-domain": icon.single("domain-logo"),
+    
     "get-subdomains": {
       domain_id: object_id,
     },
@@ -72,6 +81,32 @@ export default REST({
       },
     },
     POST : {
+      "create-domain"(req, res){
+        const name = req.body["domain-name"];
+        if(!UAC_PASSPHRASE)return res.status(400).json({error : "Failed to create domain, issuance of keypairs failed due to server misconfiguration."});
+
+        generateKeyPair("rsa", {
+          modulusLength: 4096,
+          publicKeyEncoding: {
+            type: "spki",
+            format: "pem"
+          },
+          privateKeyEncoding: {
+            type: "pkcs8",
+            format: "pem",
+            cipher: "aes-256-cbc",
+            passphrase: ""
+          }
+        }, (err, publicKey, privateKey) => { 
+          this.create_domain(name, privateKey)
+          .then(()=>{
+            this.spaces.std.upload(assemble_upload_params(name, req.file!, "public"));
+
+            res.json({data : publicKey});
+          });
+        })
+      },
+
       "create-subdomain"(req, res) {
         const { domain_id, subdomain } = req.body;
         this.create_subdomain(domain_id, subdomain)
@@ -125,6 +160,13 @@ export default REST({
         .collection("resources")
         .find({ domain_id: new ObjectId(domain_id), type: "subdomain" })
         .toArray();
+    },
+
+    create_domain(name : string, key : string){
+      const domain = this.db.collection("domains").findOne({name});
+      if(!domain)return Promise.reject("Failed to create domain, domain name already taken.");
+
+      return this.db.collection("domains").insertOne({name, key});
     },
     async create_subdomain(domain_id, subdomain) {
       let temp = await this.db
