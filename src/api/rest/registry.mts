@@ -6,7 +6,7 @@ import { REST } from "sfr";
 
 export default REST({
   cfg : {
-
+    public : true
   },
 
   validators: {
@@ -45,7 +45,8 @@ export default REST({
     },
 
     "register-service" : {
-      openapi : Joi.string().required(),
+      domain    : Joi.string().required(),
+      openapi   : Joi.string().required(),
       info : {
         title : Joi.string().required(),
         description : Joi.string().allow(""),
@@ -53,12 +54,12 @@ export default REST({
       },
 
       schemes : Joi.array().required(),
-
-      paths : Joi.array()
+      paths   : Joi.object(),
+      PORT    : Joi.number().required()
     },
 
     "get-services" : {
-
+      domain : Joi.string().required()
     }
   },
 
@@ -71,7 +72,8 @@ export default REST({
       },
 
       "get-services"(req, res){
-        res.json({data : Grant.get_services()});
+        const { domain } = req.query;
+        res.json({data : Grant.get_services(String(domain))});
       }
     },
     POST: {
@@ -123,7 +125,10 @@ export default REST({
 
       "register-service"(req, res){
         try{
-          Grant.register_service(req.body.info.title, req.body);
+          const body   = Object.assign({}, req.body);
+          const domain = req.body.domain;
+          delete body.domain
+          Grant.register_service(domain, req.body.info.title, body);
           res.json({data : "Successfully registered service."});
         }catch(error){
           res.json({error : "Failed to register service."});

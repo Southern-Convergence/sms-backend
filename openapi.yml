@@ -56,6 +56,8 @@ paths:
     $ref: docs/admin/object-authority/get-resources.yml
   /admin/object-authority/get-subdomains:
     $ref: docs/admin/object-authority/get-subdomains.yml
+  /admin/object-authority/get-domain-public-key:
+    $ref: docs/admin/object-authority/get-domain-public-key.yml
   /admin/object-authority/create-subdomain:
     $ref: docs/admin/object-authority/create-subdomain.yml
   /admin/object-authority/create-page:

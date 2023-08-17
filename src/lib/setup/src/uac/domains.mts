@@ -1,8 +1,7 @@
 export default [
   {
     "name" : "Southern Convergence",
-    "secret_key": "",
-    "icon": "/sc.svg",
+    "key": "",
     "type" : "internal",
     
     "access_policies": ["Role Based"],
@@ -31,16 +30,5 @@ export default [
         "resources" : []
       }
     ]
-  },
-  {
-    "name" : "DepEd",
-    "secret_key" : "",
-    "icon" : "/deped.svg",
-    "type" : "external",
-    
-    "access_policies" : ["Role Based"],
-    "security_policies" : [],
-    
-    "access_templates" : []
   }
 ]

@@ -60,6 +60,7 @@ app.use(
 
 app.use((_, res, next)=> {
   res.setHeader("rid", v4());
+  console.log(_.body)
   next();
 })
 

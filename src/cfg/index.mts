@@ -1,4 +1,5 @@
 const env = process.env;
+export const DOMAIN = env.DOMAIN || "";
 export const PORT = env.PORT || 3001;
 export const NODE_ENV = env.NODE_ENV || 'development';
 export const CONNECTION_STRING = env.CONNECTION_STRING || 'mongodb://localhost:27017';

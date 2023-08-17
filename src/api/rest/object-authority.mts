@@ -1,13 +1,13 @@
 import { object_id, handle_res } from "@lib/api-utils.mjs";
 import Joi from "joi";
 import {ObjectId} from "mongodb";
-import { generateKeyPair } from "node:crypto";
+import { generateKeyPair, createPublicKey } from "node:crypto";
 import { REST } from "sfr";
 
 import Grant from "@lib/grant.mjs";
 import multers from "@lib/multers.mjs";
 
-import { assemble_upload_params } from "@utils/index.mjs";
+import { assemble_upload_params, create_key_pair, create_public_key } from "@utils/index.mjs";
 
 const { UAC_PASSPHRASE } = process.env;
 
@@ -66,8 +66,8 @@ export default REST({
       domain_id : object_id
     },
 
-    "get-services" : {
-      
+    "get-domain-public-key" : {
+      domain_id : object_id
     }
   },
 
@@ -79,31 +79,32 @@ export default REST({
       "get-subdomains"(req, res) {
         handle_res(this.get_subdomains(req.query.domain_id), res);
       },
+
+      async "get-domain-public-key"(req, res){
+        const { domain_id } = req.query;
+        
+        const domain = await this.get_domain(domain_id);
+        if(!domain)return res.status(400).json({error : "No such domain."});
+
+        res.json({data : create_public_key(domain.key)});
+      }
     },
     POST : {
       "create-domain"(req, res){
         const name = req.body["domain-name"];
         if(!UAC_PASSPHRASE)return res.status(400).json({error : "Failed to create domain, issuance of keypairs failed due to server misconfiguration."});
 
-        generateKeyPair("rsa", {
-          modulusLength: 4096,
-          publicKeyEncoding: {
-            type: "spki",
-            format: "pem"
-          },
-          privateKeyEncoding: {
-            type: "pkcs8",
-            format: "pem",
-            cipher: "aes-256-cbc",
-            passphrase: ""
-          }
-        }, (err, publicKey, privateKey) => { 
-          this.create_domain(name, privateKey)
+        create_key_pair()
+        .then(({public_key, private_key})=> {
+          this.create_domain(name, private_key)
           .then(()=>{
             this.spaces.std.upload(assemble_upload_params(name, req.file!, "public"));
 
-            res.json({data : publicKey});
+            res.json({data : public_key});
           });
+        })
+        .catch(()=>{
+          res.status(400).json({error : "Failed to create domain, exception encountered when generating keypair."})
         })
       },
 
@@ -154,6 +155,10 @@ export default REST({
       }
 
       return resources.map(resolve_resources);
+    },
+
+    get_domain(domain_id){
+      return this.db.collection("domains").findOne({_id : new ObjectId(domain_id)});
     },
     get_subdomains(domain_id) {
       return this.db

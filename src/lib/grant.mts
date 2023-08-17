@@ -131,19 +131,23 @@ export default class Grant{
     return resource;
   }
 
-  static register_service(service_id : string, service_details : any){
+  static register_service(domain : string, service_id : string, service_details : any){
     if(this.#services[service_id])throw new Error("Failed to register service, service already exists");
+    logger.info(`Successfully registered ${service_id} into Service Registry under ${domain} domain.`);
     
-    logger.info(`Successfully registered ${service_id} into Service Registry`);
-    this.#services[service_id] = service_details;
+    if(!this.#services[domain])this.#services[domain] = {};
+    this.#services[domain][service_id] = service_details;
   }
 
-  static get_service(service_id : string){
-    return this.#services[service_id];
+  static get_service(domain : string, service_id : string){
+    const domain_services = this.#services[domain];
+    if(!domain_services)return null;
+    return domain_services[service_id];
   }
 
-  static get_services(){
-    return this.#services;
+  static get_services(domain : string){
+    console.log(this.#services)
+    return this.#services[domain];
   }
 }
 

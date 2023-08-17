@@ -11,7 +11,7 @@ import { PostOffice } from "@lib/mailman.mjs";
 import { facilities } from "@lib/logger.mjs";
 import spaces from "@lib/spaces.mjs";
 import j2s from "joi-to-swagger";
-import { NODE_ENV, PORT } from "@cfg/index.mjs";
+import { PORT, DOMAIN } from "@cfg/index.mjs";
 import Grant from "@lib/grant.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
@@ -181,7 +181,7 @@ export default async (app: Express) => {
     .then(()=> {
       temp.paths = Object.fromEntries(refs.map((v)=> [v[0], v[1].obj]));
       
-      Grant.register_service(temp.info.title, {
+      Grant.register_service(DOMAIN!, temp.info.title, {
         ...temp,
         PORT
         //Idk, still leaning on using etcd, but it may take a while before I can use it proficiently

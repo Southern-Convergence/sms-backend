@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import logger from "@lib/logger.mjs";
 import {ObjectId} from "mongodb";
 import Grant from "@lib/grant.mjs";
+import {create_key_pair} from "@utils/index.mjs";
 
 const SALT = 10;
 
@@ -29,17 +30,20 @@ export default async()=> {
   /* @ts-ignore */
   const POLICY_MAP = Object.fromEntries(Object.entries(policies_result?.insertedIds).map(([index, oid])=> [policies[index].name, oid]))
   /* Resolve domain dependencies */
-  let resolved_domains = domains.map((v : {[key : string] : any})=> {
-    const { name, secret_key, icon, access_policies, security_policies, resources } = v;
+  let resolved_domains = await Promise.all(domains.map(async(v : {[key : string] : any})=> {
+    const { name, icon, access_policies, security_policies, resources } = v;
     
+    const { private_key, public_key } = await create_key_pair();
+
     return {
-      name, secret_key, icon,
+      name, key : private_key, icon,
+      public_key,
       access_policies   : access_policies.map((a : string)=> POLICY_MAP[a]),
       active : true,
       security_policies : security_policies.map((a : string)=> POLICY_MAP[a]),
       resources
-    }
-  });
+    };
+  }));
 
 
   let domain_result = await Database.collection("domains")?.insertMany(resolved_domains);
