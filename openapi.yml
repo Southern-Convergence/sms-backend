@@ -12,141 +12,19 @@ schemes:
   - ws
   - wss
 paths:
-  /auth/login:
-    $ref: docs/auth/login.yml
-  /auth/terminate-session:
-    $ref: docs/auth/terminate-session.yml
-  /auth/recovery:
-    $ref: docs/auth/recovery.yml
-  /auth/update-password:
-    $ref: docs/auth/update-password.yml
-  /auth/update-credentials:
-    $ref: docs/auth/update-credentials.yml
-  /auth/update-user-id:
-    $ref: docs/auth/update-user-id.yml
-  /auth/finalize:
-    $ref: docs/auth/finalize.yml
-  /auth/logout:
-    $ref: docs/auth/logout.yml
-  /auth/get-user:
-    $ref: docs/auth/get-user.yml
-  /auth/get-page-resources:
-    $ref: docs/auth/get-page-resources.yml
-  /auth/get-sessions:
-    $ref: docs/auth/get-sessions.yml
-  /auth/verify-invitation-code:
-    $ref: docs/auth/verify-invitation-code.yml
-  /auth/profile-completion:
-    $ref: docs/auth/profile-completion.yml
-  /hbs-samples/sample:
-    $ref: docs/hbs-samples/sample.yml
-  /notification/get-vapid-key:
-    $ref: docs/notification/get-vapid-key.yml
-  /notification/get-subscriptions:
-    $ref: docs/notification/get-subscriptions.yml
-  /notification/toggle:
-    $ref: docs/notification/toggle.yml
-  /notification/subscribe:
-    $ref: docs/notification/subscribe.yml
-  /notification/unsubscribe:
-    $ref: docs/notification/unsubscribe.yml
-  /notification/notify:
-    $ref: docs/notification/notify.yml
-  /admin/object-authority/get-resources:
-    $ref: docs/admin/object-authority/get-resources.yml
-  /admin/object-authority/get-subdomains:
-    $ref: docs/admin/object-authority/get-subdomains.yml
-  /admin/object-authority/get-domain-public-key:
-    $ref: docs/admin/object-authority/get-domain-public-key.yml
-  /admin/object-authority/create-subdomain:
-    $ref: docs/admin/object-authority/create-subdomain.yml
-  /admin/object-authority/create-page:
-    $ref: docs/admin/object-authority/create-page.yml
-  /admin/object-authority/resource-assignment:
-    $ref: docs/admin/object-authority/resource-assignment.yml
-  /admin/object-authority/delete-resource:
-    $ref: docs/admin/object-authority/delete-resource.yml
-  /otp/verify:
-    $ref: docs/otp/verify.yml
-  /otp/reissue:
-    $ref: docs/otp/reissue.yml
-  /admin/policy-authority/get-domains:
-    $ref: docs/admin/policy-authority/get-domains.yml
-  /admin/policy-authority/get-domain:
-    $ref: docs/admin/policy-authority/get-domain.yml
-  /admin/policy-authority/get-policies:
-    $ref: docs/admin/policy-authority/get-policies.yml
-  /admin/policy-authority/get-access-policies:
-    $ref: docs/admin/policy-authority/get-access-policies.yml
-  /admin/policy-authority/get-security-policies:
-    $ref: docs/admin/policy-authority/get-security-policies.yml
-  /admin/policy-authority/get-apts:
-    $ref: docs/admin/policy-authority/get-apts.yml
-  /admin/policy-authority/get-apt:
-    $ref: docs/admin/policy-authority/get-apt.yml
-  /admin/policy-authority/create-domain:
-    $ref: docs/admin/policy-authority/create-domain.yml
-  /admin/policy-authority/update-domain:
-    $ref: docs/admin/policy-authority/update-domain.yml
-  /admin/policy-authority/create-access-policy:
-    $ref: docs/admin/policy-authority/create-access-policy.yml
-  /admin/policy-authority/update-access-policy:
-    $ref: docs/admin/policy-authority/update-access-policy.yml
-  /admin/policy-authority/create-security-policy:
-    $ref: docs/admin/policy-authority/create-security-policy.yml
-  /admin/policy-authority/update-security-policy:
-    $ref: docs/admin/policy-authority/update-security-policy.yml
-  /admin/policy-authority/enforce-access-policy:
-    $ref: docs/admin/policy-authority/enforce-access-policy.yml
-  /admin/policy-authority/revoke-access-policy:
-    $ref: docs/admin/policy-authority/revoke-access-policy.yml
-  /admin/policy-authority/enforce-security-policy:
-    $ref: docs/admin/policy-authority/enforce-security-policy.yml
-  /admin/policy-authority/revoke-security-policy:
-    $ref: docs/admin/policy-authority/revoke-security-policy.yml
-  /admin/policy-authority/create-apt:
-    $ref: docs/admin/policy-authority/create-apt.yml
-  /admin/policy-authority/set-resources:
-    $ref: docs/admin/policy-authority/set-resources.yml
-  /admin/policy-authority/delete-domain:
-    $ref: docs/admin/policy-authority/delete-domain.yml
-  /admin/policy-authority/delete-access-policy:
-    $ref: docs/admin/policy-authority/delete-access-policy.yml
-  /admin/policy-authority/delete-security-policy:
-    $ref: docs/admin/policy-authority/delete-security-policy.yml
-  /admin/policy-authority/delete-apt:
-    $ref: docs/admin/policy-authority/delete-apt.yml
-  /registry/get-registry-values:
-    $ref: docs/registry/get-registry-values.yml
-  /registry/get-services:
-    $ref: docs/registry/get-services.yml
-  /registry/create-registry-classification:
-    $ref: docs/registry/create-registry-classification.yml
-  /registry/update-registry-classification:
-    $ref: docs/registry/update-registry-classification.yml
-  /registry/delete-registry-classification:
-    $ref: docs/registry/delete-registry-classification.yml
-  /registry/create-registry-value:
-    $ref: docs/registry/create-registry-value.yml
-  /registry/update-registry-value:
-    $ref: docs/registry/update-registry-value.yml
-  /registry/delete-registry-value:
-    $ref: docs/registry/delete-registry-value.yml
-  /registry/register-service:
-    $ref: docs/registry/register-service.yml
-  /admin/subject-authority/get-users:
-    $ref: docs/admin/subject-authority/get-users.yml
-  /admin/subject-authority/invite-user:
-    $ref: docs/admin/subject-authority/invite-user.yml
-  /admin/subject-authority/finalize-user:
-    $ref: docs/admin/subject-authority/finalize-user.yml
-  /admin/subject-authority/create-user-group:
-    $ref: docs/admin/subject-authority/create-user-group.yml
-  /admin/subject-authority/update-user:
-    $ref: docs/admin/subject-authority/update-user.yml
-  /admin/subject-authority/delete-user:
-    $ref: docs/admin/subject-authority/delete-user.yml
-  /admin/subject-authority/set-apts:
-    $ref: docs/admin/subject-authority/set-apts.yml
-  /admin/subject-authority/revoke-apt:
-    $ref: docs/admin/subject-authority/revoke-apt.yml
+  /auth:
+    $ref: docs/auth.yml
+  /hbs-samples:
+    $ref: docs/hbs-samples.yml
+  /notification:
+    $ref: docs/notification.yml
+  /admin/object-authority:
+    $ref: docs/admin/object-authority.yml
+  /otp:
+    $ref: docs/otp.yml
+  /admin/policy-authority:
+    $ref: docs/admin/policy-authority.yml
+  /registry:
+    $ref: docs/registry.yml
+  /admin/subject-authority:
+    $ref: docs/admin/subject-authority.yml

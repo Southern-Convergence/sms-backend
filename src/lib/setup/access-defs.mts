@@ -21,7 +21,7 @@ export default async()=> {
     const temp:any = Object.assign({type : "access"}, engine);
     delete temp.requisites;
     delete temp.logic;
-    
+
     return temp;
   });
 
@@ -31,17 +31,15 @@ export default async()=> {
   const POLICY_MAP = Object.fromEntries(Object.entries(policies_result?.insertedIds).map(([index, oid])=> [policies[index].name, oid]))
   /* Resolve domain dependencies */
   let resolved_domains = await Promise.all(domains.map(async(v : {[key : string] : any})=> {
-    const { name, icon, access_policies, security_policies, resources } = v;
+    const { name, icon, access_policies, security_policies } = v;
     
-    const { private_key, public_key } = await create_key_pair();
+    const { private_key } = await create_key_pair();
 
     return {
       name, key : private_key, icon,
-      public_key,
       access_policies   : access_policies.map((a : string)=> POLICY_MAP[a]),
       active : true,
-      security_policies : security_policies.map((a : string)=> POLICY_MAP[a]),
-      resources
+      security_policies : security_policies.map((a : string)=> POLICY_MAP[a])
     };
   }));
 

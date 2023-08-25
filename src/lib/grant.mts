@@ -18,10 +18,14 @@ export default class Grant{
   static #policies  : { [policy_id : string] : Policy } = {};
   static #apts      : { [apt_id : string] : MappedAccessPolicy } = {};
   static #domains   : { [domain_id : string] : Domain } = {};
-  static #resources : { [resource_id : string] : Resource } = {};
   static #services  : { [service_id : string] : any } = {};
   static updated    : boolean = false;
-
+  
+  /* Name to ID Object Mappings */
+  static #domain_map    : { [domain_name : string] : string } = {};
+  static #resources_map : { [resource_id : string] : Resource } = {};
+  static #service_map : { [resource_id : string] : any } = {};
+  
   /* Name to ID Mappings */
   static #rest_resources : {[resource_name : string] : ObjectId} = {};
   static #ws_resources   : {[resource_name : string] : ObjectId} = {};
@@ -30,26 +34,41 @@ export default class Grant{
   static #pe_map : PolicyDeclaration = {};
 
   //Executed at runtime
-  static build_definitions(policies : Policy[] ,apts : AccessPolicy[], domains : Domain[], resources : Resource[]){
-    this.#policies = to_dict(policies);
-    this.#domains  = to_dict(domains);
+  static build_definitions(policies : Policy[] ,apts : AccessPolicy[], domains : Domain[], resources : Resource[], services : any[]){
+    this.#policies    = to_dict(policies);
+    this.#domains     = to_dict(domains);
+    this.#services    = {};
+    this.#domain_map  = Object.fromEntries(domains.map((v)=> [v.name, v._id]));
+    this.#service_map = Object.fromEntries(services.map((v)=> [v.name, v._id]));
+    
+    services.forEach((v)=>{
+      const d = v.domain_id.toString();
+      if(!this.#services[d])this.#services[d] = {};
+      if(!this.#services[d][v._id])this.#services[d][v._id] = {...v, paths : []};
+    });
+
     resources.forEach((v)=>{
-      this.#resources[v._id.toString()] = v;
+      this.#resources_map[v._id.toString()] = v;
       if(v.type === "endpoint"){
         /* @ts-ignore not optimal but meh */
         const e:Endpoint = v;
         switch(e.protocol){
-          case "REST": this.#rest_resources[e.ref] = e._id;break;
-          case "WS"  : this.#ws_resources[e.ref] = e._id;break;
+          case "REST" : {
+            this.#rest_resources[e.ref] = e._id;
+            const spec = {sfr_spec : e, oas_spec : e.oas_spec};
+            delete spec.sfr_spec.oas_spec;
+            this.#services[e.domain_id][e.service_id].paths.push(spec);
+          }break;
+          case "WS"   : this.#ws_resources[e.ref] = e._id;break;
         }
       }
     });
-
+    
     this.#apts = to_dict(apts.map((v)=> ({
       ...v,
-      resources : Object.fromEntries(v.resources.map((r)=> [r.toString(), this.#resources[r.toString()]]))
+      resources : Object.fromEntries(v.resources.map((r)=> [r.toString(), this.#resources_map[r.toString()]]))
     })));
-
+    
     Grant.set_state(true);
   }
 
@@ -71,11 +90,11 @@ export default class Grant{
     const result = this.#rest_resources[ref];
     if(!result)throw new UACException(UACExceptionCode["PIP-001"]);
 
-    return this.#resources[result.toString()];
+    return this.#resources_map[result.toString()];
   }
 
   static get_attr(_id : string, attr_name : string, mandatory : boolean){
-    const resource = this.#resources[_id];
+    const resource = this.#resources_map[_id];
     if(!resource && mandatory)throw new UACException(UACExceptionCode["PIP-001"], _id);
 
     /* @ts-ignore */
@@ -131,12 +150,17 @@ export default class Grant{
     return resource;
   }
 
-  static register_service(domain : string, service_id : string, service_details : any){
-    if(this.#services[service_id])throw new Error("Failed to register service, service already exists");
-    logger.info(`Successfully registered ${service_id} into Service Registry under ${domain} domain.`);
-    
+  static register_service(domain : string, service : string, service_details : any){
+    const sid = this.#service_map[service];
+    logger.info(`Successfully registered ${service} into Service Registry under ${domain} domain.`);
     if(!this.#services[domain])this.#services[domain] = {};
-    this.#services[domain][service_id] = service_details;
+    if(this.#services[domain][sid]){
+      service_details = {
+        ...service_details,
+        ...this.#services[domain][sid]
+      }
+    }
+    this.#services[domain][sid] = service_details;
   }
 
   static get_service(domain : string, service_id : string){
@@ -146,8 +170,13 @@ export default class Grant{
   }
 
   static get_services(domain : string){
-    console.log(this.#services)
-    return this.#services[domain];
+    const resolved_domain = this.#domain_map[domain];
+    const temp = this.#services[resolved_domain.toString()];
+    return temp;
+  }
+
+  static get_domain_by_name(domain : string){
+    return this.#domain_map[domain];
   }
 }
 

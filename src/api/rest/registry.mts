@@ -4,6 +4,8 @@ import Joi from "joi";
 import { ObjectId } from "mongodb";
 import { REST } from "sfr";
 
+import grant_def from "@setup/grant-def.mjs";
+
 export default REST({
   cfg : {
     public : true
@@ -44,18 +46,31 @@ export default REST({
       registry_id: object_id,
     },
 
-    "register-service" : {
+    "register-backend" : {
       domain    : Joi.string().required(),
       openapi   : Joi.string().required(),
       info : {
-        title : Joi.string().required(),
+        title       : Joi.string().required(),
         description : Joi.string().allow(""),
-        version : Joi.string()
+        version     : Joi.string()
       },
 
       schemes : Joi.array().required(),
       paths   : Joi.object(),
-      PORT    : Joi.number().required()
+      port    : Joi.number().required()
+    },
+
+    "register-frontend" : {
+      domain    : Joi.string().required(),
+      framework : Joi.string().required(),
+      version   : Joi.string().required(),
+      info      : {
+        title       : Joi.string().required(),
+        description : Joi.string().allow(""),
+        version     : Joi.string()
+      },
+
+      pages : Joi.array().required()
     },
 
     "get-services" : {
@@ -123,16 +138,33 @@ export default REST({
           .catch((error) => res.status(400).json({ error }));
       },
 
-      "register-service"(req, res){
-        try{
-          const body   = Object.assign({}, req.body);
-          const domain = req.body.domain;
-          delete body.domain
-          Grant.register_service(domain, req.body.info.title, body);
-          res.json({data : "Successfully registered service."});
-        }catch(error){
-          res.json({error : "Failed to register service."});
-        }
+      async "register-backend"(req, res){
+        const body = Object.assign({}, req.body);
+        const domain = body.domain;
+        console.log(body.paths)
+
+        this.register_backend_service(body)
+        .then((_id) => {
+          const domain_id = Grant.get_domain_by_name(domain);
+          delete body.paths;
+          delete body.domain;
+          grant_def();
+          res.json({ data: "Successfully registered service." });
+        })
+        .catch((error) => res.status(400).json({ error }));
+      },
+
+      "register-frontend"(req, res){
+        this.register_frontend_service(req.body)
+        .then((_id)=> {
+          const domain_id = Grant.get_domain_by_name(req.body.domain);
+          const temp = req.body;
+          delete temp.pages;
+          delete temp.domain;
+          Grant.register_service(domain_id, req.body.info.title, {...temp, type : "frontend", _id});
+          res.json({data : "Successfully registered frontend service."})
+        })
+        .catch((error)=> res.status(400).json({error}))
       }
     },
   },
@@ -210,5 +242,71 @@ export default REST({
           "Failed to delete Registry Value, Registry Value does not exist."
         );
     },
+
+    async register_frontend_service(service){
+      const { domain, framework, version, info, pages } = service;
+
+      const session = this.instance.startSession();
+
+      return session.withTransaction(async()=>{
+        let domain_result = await this.db.collection("domains").findOne({name : domain});
+        if(!domain_result)return Promise.reject("Failed to register service, no such domain.");
+
+        let service = await this.db.collection("services").findOne({name : info.title});
+        let upsert_op = await this.db.collection("services").updateOne(
+          { name : info.title },
+          { $set : {name : info.title, domain_id : domain_result._id, framework, version, info, type : "frontend"} },
+          { upsert : true }
+        );
+
+        if(upsert_op.upsertedId)service = {_id : upsert_op.upsertedId};
+
+        pages.forEach((page : any)=>{
+          this.db.collection("resources").updateOne(
+            {name : page.name},
+            {
+              $set : {
+                ...page,
+                type       : "page",
+                resources  : [],
+                service_id : service?._id,
+                domain_id  : domain_result?._id
+              }
+            },
+            {upsert : true}
+          );
+        });
+
+        return service?._id;
+      }).finally(()=> session.endSession());
+    },
+    async register_backend_service(service){
+      const { domain, openapi, info, schemes, paths, port } = service;
+      
+      const session = this.instance.startSession();
+
+      return session.withTransaction(async()=> {
+        let domain_result = await this.db.collection("domains").findOne({name : domain})
+        if(!domain_result)return Promise.reject("Failed to register service, no such domain.");
+
+        let service = await this.db.collection("services").findOne({name : info.title});
+        let upsert_op = await this.db.collection("services").updateOne(
+          { name : info.title },
+          { $set : {name : info.title, domain_id : domain_result?._id, openapi, schemes, info, port, type : "backend"} },
+          { upsert : true }
+        );
+
+        if(upsert_op.upsertedId)service = {_id : upsert_op.upsertedId};
+        
+        Object.values(paths).forEach((methods : any)=> {
+          Object.values(methods).forEach((specs)=> {
+            const {oas_spec, sfr_spec} = specs as any;
+            this.db.collection("resources")?.updateOne({ ref : sfr_spec.ref }, { $set : {...sfr_spec, domain_id : domain_result?._id, service_id : service?._id, oas_spec} }, { upsert : true});
+          });
+        });
+
+        return service?._id;
+      }).finally(()=> session.endSession());
+    }
   },
 });

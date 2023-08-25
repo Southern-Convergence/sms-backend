@@ -79,18 +79,20 @@ declare const enum UserStatus {
   Invited    = "invited",
 }
 declare const enum UserType{
-  Internal = "internal",
-  NPE      = "npe"
+  Human = "human",
+  NPE   = "npe"
 }
 
 
 /* AUAC Resource Types */
 declare type Resource = {
-  _id       : ObjectId;
-  name      : string;
-  type      : string;
-  desc      : string;
-  resources : Resource[];
+  _id        : ObjectId;
+  name       : string;
+  type       : string;
+  desc       : string;
+  domain_id  : string;
+  service_id : string; 
+  resources  : Resource[];
 };
 declare interface Subdomain extends Resource{};
 declare interface Page extends Resource {
@@ -102,6 +104,8 @@ declare interface Endpoint extends Resource{
   desc     : string;
   sfr_cfg  : SFRConfig;
   protocol : Protocol;
+  method   : string;
+  oas_spec : any;
 }
 declare interface File extends Resource {
   meta : object;
@@ -125,6 +129,28 @@ declare type Policy = {
   type : ("access" | "security"),
   desc : string;
   icon : string;
+}
+
+/* AUAC Service Types */
+declare type Service = {
+  name     : string;
+  domain   : string;
+  type     : ("frontend" | "backend");
+  internal : boolean;
+}
+
+declare interface FrontendService extends Service {
+  framework : string;
+  info : {
+    title : string;
+    description : string;
+    version : string;
+  }
+  version : string;
+}
+
+declare interface BackendService extends Service {
+  port : string;
 }
 
 /* Exceptions */

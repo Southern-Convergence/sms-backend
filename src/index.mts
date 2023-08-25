@@ -19,6 +19,7 @@ import Database from "@lib/database.mjs";
 import JobKomissar from "@lib/jobkomissar.mjs";
 import { PostOffice } from "@lib/mailman.mjs";
 import setup_stages from "@setup/stages.mjs";
+import grant_def from "@setup/grant-def.mjs";
 
 import { ALLOWED_ORIGIN, CONNECTION_STRING, DATABASE, NODE_ENV, PUBLIC_VAPID_KEY, PRIVATE_VAPID_KEY, PUBLIC_FCM_KEY, PRIVATE_FCM_KEY, } from "@cfg/index.mjs";
 
@@ -60,7 +61,6 @@ app.use(
 
 app.use((_, res, next)=> {
   res.setHeader("rid", v4());
-  console.log(_.body)
   next();
 })
 
@@ -182,6 +182,16 @@ Database.connect().then(async (db) => {
   JobKomissar.init(io, db);
   await pe_bundler();
   await setup_stages();
-
   await api_bundler(app);
+  await grant_def();
 });
+
+/*
+  Breakdown:
+
+  PE Bundler   : Bundle up Policy Engines and their logic blocks for middleware-based evals.
+  API Bundler  : Bundle up SFRs into valid express middlewares, declare as resources and infer OAS specs.
+  Setup Stages : Standardized setup script/s.
+  
+  Dependencies are handled by cleverly arranging and awaiting script executions for readability purposes.
+*/

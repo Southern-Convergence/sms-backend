@@ -11,15 +11,16 @@ import { PostOffice } from "@lib/mailman.mjs";
 import { facilities } from "@lib/logger.mjs";
 import spaces from "@lib/spaces.mjs";
 import j2s from "joi-to-swagger";
-import { PORT, DOMAIN } from "@cfg/index.mjs";
-import Grant from "@lib/grant.mjs";
+import Database from "@lib/database.mjs";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const rest_dir = path.join(directory, "../api/rest");
 const ws_dir = path.join(directory, "../api/ws");
 const docs_dir = path.join(directory, "../api/docs");
 
+
 const openapi_yaml = path.join(directory, "../../openapi.yml");
+const { DOMAIN, PORT } = process.env;
 const openapi_docs = path.join(directory, "../static/docs");
 export default async (app: Express) => {
   //Reset from last build phase
@@ -44,6 +45,38 @@ export default async (app: Express) => {
   facilities.verbose(`Detected ${Object.keys(ws).length} WS SFRs.`);
   facilities.verbose(`Detected ${Object.keys(docs).length} OpenAPI Complementary Documents.`);
 
+  //Build domain id for domain resolution required below.
+  const domains = await Database.collection("domains")?.find({}).toArray();
+  
+  /* @ts-ignore */
+  const domain_map = Object.fromEntries(domains?.map((v)=> [v.name, v._id]));
+  
+  const oas_spec = await fs.readFile(openapi_yaml).then((d)=>{
+    const _result:any = yaml.load(d.toString());
+    delete _result.paths;
+
+    return _result;
+  });
+
+  if(!oas_spec)return Promise.reject("Failed to build API definitions, OpenAPI Spec Document is missing.");
+
+  
+  //Register service first...
+  let service = await Database.collection("services")?.findOne({name : oas_spec.info.title, type : "backend"});
+  //Unhandled update call
+  const service_upsert = await Database.collection("services")?.updateOne({name : oas_spec.info.title, type : "backend"}, {
+    $set : {
+      name     : oas_spec.info.title,
+      type     : "backend",
+      internal : true,
+      port     : PORT,
+      domain_id: domain_map[DOMAIN!],
+      ...oas_spec
+    }
+  }, { upsert : true });
+
+  if(service_upsert?.upsertedId)service = {_id : service_upsert?.upsertedId};
+
   const REST: RESTNamespaceDeclaration = rest;
   const oas_definitions: any = [];
   Object.entries(REST).forEach(([namespace, module]) => {
@@ -53,11 +86,10 @@ export default async (app: Express) => {
     const base_dir = cfg.base_dir ? `/${cfg.base_dir}` : "";
     const is_public = Boolean(cfg.public);
 
-    Object.entries(handlers).forEach(([method, endpoints]) => {
-      for (const [k, v] of Object.entries(endpoints)) {
+    Object.entries(handlers).forEach(([method, handlermap]) => {
+      for (const [k, v] of Object.entries(handlermap).filter((([k])=> validators[k]))){
         const validator = validators[k];
-        const validator_type =
-          typeof validator === "function" ? "multer" : "joi";
+        const validator_type = typeof validator === "function" ? "multer" : "joi";
 
         const dir = `${base_dir}/${namespace}/${k}`;
         if (!validator) continue;
@@ -84,12 +116,7 @@ export default async (app: Express) => {
             Lookup against the docs dictionary for matching
             OpenAPI path declaration
           */
-          const temp = build_oas_definitions(
-            [namespace, method, k, dir],
-            validator,
-            cfg
-          );
-          oas_definitions.push(temp);
+          build_sfr_definitions([namespace, method, k, dir], validator, cfg);
 
           app[method.toLowerCase() as RESTRequestType](
             dir,
@@ -140,27 +167,26 @@ export default async (app: Express) => {
             spaces,
           })
         );
+
+        
       }
     });
   });
-
   fs.readFile(openapi_yaml).then(async(d) => {
     let temp: any = yaml.load(d.toString());
     const refs = await Promise.all(
       oas_definitions.map(async(v: any) => {
         const paths = v[0].replace("/", "").split("/");
 
-        const dir = paths.toString().replaceAll(",", "/");
-        
+        const dir = paths.slice(0, paths.length - 1).toString().replaceAll(",", "/");
         const oas_path = path.join(openapi_docs, dir);
         const filename = paths.pop();
-        
         await fs.mkdir(oas_path, { recursive: true });
         await fs.writeFile(
           path.join(oas_path, `${filename}.yml`),
           yaml.dump(v[1]),
           { flag: "w+" }
-        );
+        )
 
         return [`/${dir}`, {
           $ref : `docs/${dir}.yml`,
@@ -169,31 +195,25 @@ export default async (app: Express) => {
       })
     );
     
+
     temp.paths = Object.fromEntries(refs.map((v)=> [v[0], {$ref : v[1].$ref}]));
     
     //Write both to project root and to static docs for service discovery API.
     const _yaml = yaml.dump(temp);
-    
     Promise.all([
       fs.writeFile(openapi_yaml, _yaml, { flag : "w+" }),
       fs.writeFile(path.join(openapi_docs, `index.yml`), _yaml, { flag : "w+" })
     ])
     .then(()=> {
       temp.paths = Object.fromEntries(refs.map((v)=> [v[0], v[1].obj]));
-      
-      Grant.register_service(DOMAIN!, temp.info.title, {
-        ...temp,
-        PORT
-        //Idk, still leaning on using etcd, but it may take a while before I can use it proficiently
-      });
-    })
+    }).catch(console.log);
   });
 
-  function build_oas_definitions(doc_address: string[], validator: any, cfg : SFRConfig) {
+  function build_sfr_definitions(doc_address: string[], validator: any, cfg : SFRConfig) {
     const [namespace, method, endpoint, dir] = doc_address;
     const match = doc_lookup(namespace, method, endpoint);
 
-    let operation_obj = {
+    let oas_obj = {
       tags: [`sfr-router:${namespace}`, `sfr-stag:${cfg.service || "unspecified"}`],
       summary: "",
       
@@ -223,8 +243,23 @@ export default async (app: Express) => {
       }
     } as any; //Serves as the default settings for operation declarations.
 
+    const sfr_obj = {
+      name : `[${method.toUpperCase()}]${endpoint}`,
+      sfr_cfg : cfg,
+      desc : "",
+      ref  : `${cfg.base_dir ? `${cfg.base_dir}/` : ''}${namespace}/${endpoint}`,
+
+      protocol  : "REST",
+      method,
+      domain_id : cfg.domain ? domain_map[cfg.domain] : domain_map[DOMAIN!],
+      service_id : service?._id,
+      type      : "endpoint",
+
+      oas_spec : oas_obj
+    };
+
     if(cfg.public){
-      operation_obj.responses["401"] = {
+      oas_obj.responses["401"] = {
         description: "UAC Exception",
         content: {
           "application/json": {
@@ -236,17 +271,16 @@ export default async (app: Express) => {
     }
 
     if (match) {
-      if (match.tags) match.tags = operation_obj.tags.concat(match.tags);
-      operation_obj = { ...operation_obj, ...match };
+      if (match.tags) match.tags = oas_obj.tags.concat(match.tags);
+      oas_obj = { ...oas_obj, ...match };
     }
 
-    const { swagger } = j2s(validator);
-
-    //If method is GET, the converted validator is used as the "parameters" for the current operation_obj,
+    //If method is GET, the converted validator is used as the "parameters" for the current oas_obj,
     //Otherwise, it is used as the "requestBody"
-    operation_obj[method === "GET" ? "parameters" : "requestBody"] = swagger;
+    oas_obj[method === "GET" ? "parameters" : "requestBody"] = j2s(validator).swagger;
 
-    return [dir, { [`${method}`.toLowerCase()]: operation_obj }];
+    oas_definitions.push([dir, { [`${method}`.toLowerCase()]: oas_obj }]);
+    Database.collection("resources")?.updateOne({ ref : sfr_obj.ref }, { $set : sfr_obj }, { upsert : true });
   }
 
   function doc_lookup(namespace: string, method: string, endpoint: string) {

@@ -114,6 +114,7 @@ export default REST({
       return this.db.collection("subscriptions").updateOne({user_id : new ObjectId(user_id)}, {
         $set : {
           permission, sub : subscription,
+          namespaces : { }
         }
       }, { upsert : true });
     }

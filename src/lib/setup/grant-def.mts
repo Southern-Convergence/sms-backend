@@ -5,7 +5,8 @@ export default async()=> {
   const auac_collections = [
     "domains",
     "policies",
-    "resources"
+    "services",
+    "resources",
   ];
 
   const apts = await Database.collection("ap-templates")?.aggregate([
@@ -24,8 +25,8 @@ export default async()=> {
     }
   ]).toArray();
 
-  const [domains, policies, resources] = await Promise.all(auac_collections.map((v)=> Database.collection(v)?.find().toArray()));
+  const [domains, policies, services, resources] = await Promise.all(auac_collections.map((v)=> Database.collection(v)?.find().toArray()));
 
   /* @ts-ignore */
-  Grant.build_definitions(policies, apts, domains, resources);
+  Grant.build_definitions(policies, apts, domains, resources, services);
 }

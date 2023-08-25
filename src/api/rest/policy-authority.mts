@@ -259,6 +259,10 @@ export default REST({
         .collection("domains")
         .aggregate([
           {
+            '$project': {
+              'key': 0
+            }
+          }, {
             '$lookup': {
               'from': 'policies', 
               'localField': 'access_policies', 
@@ -346,7 +350,7 @@ export default REST({
         .toArray();
     },
     get_domain(domain_id){
-      return this.db.collection("domains").findOne({_id : new ObjectId(domain_id)});
+      return this.db.collection("domains").findOne({_id : new ObjectId(domain_id)}, { projection : {key : 0}});
     },
     async create_domain(domain){
       const temp = await this.db.collection("domains").findOne({name : domain.name});

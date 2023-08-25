@@ -15,8 +15,11 @@ export default async()=> {
   Database.collection("subscriptions")?.createIndex({ user_id : 1 });
 
   Database.collection("resources")?.createIndex({domain_id : 1});
+  Database.collection("resources")?.createIndex({ref : "text"});
   Database.collection("ap-templates")?.createIndex({domain_id : 1});
-
+  Database.collection("services")?.createIndex({name : "text"}, {unique : true});
+  
   Database.collection("users")?.createIndex({domain_id : 1});
+  Database.collection("users")?.createIndex({username : "text"});
   Database.collection("users")?.createIndex({internal  : 1}); //Avoid whole collscans on internal user lookup
 }
