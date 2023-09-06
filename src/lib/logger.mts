@@ -1,5 +1,6 @@
 import winston from "winston";
 import "winston-mongodb";
+import "morgan";
 
 import {ObjectTransport, CachedTransport} from "@utils/custom-transports.mjs";
 
@@ -49,7 +50,6 @@ const http_console_transport = new winston.transports.Console({
 })
 
 const mongodb_transport = new ObjectTransport({ level : PRODUCTION_LOG_LEVEL });
-const cached_transports = [ IS_DEV ? console_transport : new CachedTransport({ level : "verbose"})];
 
 const transports = [ IS_DEV ? console_transport : mongodb_transport ];
 const http_transports = [ IS_DEV ? http_console_transport : mongodb_transport];
@@ -71,7 +71,7 @@ export const setup = winston.createLogger({
 
 export const uac = winston.createLogger({
   defaultMeta : { type : "UAC" },
-  transports : cached_transports
+  transports : http_transports
 });
 
 export const fileguard = winston.createLogger({

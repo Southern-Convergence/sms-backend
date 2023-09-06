@@ -21,7 +21,6 @@ export default PolicyEngine({
       "Allow" decision is solely based on if the resource in question is a member of the set of resource grants to a role.
     */
       const { access, _id } = this.attrs;
-      
       const roles = access.map((v : string)=> Grant.get_apt_details(v)[0].name);
       if(roles.includes("Ultravisor"))return;
 

@@ -16,13 +16,6 @@ export default REST({
     "get-domain": {
       domain_id: object_id,
     },
-    "create-domain": {
-      name: Joi.string().required(),
-      secret_key: Joi.string(),
-      icon: Joi.string(),
-      access_policy: Joi.array().required(),
-      security_policy: Joi.array().required(),
-    },
     "update-domain": {
       domain_id: object_id,
       domain: {
@@ -137,12 +130,6 @@ export default REST({
     },
 
     POST : {
-      "create-domain"(req, res){
-        this.create_domain(req.body)
-        .then(()=> res.json({data : "Successfully created domain."}))
-        .catch((error)=> res.status(400).json({error}));
-        Grant.set_state(false);
-      },
       "update-domain"(req, res){
         this.update_domain(req.body.domain_id, req.body.domain)
         .then(()=> res.json({data : "Successfully updated domain."}))

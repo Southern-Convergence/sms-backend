@@ -3,6 +3,7 @@ import UACException from "@utils/uac-exceptions.mjs";
 import grant_def from "@setup/grant-def.mjs";
 
 import logger, { setup } from "@lib/logger.mjs";
+import e from "express";
 
 export default class Grant{
   //Steps to find happiness.
@@ -44,11 +45,13 @@ export default class Grant{
     services.forEach((v)=>{
       const d = v.domain_id.toString();
       if(!this.#services[d])this.#services[d] = {};
-      if(!this.#services[d][v._id])this.#services[d][v._id] = {...v, paths : []};
+      if(!this.#services[d][v._id])this.#services[d][v._id] = {...v, paths : [], pages : []};
     });
 
     resources.forEach((v)=>{
       this.#resources_map[v._id.toString()] = v;
+      const target_service = this.#services[v.domain_id][v.service_id];
+
       if(v.type === "endpoint"){
         /* @ts-ignore not optimal but meh */
         const e:Endpoint = v;
@@ -57,10 +60,13 @@ export default class Grant{
             this.#rest_resources[e.ref] = e._id;
             const spec = {sfr_spec : e, oas_spec : e.oas_spec};
             delete spec.sfr_spec.oas_spec;
-            this.#services[e.domain_id][e.service_id].paths.push(spec);
+            target_service.paths.push(spec);
           }break;
           case "WS"   : this.#ws_resources[e.ref] = e._id;break;
         }
+      }
+
+      if(v.type === "page"){
       }
     });
     
@@ -118,7 +124,7 @@ export default class Grant{
 
   static get_pages(apt_id : string){
     if(!this.updated)throw new UACException(UACExceptionCode["PDP-002"]);
-
+    console.log(this.#apts)
     const apt = this.#apts[apt_id];
     if(!apt)throw new UACException(UACExceptionCode["PAP-003"], apt_id);
 
@@ -177,6 +183,10 @@ export default class Grant{
 
   static get_domain_by_name(domain : string){
     return this.#domain_map[domain];
+  }
+
+  static get_service_by_name(service : string){
+    return this.#service_map[service];
   }
 }
 

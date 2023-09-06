@@ -119,12 +119,12 @@ app.use(
 /* Morgan Middleware */
 //Used to build object parsed from morgan using split(" ") fn.
 const mappings = ["req_ip", "method", "message", "status", "content_length", "agent", "response_time", "rid"];
-app.use(morgan(":remote-addr :method :url :status :res[content-length] :user-agent :total-time :res[rid]", {
+app.use(morgan(":remote-addr , :method , :url , :status , :res[content-length] , :user-agent , :total-time , :res[rid]", {
   stream : {
     write(string){
-      const temp = string.split(" ");
+      const temp = string.split(" , ");
       const obj:any = Object.fromEntries(mappings.map((v, i)=> [v, temp[i].trimEnd()]));
-
+      
       obj["response_time"]  = Number(obj["response_time"]);
       obj["content_length"] = Number(obj["content_length"]);
 
@@ -158,11 +158,12 @@ app.use((err: Error, _: Request, res: Response, next: NextFunction) => {
   }
   
   if (err instanceof Error){
-    //If it is an uac exception
-    if(err.name === "UAC Exception"){
+    //If it is an auac exception
+    if(err.name === "AUAC Exception"){
       const rid = res.getHeader("rid");
       auac_logger.verbose({message : "APT Decision: Deny", rid})
       auac_logger.verbose({message : `Details: ${err.message}`, end : true, allow : false, rid});
+      return res.status(403).json(temp);
     }
 
     return res.status(400).json(temp);

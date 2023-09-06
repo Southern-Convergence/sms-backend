@@ -220,7 +220,7 @@ export default REST({
       "get-page-resources"(req, res) {
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "No Session Found." });
-        const pages = Grant.get_pages(user.access[0].toString());
+        const pages = user.access.flatMap((apt)=> Grant.get_pages(apt.toString()));
 
         res.json({data : pages});
       },

@@ -12,6 +12,7 @@ import { facilities } from "@lib/logger.mjs";
 import spaces from "@lib/spaces.mjs";
 import j2s from "joi-to-swagger";
 import Database from "@lib/database.mjs";
+import Joi from "joi";
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const rest_dir = path.join(directory, "../api/rest");
@@ -22,6 +23,7 @@ const docs_dir = path.join(directory, "../api/docs");
 const openapi_yaml = path.join(directory, "../../openapi.yml");
 const { DOMAIN, PORT } = process.env;
 const openapi_docs = path.join(directory, "../static/docs");
+const readme = path.join(directory, "../../README.md");
 export default async (app: Express) => {
   //Reset from last build phase
   await fs.rm(openapi_docs, { recursive: true, force: true });
@@ -35,10 +37,11 @@ export default async (app: Express) => {
     fs.readdir(docs_dir)
   ]);
 
-  const [rest, ws, docs] = await Promise.all([
+  const [rest, ws, docs, readme_content] = await Promise.all([
     get_stats(rest_paths, rest_dir).then((v) => assess_namespace(v, rest_dir)),
     get_stats(ws_paths, ws_dir).then((v) => assess_namespace(v, ws_dir)),
     get_stats(docs_path, docs_dir).then((v) => assess_namespace(v, docs_dir)),
+    fs.readFile(readme).then((v)=> v.toString())
   ]);
 
   facilities.verbose(`Detected ${Object.keys(rest).length} REST SFRs.`);
@@ -66,11 +69,12 @@ export default async (app: Express) => {
   //Unhandled update call
   const service_upsert = await Database.collection("services")?.updateOne({name : oas_spec.info.title, type : "backend"}, {
     $set : {
-      name     : oas_spec.info.title,
-      type     : "backend",
-      internal : true,
-      port     : PORT,
-      domain_id: domain_map[DOMAIN!],
+      name        : oas_spec.info.title,
+      type        : "backend",
+      internal    : true,
+      port        : PORT,
+      domain_id   : domain_map[DOMAIN!],
+      description : readme_content,
       ...oas_spec
     }
   }, { upsert : true });
@@ -93,7 +97,7 @@ export default async (app: Express) => {
 
         const dir = `${base_dir}/${namespace}/${k}`;
         if (!validator) continue;
-
+        build_sfr_definitions([namespace, method, k, dir], validator, cfg);
         //Conditionally insert middlewares based on validator type.
         if (validator_type === "multer") {
           app[method.toLowerCase() as RESTRequestType](
@@ -116,7 +120,6 @@ export default async (app: Express) => {
             Lookup against the docs dictionary for matching
             OpenAPI path declaration
           */
-          build_sfr_definitions([namespace, method, k, dir], validator, cfg);
 
           app[method.toLowerCase() as RESTRequestType](
             dir,
@@ -206,12 +209,13 @@ export default async (app: Express) => {
     ])
     .then(()=> {
       temp.paths = Object.fromEntries(refs.map((v)=> [v[0], v[1].obj]));
-    }).catch(console.log);
+    })
   });
 
   function build_sfr_definitions(doc_address: string[], validator: any, cfg : SFRConfig) {
     const [namespace, method, endpoint, dir] = doc_address;
     const match = doc_lookup(namespace, method, endpoint);
+    const validator_type = typeof validator === "function" ? "multer" : "joi";
 
     let oas_obj = {
       tags: [`sfr-router:${namespace}`, `sfr-stag:${cfg.service || "unspecified"}`],
@@ -277,10 +281,37 @@ export default async (app: Express) => {
 
     //If method is GET, the converted validator is used as the "parameters" for the current oas_obj,
     //Otherwise, it is used as the "requestBody"
-    oas_obj[method === "GET" ? "parameters" : "requestBody"] = j2s(validator).swagger;
+
+    if(validator_type === "multer"){
+      oas_obj.requestBody = {};
+      /*
+      oas_obj.requestBody = {
+        post : {
+          requestBody : {
+            required : true,
+            content : {
+              "multipart/form-data" : {
+                schema : {
+                  type : Joi.object()
+                },
+                additionalProperties : {
+                  type : Joi.string()
+                }
+              }
+            }
+          },
+          responses : {
+            
+          }
+        }
+      }
+      */
+    }else{
+      oas_obj[method === "GET" ? "parameters" : "requestBody"] = j2s(validator).swagger;
+    }
 
     oas_definitions.push([dir, { [`${method}`.toLowerCase()]: oas_obj }]);
-    Database.collection("resources")?.updateOne({ ref : sfr_obj.ref }, { $set : sfr_obj }, { upsert : true });
+    Database.collection("resources")?.updateOne({ ref : sfr_obj.ref }, { $set : sfr_obj }, { upsert : true })
   }
 
   function doc_lookup(namespace: string, method: string, endpoint: string) {

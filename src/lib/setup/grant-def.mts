@@ -26,7 +26,6 @@ export default async()=> {
   ]).toArray();
 
   const [domains, policies, services, resources] = await Promise.all(auac_collections.map((v)=> Database.collection(v)?.find().toArray()));
-
   /* @ts-ignore */
   Grant.build_definitions(policies, apts, domains, resources, services);
 }

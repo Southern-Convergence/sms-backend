@@ -28,3 +28,5 @@ paths:
     $ref: docs/registry.yml
   /admin/subject-authority:
     $ref: docs/admin/subject-authority.yml
+  /user-uploads:
+    $ref: docs/user-uploads.yml

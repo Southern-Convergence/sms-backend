@@ -70,11 +70,25 @@ export default REST({
         version     : Joi.string()
       },
 
-      pages : Joi.array().required()
+      pages : Joi.array().required(),
+      
+      port : Joi.string().required(),
+      cfg  : Joi.any()
     },
 
     "get-services" : {
       domain : Joi.string().required()
+    },
+
+
+    "get-service-by-name" : {
+      domain_id    : Joi.string().required(),
+      service_name : Joi.string().required()
+    },
+
+    "update-service-status" : {
+      ok : Joi.boolean().required(),
+      error : Joi.object()
     }
   },
 
@@ -89,6 +103,14 @@ export default REST({
       "get-services"(req, res){
         const { domain } = req.query;
         res.json({data : Grant.get_services(String(domain))});
+      },
+      "get-service-by-name"(req, res){
+        const { service_name, domain_id } = req.query;
+
+        const service = Grant.get_service_by_name(service_name as string);
+        if(!service)return res.status(403).json({error : "No such service."});
+        
+        res.json({data : Grant.get_service(domain_id as string, service)});
       }
     },
     POST: {
@@ -141,19 +163,17 @@ export default REST({
       async "register-backend"(req, res){
         const body = Object.assign({}, req.body);
         const domain = body.domain;
-        console.log(body.paths)
 
         this.register_backend_service(body)
         .then((_id) => {
           const domain_id = Grant.get_domain_by_name(domain);
           delete body.paths;
           delete body.domain;
-          grant_def();
+          this.update_ultravisor_access();
           res.json({ data: "Successfully registered service." });
         })
         .catch((error) => res.status(400).json({ error }));
       },
-
       "register-frontend"(req, res){
         this.register_frontend_service(req.body)
         .then((_id)=> {
@@ -161,10 +181,17 @@ export default REST({
           const temp = req.body;
           delete temp.pages;
           delete temp.domain;
-          Grant.register_service(domain_id, req.body.info.title, {...temp, type : "frontend", _id});
+          this.update_ultravisor_access();
           res.json({data : "Successfully registered frontend service."})
         })
         .catch((error)=> res.status(400).json({error}))
+      },
+      "update-service-status"(req, res){
+        const { service, domain, ok } = req.body;
+
+        this.update_service_status(domain, service, ok)
+        .then(()=> res.json({data : "Successfully updated service registry of graceful exit."}))
+        .catch(()=> res.status(400).json({error : "Failed to update service registry."}));
       }
     },
   },
@@ -244,7 +271,7 @@ export default REST({
     },
 
     async register_frontend_service(service){
-      const { domain, framework, version, info, pages } = service;
+      const { domain, framework, version, info, pages, port, cfg } = service;
 
       const session = this.instance.startSession();
 
@@ -255,7 +282,7 @@ export default REST({
         let service = await this.db.collection("services").findOne({name : info.title});
         let upsert_op = await this.db.collection("services").updateOne(
           { name : info.title },
-          { $set : {name : info.title, domain_id : domain_result._id, framework, version, info, type : "frontend"} },
+          { $set : {name : info.title, domain_id : domain_result._id, framework, version, info, port, cfg, type : "frontend"} },
           { upsert : true }
         );
 
@@ -307,6 +334,31 @@ export default REST({
 
         return service?._id;
       }).finally(()=> session.endSession());
+    },
+
+    async update_service_status(domain, service, error){
+      const did = Grant.get_domain_by_name(domain);
+      const sid = Grant.get_service_by_name(service);
+
+      this.db.collection("services").updateOne(
+        { domain_id : did, service_id : sid },
+        { $set : { status : { ok : !Boolean(error), stamp : Date.now(), details : error},  } },
+      )
+
+    },
+
+    async update_ultravisor_access(){
+      const resources = await this.db.collection("resources").find({}, {projection : {_id : 1}}).toArray();
+      await this.db.collection("ap-templates").updateOne({name : "Ultravisor"}, {
+        $addToSet : {
+          resources : {
+            $each : resources.map((v)=> v._id)
+          }
+        }
+      });
+
+      
+      grant_def();
     }
   },
 });

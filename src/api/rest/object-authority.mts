@@ -74,7 +74,7 @@ export default REST({
   handlers   : {
     GET : {
       "get-resources"(req, res) {
-        handle_res(this.get_resources(req.query.domain_id).catch(console.log), res);
+        handle_res(this.get_resources(req.query.domain_id), res);
       },
       "get-subdomains"(req, res) {
         handle_res(this.get_subdomains(req.query.domain_id), res);

@@ -1,4 +1,5 @@
-# STD Backend
+# UAC-ACM Authorization Service API
+
 > Standard Vanilla Express Server with a twist!
 
 It is an opinionated way of creating backend services, featuring automatically namespaced routers, dependency injection, fully typed interfaces and more.
@@ -11,7 +12,6 @@ This isn't merely a product of exploratory development though. Well it is.
 
 If you have any suggestions please open a PR as I am open to discussions.
 
-<hr />
 
 ### For Developers:
 

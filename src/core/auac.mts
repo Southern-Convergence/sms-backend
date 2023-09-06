@@ -45,7 +45,7 @@ export default ({ engine, deconflict = "sequence" }: UACConfig):RequestHandler =
     uac.verbose({message : `UAC - ACM Sequence Started`, rid});
     //Step 1: Get Resource
     const resource: any = Grant.get_rest_resource(req.path.replace("/", ""));
-    uac.verbose({ message : `Resolved Resource: ${resource.name}`, rid});
+    uac.verbose({ message : `Resolved Resource: ${resource.name}`, service_id : resource.service_id, domain_id : resource.domain_id, rid});
     //Step 1.1: Is it Publicly accessible?
     uac.verbose({ message : `Is Public Resource?: ${Boolean(resource.sfr_cfg.public)}`, end : true, allow : true, rid});
     if (resource.sfr_cfg.public){
