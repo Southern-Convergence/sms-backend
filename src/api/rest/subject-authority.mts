@@ -249,7 +249,7 @@ export default REST({
     },
 
     async get_user_groups(domain_id){
-      this.db.collection("user-groups").find({domain_id : new ObjectId(domain_id)}).toArray();
+      return this.db.collection("user-groups").find({domain_id : new ObjectId(domain_id)}).toArray();
     },
 
     async create_user_group(user_group){
