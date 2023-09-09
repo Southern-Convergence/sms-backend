@@ -49,6 +49,10 @@ export default REST({
       desc      : Joi.string().allow("")
     },
 
+    "get-user-groups" : {
+      domain_id : object_id
+    },
+
     "update-user" : {
       user_id : object_id,
       user    : Joi.object().required()
@@ -70,15 +74,14 @@ export default REST({
     }
   },
 
-  handlers   : {
+  handlers : {
     GET : {
       async "get-users"(req, res){
         handle_res(this.get_users(req.query.domain_id), res);
       },
 
-      async "get-users-by-group"(req, res){
-        const { domain_id } = req.query;
-        const user_groups = await this.get_user_groups(domain_id);
+      async "get-user-groups"(req, res){
+        handle_res(this.get_user_groups(req.query.domain_id), res);
       }
     },
     POST : {
@@ -246,8 +249,9 @@ export default REST({
     },
 
     async get_user_groups(domain_id){
-      this.db.collection("user-groups").find({domain_id : new ObjectId(domain_id)});
+      this.db.collection("user-groups").find({domain_id : new ObjectId(domain_id)}).toArray();
     },
+
     async create_user_group(user_group){
       user_group.domain_id = new ObjectId(user_group.domain_id);
       const temp = await this.db.collection("user-groups").findOne({ domain_id : user_group.domain_id, name : user_group.name });
@@ -255,6 +259,7 @@ export default REST({
     
       return this.db.collection("user-groups").insertOne(user_group);
     },
+    
     async update_user(user_id, user){
       const temp = await this.db.collection("users").updateOne({ _id : new ObjectId(user_id)}, { $set : user });
 
