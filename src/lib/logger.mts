@@ -43,6 +43,7 @@ const http_console_transport = new winston.transports.Console({
       const {type, timestamp, level, method, status, message} = log;
       
       let str = `[${type}:${method}] ${timestamp} ${level}: ${message} > ${status}`;
+      if(type === "UAC")str = `[${type}] ${timestamp} ${level}: ${message}`;
         
       return str;
     })
