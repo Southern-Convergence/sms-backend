@@ -1,5 +1,6 @@
 import { object_id, handle_res } from "@lib/api-utils.mjs";
 import Grant from "@lib/grant.mjs";
+import grant_def from "@lib/setup/grant-def.mjs";
 import Joi from "joi";
 import {ObjectId} from "mongodb";
 import { REST } from "sfr";
@@ -132,33 +133,48 @@ export default REST({
     POST : {
       "update-domain"(req, res){
         this.update_domain(req.body.domain_id, req.body.domain)
-        .then(()=> res.json({data : "Successfully updated domain."}))
+        .then(()=> {
+          res.json({data : "Successfully updated domain."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
 
       "create-access-policy"(req, res){
         this.create_access_policy(req.body)
-        .then(()=> res.json({data : "Successfully created Access Policy."}))
+        .then(()=> {
+          res.json({data : "Successfully created Access Policy."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
       "update-access-policy"(req, res){
         this.update_access_policy(req.body.policy_id, req.body.policy)
-        .then(()=> res.json({data : "Successfully Access Policy."}))
+        .then(()=> {
+          res.json({data : "Successfully Access Policy."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
 
       "create-security-policy"(req, res){
         this.create_security_policy(req.body)
-        .then(()=> res.json({data : "Successfully created Security Policy."}))
+        .then(()=> {
+          res.json({data : "Successfully created Security Policy."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
       "update-security-policy"(req, res){
         this.update_security_policy(req.body.policy_id, req.body.policy)
-        .then(()=> res.json({data : "Successfully updated Security Policy."}))
+        .then(()=> {
+          res.json({data : "Successfully updated Security Policy."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
@@ -166,35 +182,50 @@ export default REST({
       "enforce-access-policy"(req, res) {
         const { domain_id, policy_id } = req.body;
         this.enforce_access_policy(domain_id, policy_id)
-        .then((result) => res.json({ data: result }))
+        .then((result) => {
+          res.json({ data: result });
+          grant_def();
+        })
         .catch((error) => res.status(400).json({ error }));
         Grant.set_state(false);
       },
       "revoke-access-policy"(req, res) {
         const { domain_id, policy_id } = req.body;
         this.revoke_access_policy(domain_id, policy_id)
-        .then((result) => res.json({ data: result }))
+        .then((result) => {
+          res.json({ data: result });
+          grant_def();
+        })
         .catch((error) => res.status(400).json({ error }));
         Grant.set_state(false);
       },
       "enforce-security-policy"(req, res) {
         const { domain_id, security_id } = req.body;
         this.enforce_security_policy(domain_id, security_id)
-        .then((data) => res.json({ data }))
+        .then((data) => {
+          res.json({ data });
+          grant_def();
+        })
         .catch((error) => res.status(400).json({ error }));
         Grant.set_state(false);
       },
       "revoke-security-policy"(req, res) {
         const { domain_id, security_id } = req.body;
         this.revoke_security_policy(domain_id, security_id)
-        .then((data) => res.json({ data }))
+        .then((data) => {
+          res.json({ data });
+          grant_def();
+        })
         .catch((error) => res.status(400).json({ error }));
         Grant.set_state(false);
       },
 
       "create-apt"(req, res){
         this.create_apt(req.body)
-        .then(()=> res.json({data : "Successfully created apt."}))
+        .then(()=> {
+          res.json({data : "Successfully created apt."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
@@ -203,7 +234,10 @@ export default REST({
         const { apt_id, resources } = req.body;
 
         this.set_resources(apt_id, resources)
-        .then(()=> res.json({data : "Successfully granted resources to APT."}))
+        .then(()=> {
+          res.json({data : "Successfully granted resources to APT."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       }
@@ -212,28 +246,40 @@ export default REST({
     DELETE : {
       "delete-domain"(req, res){
         this.delete_domain(req.body.domain_id)
-        .then(()=> res.json({data : "Successfully deleted domain."}))
+        .then(()=> {
+          res.json({data : "Successfully deleted domain."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
       
       "delete-access-policy"(req, res){
         this.delete_access_policy(req.body.policy_id)
-        .then(()=> res.json({data : "Successfully deleted Access Policy."}))
+        .then(()=> {
+          res.json({data : "Successfully deleted Access Policy."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
 
       "delete-security-policy"(req, res){
         this.delete_security_policy(req.body.policy_id)
-        .then(()=> res.json({data : "Successfully deleted Security Policy."}))
+        .then(()=> {
+          res.json({data : "Successfully deleted Security Policy."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
 
       "delete-apt"(req, res){
         this.delete_apt(req.body.apt_id)
-        .then(()=> res.json({data : "Successfully deleted APT."}))
+        .then(()=> {
+          res.json({data : "Successfully deleted APT."})
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       }

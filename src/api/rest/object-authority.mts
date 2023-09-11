@@ -8,6 +8,7 @@ import Grant from "@lib/grant.mjs";
 import multers from "@lib/multers.mjs";
 
 import { assemble_upload_params, create_key_pair, create_public_key } from "@utils/index.mjs";
+import grant_def from "@lib/setup/grant-def.mjs";
 
 const { UAC_PASSPHRASE } = process.env;
 
@@ -99,7 +100,7 @@ export default REST({
           this.create_domain(name, private_key)
           .then(()=>{
             this.spaces.std.upload(assemble_upload_params(name, req.file!, "public"));
-
+            grant_def();
             res.json({data : public_key});
           });
         })
@@ -111,21 +112,30 @@ export default REST({
       "create-subdomain"(req, res) {
         const { domain_id, subdomain } = req.body;
         this.create_subdomain(domain_id, subdomain)
-        .then(() => res.json({ data: "Successfully created subdomain." }))
+        .then(() => {
+          res.json({ data: "Successfully created subdomain." });
+          grant_def();
+        })
         .catch((error) => res.status(400).json({ error }));
         Grant.set_state(false);
       },
       "create-page"(req, res){
         const { domain_id, page } = req.body;
         this.create_page(domain_id, page)
-        .then(()=> res.json({data : "Successfully created page."}))
+        .then(()=> {
+          res.json({data : "Successfully created page."});
+          grant_def();
+        })
         .catch((error)=> res.status(400).json({error}));
         Grant.set_state(false);
       },
       "resource-assignment"(req, res){
         const { parent, child } = req.body;
         this.assign_resource(parent, child)
-        .then(()=> res.json({data : "Successfully assigned resource."}))
+        .then(()=> {
+          res.json({data : "Successfully assigned resource."});
+          grant_def();
+        })
         .catch(()=> res.status(400).json({error : "Failed to assign resource, resource has already been assigned."}));
         Grant.set_state(false);
       }
@@ -135,7 +145,10 @@ export default REST({
       "delete-resource"(req, res){
         
         this.delete_resource(req.body.resource_id)
-        .then(()=> res.json({data : "Successfully deleted resource."}))
+        .then(()=> {
+          res.json({data : "Successfully deleted resource."});
+          grant_def();
+        })
         .catch((error)=> res.json({error}));
       }
     }
