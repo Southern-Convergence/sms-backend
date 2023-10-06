@@ -8,7 +8,7 @@ export default {
     transport_options: {
       service: "Gmail",
       host: "smtp.gmail.com",
-
+ 
       auth: {
         type : "OAuth2",
         user : GMAIL_EMAIL,

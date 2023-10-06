@@ -13,7 +13,6 @@ import web_push from "web-push";
 
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs/promises";
 
 import Database from "@lib/database.mjs";
 import JobKomissar from "@lib/jobkomissar.mjs";
@@ -28,7 +27,7 @@ import pe_bundler from "@core/pe-bundler.mjs";
 
 import logger, { uac as auac_logger, services } from "@lib/logger.mjs";
 import morgan from "morgan";
-import Grant from "@lib/grant.mjs";
+import {ObjectId} from "mongodb";
 
 const { DOMAIN, SERVICE, PORT, UAC_KEY } = process.env;
 const IS_DEV = NODE_ENV === "development";
@@ -116,10 +115,16 @@ app.use(
   })
 );
 
+app.use((req, res, next)=> {
+  const uid = req.session.user ? req.session.user?._id! : "";
+  res.setHeader("uid", uid);
+  next();
+});
+
 /* Morgan Middleware */
 //Used to build object parsed from morgan using split(" ") fn.
-const mappings = ["req_ip", "method", "message", "status", "content_length", "agent", "response_time", "rid"];
-app.use(morgan(":remote-addr , :method , :url , :status , :res[content-length] , :user-agent , :total-time , :res[rid]", {
+const mappings = ["req_ip", "method", "message", "status", "content_length", "agent", "response_time", "rid", "uid"];
+app.use(morgan(":remote-addr , :method , :url , :status , :res[content-length] , :user-agent , :total-time , :res[rid] , :res[uid]", {
   stream : {
     write(string){
       const temp = string.split(" , ");
@@ -127,7 +132,7 @@ app.use(morgan(":remote-addr , :method , :url , :status , :res[content-length] ,
       
       obj["response_time"]  = Number(obj["response_time"]);
       obj["content_length"] = Number(obj["content_length"]);
-
+      obj["uid"] = new ObjectId(obj["uid"].trim());
       services.http(obj);
     }
   }

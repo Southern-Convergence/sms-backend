@@ -3,7 +3,10 @@ import { GetObjectCommand, ListObjectVersionsCommand, PutObjectCommand, DeleteOb
 import {Readable} from 'stream';
 import {facilities} from './logger.mjs';
 
-const {DO_SPACES_BUCKET, DO_SPACES_VERSION_ENABLED_BUCKET, DO_SPACES_ENDPOINT, DO_SPACES_KEY, DO_SPACES_SECRET} = process.env;
+import { NODE_ENV } from "@cfg/index.mjs";
+const IS_DEV = NODE_ENV !== "production";
+
+const {DO_SPACES_BUCKET, DO_SPACES_VERSION_ENABLED_BUCKET, DO_SPACES_ENDPOINT, DO_SPACES_KEY, DO_SPACES_SECRET, DO_TEST_SPACES_BUCKET, DO_TEST_VERSIONING_ENABLED_BUCKET} = process.env;
 
 export class DOSpace{
   protected instance:S3Client;
@@ -19,7 +22,7 @@ export class DOSpace{
       }
     }
     this.instance = new S3Client(cfg);
-    this.bucket = DO_SPACES_BUCKET!;
+    this.bucket = IS_DEV ? DO_TEST_SPACES_BUCKET! : DO_SPACES_BUCKET!;
 
     facilities.info(`DO_Space Initialized with the ff. cfg:`);
     facilities.info(cfg);
@@ -55,7 +58,7 @@ export class DOSpace{
       Body        : params.body,
       ContentType : params.content_type,
       Metadata    : params.metadata
-    }));
+    }))
   }
 
   delete_object(key : string){
@@ -69,7 +72,7 @@ export class DOSpace{
 export class VersioningEnabledDOSpace extends DOSpace{
   constructor(){
     super();
-    this.bucket = DO_SPACES_VERSION_ENABLED_BUCKET!;
+    this.bucket =  IS_DEV ? DO_TEST_VERSIONING_ENABLED_BUCKET! :DO_SPACES_VERSION_ENABLED_BUCKET!;
   }
 
   get_object_versions(prefix : string){
@@ -85,8 +88,8 @@ export class VersioningEnabledDOSpace extends DOSpace{
 }
 
 export default {
-  "std"   : new DOSpace(),
-  "std-v" : new VersioningEnabledDOSpace()
+  "hris"   : new DOSpace(),
+  "hris-v" : new VersioningEnabledDOSpace()
 }
 
 

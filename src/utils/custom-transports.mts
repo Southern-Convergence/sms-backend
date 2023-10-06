@@ -17,7 +17,6 @@ export class CachedTransport extends Transport{
     
     const req_accumulator = this.#RID_MAP.get(obj.rid);
     !req_accumulator ? this.#RID_MAP.set(obj.rid, [temp]) : req_accumulator.push(temp);
-
     if(obj.end){
       Database.collection("logs")?.updateOne({rid : obj.rid}, {
         $set : {
@@ -66,13 +65,14 @@ export class ObjectTransport extends Transport {
       const req_accumulator = this.#RID_MAP.get(obj.rid) || [];
       const allow = req_accumulator.trace[req_accumulator.trace.length-1].message === "APT Decision: Allow";
       Database.collection("logs")?.insertOne({...obj, uac_decision : allow ? "Allow" : "Deny", uac_trace : req_accumulator.trace, ...req_accumulator.meta});
-    
+
+
       //Destroy RID_MAP Reference
       this.#RID_MAP.delete(obj.rid);
     }
 
-    //if(!["UAC", "API"].includes(obj.type))Database.collection("logs")?.insertOne(obj);
-
+    if(!["UAC", "API"].includes(obj.type))Database.collection("logs")?.insertOne(obj);
+    
     setImmediate(()=> this.emit("logged", obj));
     callback();
   }
