@@ -117,6 +117,7 @@ app.use(
 
 app.use((req, res, next)=> {
   const uid = req.session.user ? req.session.user?._id! : "";
+  console.log(req.session.user);
   res.setHeader("uid", uid);
   next();
 });
@@ -132,7 +133,10 @@ app.use(morgan(":remote-addr , :method , :url , :status , :res[content-length] ,
       
       obj["response_time"]  = Number(obj["response_time"]);
       obj["content_length"] = Number(obj["content_length"]);
-      obj["uid"] = new ObjectId(obj["uid"].trim());
+
+      const uid = (obj["uid"] || "").replaceAll("-", "").trim();
+      if(uid)obj["uid"] = new ObjectId(uid);
+
       services.http(obj);
     }
   }
