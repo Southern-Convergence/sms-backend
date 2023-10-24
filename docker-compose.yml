@@ -1,0 +1,36 @@
+version: '3.9'
+
+services: 
+  # Node api service
+  api:
+    container_name: uac
+    env_file: .env
+    build: .
+    ports:
+    - "3001:3001"
+    volumes:
+      - "./:/"
+    networks:
+      - dev-network
+    depends_on: 
+      - mongo
+
+  # Mongodb service
+  mongo:
+    image: mongo:6.0.5
+    container_name: mongo
+    restart: always
+    networks:
+      - dev-network
+    volumes:
+      - ./data/dev/mongo:/data/db
+    ports:
+      - "27017:27017"
+    
+
+volumes:
+  mongo_data: {}
+
+networks:
+  dev-network:
+    driver: bridge
