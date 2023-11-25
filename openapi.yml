@@ -32,7 +32,19 @@ paths:
     $ref: docs/admin/policy-authority.yml
   /registry:
     $ref: docs/registry.yml
+  /sms-education:
+    $ref: docs/sms-education.yml
+  /sms-experience:
+    $ref: docs/sms-experience.yml
+  /sms-position:
+    $ref: docs/sms-position.yml
+  /sms-rating:
+    $ref: docs/sms-rating.yml
+  /sms-salary-grade:
+    $ref: docs/sms-salary-grade.yml
   /admin/subject-authority:
     $ref: docs/admin/subject-authority.yml
   /user-uploads:
     $ref: docs/user-uploads.yml
+  /user:
+    $ref: docs/user.yml
