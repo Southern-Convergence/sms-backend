@@ -18,10 +18,10 @@ paths:
     $ref: docs/auth.yml
   /erf-form:
     $ref: docs/erf-form.yml
-  /erf-maintenance:
-    $ref: docs/erf-maintenance.yml
   /hbs-samples:
     $ref: docs/hbs-samples.yml
+  /new-applicant:
+    $ref: docs/new-applicant.yml
   /notification:
     $ref: docs/notification.yml
   /admin/object-authority:
