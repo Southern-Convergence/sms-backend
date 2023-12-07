@@ -36,18 +36,34 @@ const POWERPOINT_MIMETYPES = [
 ];
 
 export default {
-  "domain-logo" : cfg({
-    field_name_size : 92,
+
+  "sms-docs": cfg(
+    {
+      field_name_size: 92,
+      field_size: 2_048_000,
+      file_size: 2_048_000,
+      header_pair: 24,
+      fields: 24,
+      files: 5,
+    },
+    [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ]),
+
+  "domain-logo": cfg({
+    field_name_size: 92,
     field_size: 2_048_000,
     file_size: 2_048_000,
-    files : 1
+    files: 1
   }, IMAGE_WHITELIST)
 }
 
 //2nd Step: Buffer Magic Number Checking
 export const verify_tt: RequestHandler = async (req, _, next) => {
   fileguard.verbose("Checking actual file signature (FileBuffer Magic Number)");
-  if (!req.file) return next(new Error("Upload Rejection", { cause: "No data was sent." }));
+  if (!req.files) return next(new Error("Upload Rejection", { cause: "No data was sent." }));
   /* @ts-ignore */
   /*   const checked_files = await Promise.all(req.files.map((v)=> fileTypeFromBuffer(v.buffer)));
     fileguard.verbose(checked_files);
@@ -88,8 +104,8 @@ function cfg(limits: Limits, whitelist: string[] = []) {
       //2nd Step: Binary Magic Number Check
       //req file that is exposed in this function does not contain a reference to the underlying buffer of the file/s in question.
       //forcing me to move "verify_tt" to the main SFR middleware interceptor for better access to express request handler params.
-      
-      
+
+
 
 
       cb(null, true);

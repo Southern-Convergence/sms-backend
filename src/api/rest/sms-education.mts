@@ -16,7 +16,6 @@ export default REST({
 
         "create-education": {
             title: Joi.string(),
-            date_created: Joi.date(),
         },
         "get-education": {},
     },

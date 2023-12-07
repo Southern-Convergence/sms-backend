@@ -15,8 +15,7 @@ export default REST({
     validators: {
 
         "create-experience": {
-            number_of_years: Joi.number(),
-            position: Joi.string(),
+            title: Joi.string(),
             is_ma_equivalent: Joi.boolean(),
             master_arts: Joi.string(),
         },

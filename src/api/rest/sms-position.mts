@@ -41,12 +41,10 @@ export default REST({
     },
     controllers: {
         async create_position(data) {
-
             data.education = data.education.map((v: string) => new ObjectId(v));
             data.experience = data.experience.map((v: string) => new ObjectId(v));
             data.rating = data.rating.map((v: string) => new ObjectId(v));
             data.sg = new ObjectId(data.sg);
-
             const result = await this.db?.collection(collection).insertOne(data);
 
             if (!result.insertedId) return Promise.reject("Failed to insert position");
@@ -55,7 +53,95 @@ export default REST({
 
         async get_position() {
 
-            return this.db?.collection(collection).find({}).toArray()
+            return this.db?.collection(collection).aggregate([
+                {
+                    $match: {},
+                },
+                {
+                    $lookup: {
+                        from: "sms-education",
+                        let: { id: "$education" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $in: ["$_id", "$$id"] },
+                                },
+                            },
+                        ],
+                        as: "education",
+                    },
+                },
+                {
+                    $set: {
+                        education: {
+                            $map: {
+                                input: "$education",
+                                as: "educ",
+                                in: {
+                                    text: "$$educ.title",
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "sms-experience",
+                        let: { id: "$experience" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $in: ["$_id", "$$id"] },
+                                },
+                            },
+                        ],
+                        as: "experience",
+                    },
+                },
+                {
+                    $set: {
+                        experience: {
+                            $map: {
+                                input: "$experience",
+                                as: "exp",
+                                in: {
+                                    text: "$$exp.title",
+                                },
+                            },
+                        },
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "sms-performance-rating",
+                        let: { id: "$rating" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $in: ["$_id", "$$id"] },
+                                },
+                            },
+                        ],
+                        as: "rating",
+                    },
+                },
+
+                {
+                    $lookup: {
+                        from: "sms-salary-grade",
+                        localField: "sg",
+                        foreignField: "_id",
+                        as: "sg",
+                    },
+                },
+                {
+                    $unwind: {
+                        path: "$sg",
+                        preserveNullAndEmptyArrays: true
+                    }
+                }
+
+            ]).toArray()
         }
 
     }

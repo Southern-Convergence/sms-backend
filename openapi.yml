@@ -12,8 +12,6 @@ schemes:
   - ws
   - wss
 paths:
-  /applicant:
-    $ref: docs/applicant.yml
   /auth:
     $ref: docs/auth.yml
   /erf-form:

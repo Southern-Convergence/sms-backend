@@ -14,8 +14,7 @@ export default REST({
 
     validators: {
         "create-rating": {
-            number_of_years: Joi.number(),
-            rating: Joi.string(),
+            title: Joi.string(),
         },
         "get-rating": {}
     },
