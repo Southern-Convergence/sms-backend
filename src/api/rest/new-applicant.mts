@@ -120,7 +120,6 @@ export default REST({
           .catch((error) => res.status(400).json({ error }));
       },
 
-
       "pending-application"(req, res) {
         const { status } = req.body.applicants_data;
         this.pending_application(req.body.id, status)

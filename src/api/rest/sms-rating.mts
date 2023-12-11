@@ -16,7 +16,11 @@ export default REST({
         "create-rating": {
             title: Joi.string(),
         },
-        "get-rating": {}
+        "get-rating": {},
+        "update-rating": {
+            _id: object_id,
+            title: Joi.string()
+        }
     },
 
     handlers: {
@@ -31,6 +35,14 @@ export default REST({
             "get-rating"(req, res) {
                 this.get_rating().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
             }
+        },
+        "PUT": {
+            "update-rating"(req, res) {
+                const { _id, title } = req.body
+                this.update_rating(_id, title).then(() => res.json({ data: "Successfully Update Performance Rating!" }))
+                    .catch((error) => res.status(400).json({ error }))
+
+            }
         }
     },
     controllers: {
@@ -40,6 +52,16 @@ export default REST({
 
         async get_rating() {
             return this.db?.collection(collection).find({}).toArray()
+        },
+        async update_rating(id, title) {
+            const result = await this.db?.collection(collection).updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { title: title } }
+            );
+            if (result.matchedCount === 0) {
+                return Promise.reject("Item not Found, Failed to Update!");
+            }
+            return result;
         }
 
     }
