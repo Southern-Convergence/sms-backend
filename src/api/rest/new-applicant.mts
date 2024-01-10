@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb'
+import { ObjectId, TransactionOptions } from 'mongodb'
 import Joi from 'joi'
 import { REST } from 'sfr'
 import { object_id } from '@lib/api-utils.mjs'
@@ -20,6 +20,9 @@ export default REST({
     "get-applicant": {
       id: object_id
     },
+    "get-requests": {
+
+    },
     /**
      * PAGE: /sms/new-application-form
      */
@@ -30,9 +33,23 @@ export default REST({
       reason: Joi.string(),
     },
     "pending-application": {
-      id: object_id,
+      applicants_data: Joi.object(),
+    },
+    "assign-evaluator-application": {
       applicants_data: Joi.object(),
 
+    },
+    "checking-application": {
+      applicants_data: Joi.object(),
+    },
+    "verifying-application": {
+      applicants_data: Joi.object(),
+    },
+    "recommending-approval-application": {
+      applicants_data: Joi.object(),
+    },
+    "approval-application": {
+      applicants_data: Joi.object(),
     },
   },
 
@@ -71,11 +88,10 @@ export default REST({
             }).then(() => `${dir}/${uuid}`)
           }));
 
-
-          const sr: string[] = [];
-          const ea: string[] = [];
-          const ob: string[] = [];
-          const ps: string[] = [];
+          const sr: any[] = [];
+          const ea: any[] = [];
+          const ob: any[] = [];
+          const ps: any[] = [];
 
           result.forEach((v: any) => {
             if (v.match("service_record")?.length) sr.push(v);
@@ -84,12 +100,40 @@ export default REST({
             if (v.match("tor")?.length) ea.push(v);
           })
 
-          form.attachments.educational_attainment = ea;
-          form.attachments.service_record = sr;
-          form.attachments.omnibus = ob;
-          form.attachments.permit_to_study = ps;
+          form.attachments.educational_attainment = {
+            link: ea,
+            valid: null,
+            remarks: "",
+            description: "Authenticated copy of Transcript of Records in the masteral course signed by the School Registrar",
+            registrar: {
+              complete_name: form.transcript.registrar_name,
+              contact_number: form.transcript.registrar_no,
+              email: form.transcript.registrar_email
+            },
+          }
+          form.attachments.service_record = {
+            link: sr,
+            valid: null,
+            remarks: "",
+            description: "Service Record attachment",
+          };
 
+          form.attachments.omnibus = {
+            link: ob,
+            valid: null,
+            remarks: "",
+            description: "Omnibus",
+          };
+
+          form.attachments.permit_to_study = {
+            link: ps,
+            valid: null,
+            remarks: "",
+            description: "Permit to Study or acreditation of  units in the masteral course.",
+
+          };
         }
+
 
         this.create_application(form)
           .then((data) => res.json({ data }))
@@ -97,8 +141,6 @@ export default REST({
       },
       "dissapproved-application"(req, res) {
         const { email, status, lastname, firstname, control_number } = req.body.applicants_data.personal_information;
-
-        console.log(req.body.applicants_data);
 
         this.postoffice[EMAIL_TRANSPORT].post(
           {
@@ -122,12 +164,40 @@ export default REST({
 
       "pending-application"(req, res) {
         const { status } = req.body.applicants_data;
-        this.pending_application(req.body.id, status)
+        this.pending_application(req.body.applicants_data)
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
-
-
+      "assign-evaluator-application"(req, res) {
+        const { status } = req.body.applicants_data;
+        this.assign_evaluator_application(req.body.applicants_data)
+          .then((data) => res.json({ data }))
+          .catch((error) => res.status(400).json({ error }));
+      },
+      "checking-application"(req, res) {
+        const { status } = req.body.applicants_data;
+        this.checking_application(req.body.applicants_data)
+          .then((data) => res.json({ data }))
+          .catch((error) => res.status(400).json({ error }));
+      },
+      "verifying-application"(req, res) {
+        const { status } = req.body.applicants_data;
+        this.verifying_application(req.body.applicants_data)
+          .then((data) => res.json({ data }))
+          .catch((error) => res.status(400).json({ error }));
+      },
+      "recommending-approval-application"(req, res) {
+        const { status } = req.body.applicants_data;
+        this.recommending_approval_application(req.body.applicants_data)
+          .then((data) => res.json({ data }))
+          .catch((error) => res.status(400).json({ error }));
+      },
+      "approval-application"(req, res) {
+        const { status } = req.body.applicants_data;
+        this.approval_application(req.body.applicants_data)
+          .then((data) => res.json({ data }))
+          .catch((error) => res.status(400).json({ error }));
+      },
 
     },
     "GET": {
@@ -144,39 +214,49 @@ export default REST({
         const { id } = req.query
         console.log(id)
         this.get_applicant(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "get-requests"(req, res) {
+        this.get_requests(req.session).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       }
     },
 
   },
   controllers: {
+
+    async get_requests(user: any) {
+      console.log(user);
+      return Promise.resolve("Succcessfuly ")
+    },
     async create_application(data) {
-      const temp = await this.db?.collection(collection).findOne({ email: data.email });
+
       /**
        * TODO: UPLOAD ONLY WHEN REQUEST IS VALID
        */
-      if (temp) {
-        return Promise.reject("Failed to Submit Application, Control Number Already Exists");
-      }
+      const is_email = await this.db?.collection(collection).findOne({ "personal_information.email": data.personal_information.email });
+      if (is_email) return Promise.reject("Failed to Submit Application, Email Address Already Exists");
+
+      const count = await this.db.collection('counters').findOne({});
+      if (!count) return Promise.reject("Failed to locate counting");
+
+      const { number, _id } = count;
 
       const current_date = new Date();
-      const year = current_date.getFullYear();
-      const month = String(current_date.getMonth() + 1).padStart(2, '0');
-      const day = String(current_date.getDate()).padStart(2, '0');
-      const formatted_date = `${year}-${month}-${day}`;
-      const existing_control_no = await this.db?.collection(collection).find({ date: formatted_date }).sort({ control_no: -1 }).limit(1).toArray();
-      let number = 1;
-      if (existing_control_no.length > 0) {
-        const last_code = existing_control_no[0].control_no;
-        const last_number_match = last_code.match(/\d+$/g);
+      const d = current_date.toISOString().split("T")[0];
+      let paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
 
-        if (last_number_match) {
-          const last_numbers = last_number_match.map(Number);
-          const max_number = Math.max(...last_numbers);
-          number = max_number + 1;
-        }
+      const is_control_number = await this.db.collection('applicant').findOne({ control_number: paddedNumber });
+
+      if (is_control_number) {
+        const count = await this.db.collection('counters').findOne({}, { projection: { number: 1 } });
+        if (!count) return Promise.reject("Failed to locate counting");
+
+        const { number } = count;
+
+        const current_date = new Date();
+        const d = current_date.toISOString().split("T")[0];
+        paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
       }
 
-      const paddedNumber = `${formatted_date}-${number.toString().padStart(4, '0')}`;
       data.control_number = paddedNumber;
       data.created_date = new Date(data.created_date);
       data.service_record = data.service_record.map((v: any) => {
@@ -186,17 +266,31 @@ export default REST({
           to: (v.to)
         }
       })
+
       data.position = new ObjectId(data.qualification.position);
       data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
       data.education = data.qualification.education.map((v: string) => new ObjectId(v));
       data.per_rating = new ObjectId(data.qualification.per_rating);
 
-      const result = await this.db?.collection(collection).insertOne(data);
+      const session = this.instance.startSession();
 
-      if (!result.insertedId) return Promise.reject("Failed to apply request");
+      const transactionOptions: TransactionOptions = {
+        readPreference: 'primary',
+        readConcern: { level: 'local' },
+        writeConcern: { w: 'majority' }
+      };
 
-      console.log(data);
-
+      try {
+        await session.withTransaction(async () => {
+          await this.db?.collection(collection).insertOne(data);
+          await this.db.collection('counters').updateOne({ _id: new ObjectId(_id) }, { $inc: { number: 1 } });
+        }, transactionOptions);
+      } catch (err) {
+        return Promise.reject(err)
+      }
+      finally {
+        await session.endSession();
+      }
       return Promise.resolve("Successfully applied request");
     },
     /**
@@ -204,6 +298,7 @@ export default REST({
      * @returns PAGE
      */
     async get_application_qs() {
+
       return this.db.collection('sms-qualification-standards').find({}).toArray();
     },
     async get_application() {
@@ -250,15 +345,98 @@ export default REST({
     async dissapproved_application(id, email, status, reason) {
       return this.db?.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { email: email, status: "Dissapproved", reason: reason } }, { upsert: true })
     },
-    async pending_application(id, status) {
-      const result = await this.db?.collection(collection).updateOne({ _id: new ObjectId(id) }, {
-        $set: {
-          status: "Pending",
-        }
-      }, { upsert: true })
+    async pending_application(data: any) {
+      const id = data._id;
 
+      delete data._id;
+      data.status = "Pending";
+
+      const document = await this.db.collection(collection).findOne({ _id: new ObjectId(id) });
+      if (!document) return Promise.reject("Could not find application");
+
+      data.position = new ObjectId(data.qualification.position);
+      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
+      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
+      data.per_rating = new ObjectId(data.qualification.per_rating);
+
+      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { ...data } });
+      if (!result.modifiedCount) return Promise.reject("Failed to update");
+      return Promise.resolve("Succesfully updated")
     },
+    async assign_evaluator_application(data: any) {
+      const id = data._id;
+      delete data._id;
+      data.status = "For Evaluation";
+      const document = await this.db.collection(collection).findOne({ _id: new ObjectId(id) });
+      if (!document) return Promise.reject("Could not find application");
+      data.position = new ObjectId(data.qualification.position);
+      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
+      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
+      data.per_rating = new ObjectId(data.qualification.per_rating);
 
+      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { ...data } });
+      if (!result.modifiedCount) return Promise.reject("Failed to Assign to Evaluator!");
+      return Promise.resolve("Succesfully Assigned to Evaluator!")
+    },
+    async checking_application(data: any) {
+      const id = data._id;
+      delete data._id;
+      data.status = "For Checking";
+      const document = await this.db.collection(collection).findOne({ _id: new ObjectId(id) });
+      if (!document) return Promise.reject("Could not find application");
+      data.position = new ObjectId(data.qualification.position);
+      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
+      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
+      data.per_rating = new ObjectId(data.qualification.per_rating);
 
+      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { ...data } });
+      if (!result.modifiedCount) return Promise.reject("Failed to update!");
+      return Promise.resolve("Succesfully Checked Application!")
+    },
+    async verifying_application(data: any) {
+      const id = data._id;
+      delete data._id;
+      data.status = "For Verifying";
+      const document = await this.db.collection(collection).findOne({ _id: new ObjectId(id) });
+      if (!document) return Promise.reject("Could not find application");
+      data.position = new ObjectId(data.qualification.position);
+      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
+      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
+      data.per_rating = new ObjectId(data.qualification.per_rating);
+
+      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { ...data } });
+      if (!result.modifiedCount) return Promise.reject("Failed to Update!");
+      return Promise.resolve("Succesfully Verified Application!")
+    },
+    async recommending_approval_application(data: any) {
+      const id = data._id;
+      delete data._id;
+      data.status = "Recommending for Approval";
+      const document = await this.db.collection(collection).findOne({ _id: new ObjectId(id) });
+      if (!document) return Promise.reject("Could not find application");
+      data.position = new ObjectId(data.qualification.position);
+      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
+      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
+      data.per_rating = new ObjectId(data.qualification.per_rating);
+
+      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { ...data } });
+      if (!result.modifiedCount) return Promise.reject("Failed to Update!");
+      return Promise.resolve("Succesfully Recommended Application!")
+    },
+    async approval_application(data: any) {
+      const id = data._id;
+      delete data._id;
+      data.status = "For Approval";
+      const document = await this.db.collection(collection).findOne({ _id: new ObjectId(id) });
+      if (!document) return Promise.reject("Could not find application");
+      data.position = new ObjectId(data.qualification.position);
+      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
+      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
+      data.per_rating = new ObjectId(data.qualification.per_rating);
+
+      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { ...data } });
+      if (!result.modifiedCount) return Promise.reject("Failed to Update!");
+      return Promise.resolve("Succesfully Approved!")
+    },
   }
 })

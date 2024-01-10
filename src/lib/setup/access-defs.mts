@@ -5,20 +5,20 @@ import users from "@setup/src/uac/users.mjs";
 
 import bcrypt from "bcrypt";
 import logger from "@lib/logger.mjs";
-import {ObjectId} from "mongodb";
+import { ObjectId } from "mongodb";
 import Grant from "@lib/grant.mjs";
-import {create_key_pair} from "@utils/index.mjs";
+import { create_key_pair } from "@utils/index.mjs";
 
 const SALT = 10;
 
-export default async()=> {
+export default async () => {
   const collections = await Database.get_instance()?.collections();
-  const cols = collections?.map((v)=> v.collectionName);
-  
-  if(cols?.includes("policies"))return;
+  const cols = collections?.map((v) => v.collectionName);
 
-  const policies = Grant.get_engines().map(([_, engine])=> {
-    const temp:any = Object.assign({type : "access"}, engine);
+  if (cols?.includes("policies")) return;
+
+  const policies = Grant.get_engines().map(([_, engine]) => {
+    const temp: any = Object.assign({ type: "access" }, engine);
     delete temp.requisites;
     delete temp.logic;
 
@@ -28,18 +28,18 @@ export default async()=> {
   let policies_result = await Database.collection("policies")?.insertMany(policies);
 
   /* @ts-ignore */
-  const POLICY_MAP = Object.fromEntries(Object.entries(policies_result?.insertedIds).map(([index, oid])=> [policies[index].name, oid]))
+  const POLICY_MAP = Object.fromEntries(Object.entries(policies_result?.insertedIds).map(([index, oid]) => [policies[index].name, oid]))
   /* Resolve domain dependencies */
-  let resolved_domains = await Promise.all(domains.map(async(v : {[key : string] : any})=> {
+  let resolved_domains = await Promise.all(domains.map(async (v: { [key: string]: any }) => {
     const { name, icon, access_policies, security_policies } = v;
-    
+
     const { private_key } = await create_key_pair();
 
     return {
-      name, key : private_key, icon,
-      access_policies   : access_policies.map((a : string)=> POLICY_MAP[a]),
-      active : true,
-      security_policies : security_policies.map((a : string)=> POLICY_MAP[a])
+      name, key: private_key, icon,
+      access_policies: access_policies.map((a: string) => POLICY_MAP[a]),
+      active: true,
+      security_policies: security_policies.map((a: string) => POLICY_MAP[a])
     };
   }));
 
@@ -47,18 +47,18 @@ export default async()=> {
   let domain_result = await Database.collection("domains")?.insertMany(resolved_domains);
 
   /* @ts-ignore */
-  const DOMAIN_MAP = Object.fromEntries(Object.entries(domain_result?.insertedIds).map(([index, oid])=> [domains[index].name, oid]));
+  const DOMAIN_MAP = Object.fromEntries(Object.entries(domain_result?.insertedIds).map(([index, oid]) => [domains[index].name, oid]));
   /* @ts-ignore */
-  const R_DOMAIN_MAP = Object.fromEntries(Object.entries(domain_result?.insertedIds).map(([index, oid])=> [oid, domains[index].name]));
-  
-  let ap_templates = domains.flatMap((v : {[key : string] : any})=>{
+  const R_DOMAIN_MAP = Object.fromEntries(Object.entries(domain_result?.insertedIds).map(([index, oid]) => [oid, domains[index].name]));
+
+  let ap_templates = domains.flatMap((v: { [key: string]: any }) => {
     /* @ts-ignore */
-    return v.access_templates.map((a)=> ({ ...a, basis : POLICY_MAP[a.basis], domain_id : DOMAIN_MAP[v.name]}));
+    return v.access_templates.map((a) => ({ ...a, basis: POLICY_MAP[a.basis], domain_id: DOMAIN_MAP[v.name] }));
   });
-  
+
   let ap_result = await Database.collection("ap-templates")?.insertMany(ap_templates);
   /* @ts-ignore */
-  const AP_MAP = Object.fromEntries(Object.entries(ap_result?.insertedIds).map(([index, oid])=> {
+  const AP_MAP = Object.fromEntries(Object.entries(ap_result?.insertedIds).map(([index, oid]) => {
     /* @ts-ignore */
     const temp = ap_templates[index];
     const _d = R_DOMAIN_MAP[temp.domain_id];
@@ -68,7 +68,7 @@ export default async()=> {
 
   /* Resolve user dependencies */
   /* @ts-ignore */
-  let resolved_users = users.map((v)=>{
+  let resolved_users = users.map((v) => {
     v.password = bcrypt.hashSync(v.password, SALT);
 
     const { domain, attr } = v.access;
@@ -79,7 +79,6 @@ export default async()=> {
     v.status = "active";
     /* @ts-ignore */
     v.domain_id = new ObjectId(DOMAIN_MAP[v.domain_id]);
-
     return v;
   });
 

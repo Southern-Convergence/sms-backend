@@ -38,8 +38,14 @@ paths:
     $ref: docs/sms-position.yml
   /sms-rating:
     $ref: docs/sms-rating.yml
+  /sms-roles:
+    $ref: docs/sms-roles.yml
   /sms-salary-grade:
     $ref: docs/sms-salary-grade.yml
+  /sms-school:
+    $ref: docs/sms-school.yml
+  /sms-sdo:
+    $ref: docs/sms-sdo.yml
   /admin/subject-authority:
     $ref: docs/admin/subject-authority.yml
   /user-uploads:

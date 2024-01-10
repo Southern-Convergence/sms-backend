@@ -13,11 +13,10 @@ export default REST({
     },
 
     validators: {
-
         "create-experience": {
             title: Joi.string(),
-            is_ma_equivalent: Joi.boolean(),
-            master_arts: Joi.string(),
+            // is_ma_equivalent: Joi.boolean(),
+            // master_arts: Joi.string(),
         },
         "get-experience": {},
         "update-experience": {

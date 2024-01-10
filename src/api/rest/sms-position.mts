@@ -22,7 +22,7 @@ export default REST({
             rating: Joi.array(),
             sg: Joi.string(),
         },
-        "get-position": {},
+        "get-qs": {},
         "update-position": {
             _id: object_id,
             title: Joi.string(),
@@ -44,8 +44,8 @@ export default REST({
             },
         },
         "GET": {
-            "get-position"(req, res) {
-                this.get_position().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+            "get-qs"(req, res) {
+                this.get_qs().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
             }
         },
         "PUT": {
@@ -68,7 +68,7 @@ export default REST({
             if (!result.insertedId) return Promise.reject("Failed to insert position");
             return Promise.resolve("Successfully inserted new position");
         },
-        async get_position() {
+        async get_qs() {
             return this.db?.collection(collection).aggregate([
                 {
                     $match: {},

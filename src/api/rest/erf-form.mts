@@ -72,7 +72,6 @@ export default REST({
     controllers: {
         async create_erf(data) {
             const document = this.db?.collection(collection).find({ _id: new ObjectId(data._id) })
-            console.log(document)
 
         },
         async create_initial_req(data) {
