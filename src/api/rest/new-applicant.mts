@@ -163,8 +163,26 @@ export default REST({
       },
 
       "pending-application"(req, res) {
-        const { status } = req.body.applicants_data;
-        this.pending_application(req.body.applicants_data)
+        console.log(req.body);
+
+        const { personal_information, status, control_number } = req.body.applicants_data;
+        const { email, lastname, firstname, } = personal_information
+        this.postoffice[EMAIL_TRANSPORT].post(
+          {
+            from: "ralphrenzo@gmail.com",
+            to: email
+          },
+          {
+            context: {
+              name: `${firstname} ${lastname} `,
+              link: `${req.body.link}?id=${req.body.id}`,
+              control_number: `${control_number}`
+            },
+            template: "sms-approved",
+            layout: "centered"
+          },
+        ).then(() => console.log("Success")).catch((error) => console.log(error));
+        this.pending_application(req.body.applicants_data, status)
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
@@ -228,7 +246,8 @@ export default REST({
       return Promise.resolve("Succcessfuly ")
     },
     async create_application(data) {
-
+      data.designation.division = new ObjectId(data.designation.division);
+      data.designation.s = new ObjectId(data.designation.s);
       /**
        * TODO: UPLOAD ONLY WHEN REQUEST IS VALID
        */
@@ -315,10 +334,27 @@ export default REST({
           }
         },
         {
+          $lookup: {
+            from: 'sms-school',
+            localField: "designation.school",
+            foreignField: "_id",
+            as: "school"
+          }
+        },
+        {
+          $lookup: {
+            from: 'sms-sdo',
+            localField: "designation.division",
+            foreignField: "_id",
+            as: "division"
+          }
+        },
+        {
           $set: {
             full_name: {
               $concat: ["$personal_information.firstname", " ", "$personal_information.lastname"]
-            }
+            },
+
           }
         },
         {
@@ -328,24 +364,81 @@ export default REST({
           }
         },
         {
+          $unwind: {
+            path: "$division",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $unwind: {
+            path: "$school",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
           $project: {
             position: "$position.title",
-            school: "$designation.school",
-            division: "$designation.division",
-            full_name: 1,
-            status: 1,
             control_number: 1,
+            division: "$division.title",
+            school: "$school.title",
+            status: 1,
+            full_name: 1
+
           }
         }
       ]).toArray()
     },
     async get_applicant(id) {
-      return this.db?.collection(collection).findOne({ _id: new ObjectId(id) })
+      return this.db?.collection(collection).aggregate(
+        [
+          {
+            $match: {
+              _id: new ObjectId(id)
+
+            }
+          },
+          {
+            $lookup: {
+              from: 'sms-school',
+              localField: 'designation.school',
+              foreignField: '_id',
+              as: 'school'
+            }
+          },
+          {
+            $lookup: {
+              from: 'sms-sdo',
+              localField: 'designation.division',
+              foreignField: '_id',
+              as: 'division'
+            }
+          },
+          {
+            $unwind: {
+              path: '$division',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $unwind: {
+              path: '$school',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $set: {
+              division: '$division.title',
+              school: '$school.title',
+            }
+          }
+        ]
+      ).next()
+
     },
     async dissapproved_application(id, email, status, reason) {
       return this.db?.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { email: email, status: "Dissapproved", reason: reason } }, { upsert: true })
     },
-    async pending_application(data: any) {
+    async pending_application(data: any, status) {
       const id = data._id;
 
       delete data._id;
@@ -359,7 +452,7 @@ export default REST({
       data.education = data.qualification.education.map((v: string) => new ObjectId(v));
       data.per_rating = new ObjectId(data.qualification.per_rating);
 
-      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { ...data } });
+      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { status: "Pending" } });
       if (!result.modifiedCount) return Promise.reject("Failed to update");
       return Promise.resolve("Succesfully updated")
     },
