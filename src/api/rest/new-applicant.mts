@@ -6,6 +6,7 @@ import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
 
 import multers from "@lib/multers.mjs";
 import { v4 } from "uuid";
+import Application from "class/Application.1.mjs";
 
 const collection = "applicant"
 
@@ -57,83 +58,48 @@ export default REST({
     "POST": {
       async "create-application"(req, res) {
         let form = Object.assign({}, JSON.parse(req.body.form));
-        form.attachments = {
-          educational_attainment: [],
-          service_record: [],
-          omnibus: [],
-          permit_to_study: [],
-        };
+        // if (req.files?.length) {
 
-        if (req.files?.length) {
-          //@ts-ignore
-          const result = await Promise.all(Array.from(req.files).map(async (v: any) => {
-            const uuid = v4();
+        //   //@ts-ignore
+        //   const x = Object.fromEntries(req.files?.map((v: any) => v.fieldname.split("-")[0]).map((v: any) => [v, []]));
+        //   form.attachments = x;
 
-            const fn = v.fieldname.split("-")[0];
-            const dir = `sms/${req.session.user?._id}/applicant-requirements/${fn}`
-            const mime = v.originalname.split(".")[1];
+        //   //@ts-ignore
+        //   const result = await Promise.all(Array.from(req.files).map(async (v: any) => {
+        //     const uuid = v4();
+
+        //     const fn = v.fieldname.split("-")[0];
+        //     const dir = `sms/${req.session.user?._id}/applicant-requirements/${fn}`
+        //     const mime = v.originalname.split(".")[1];
 
 
-            return await this.spaces["hris"].upload({
-              body: v.buffer,
-              content_type: v.mimetype,
-              dir: dir,
-              key: uuid,
-              metadata: {
-                original_name: v.originalname,
-                timestamp: `${Date.now()}`,
-                ext: mime,
-                mimetype: v.mimetype
-              },
-            }).then(() => `${dir}/${uuid}`)
-          }));
+        //     return await this.spaces["hris"].upload({
+        //       body: v.buffer,
+        //       content_type: v.mimetype,
+        //       dir: dir,
+        //       key: uuid,
+        //       metadata: {
+        //         original_name: v.originalname,
+        //         timestamp: `${Date.now()}`,
+        //         ext: mime,
+        //         mimetype: v.mimetype
+        //       },
+        //     }).then(() => `${dir}/${uuid}`)
+        //   }));
 
-          const sr: any[] = [];
-          const ea: any[] = [];
-          const ob: any[] = [];
-          const ps: any[] = [];
+        //   Object.entries(form.attachments).forEach(([key, value]) => {
 
-          result.forEach((v: any) => {
-            if (v.match("service_record")?.length) sr.push(v);
-            if (v.match("permit_study")?.length) ps.push(v);
-            if (v.match("omnibus")?.length) ob.push(v);
-            if (v.match("tor")?.length) ea.push(v);
-          })
+        //     const links = result.filter((v: string) => v.match(key));
+        //     const payload = {
+        //       link: links,
+        //       valid: null,
+        //       remarks: "",
+        //       description: key,
+        //     }
 
-          form.attachments.educational_attainment = {
-            link: ea,
-            valid: null,
-            remarks: "",
-            description: "Authenticated copy of Transcript of Records in the masteral course signed by the School Registrar",
-            registrar: {
-              complete_name: form.transcript.registrar_name,
-              contact_number: form.transcript.registrar_no,
-              email: form.transcript.registrar_email
-            },
-          }
-          form.attachments.service_record = {
-            link: sr,
-            valid: null,
-            remarks: "",
-            description: "Service Record attachment",
-          };
-
-          form.attachments.omnibus = {
-            link: ob,
-            valid: null,
-            remarks: "",
-            description: "Omnibus",
-          };
-
-          form.attachments.permit_to_study = {
-            link: ps,
-            valid: null,
-            remarks: "",
-            description: "Permit to Study or acreditation of  units in the masteral course.",
-
-          };
-        }
-
+        //     form.attachments[key] = payload;
+        //   })
+        // }
 
         this.create_application(form)
           .then((data) => res.json({ data }))
@@ -144,7 +110,7 @@ export default REST({
 
         this.postoffice[EMAIL_TRANSPORT].post(
           {
-            from: "ralphrenzo@gmail.com",
+            from: "mariannemaepaclian@gmail.com",
             to: email
           },
           {
@@ -169,7 +135,7 @@ export default REST({
         const { email, lastname, firstname, } = personal_information
         this.postoffice[EMAIL_TRANSPORT].post(
           {
-            from: "ralphrenzo@gmail.com",
+            from: "mariannemaepaclian@gmail.com",
             to: email
           },
           {
@@ -246,71 +212,74 @@ export default REST({
       return Promise.resolve("Succcessfuly ")
     },
     async create_application(data) {
-      data.designation.division = new ObjectId(data.designation.division);
-      data.designation.s = new ObjectId(data.designation.s);
+
+      return Application.apply(data);
       /**
        * TODO: UPLOAD ONLY WHEN REQUEST IS VALID
        */
-      const is_email = await this.db?.collection(collection).findOne({ "personal_information.email": data.personal_information.email });
-      if (is_email) return Promise.reject("Failed to Submit Application, Email Address Already Exists");
+      // const is_email = await this.db?.collection(collection).findOne({ "personal_information.email": data.personal_information.email });
+      // if (is_email) return Promise.reject("Failed to Submit Application, Email Address Already Exists");
 
-      const count = await this.db.collection('counters').findOne({});
-      if (!count) return Promise.reject("Failed to locate counting");
+      // const count = await this.db.collection('counters').findOne({});
+      // if (!count) return Promise.reject("Failed to locate counting");
 
-      const { number, _id } = count;
+      // const { number, _id } = count;
 
-      const current_date = new Date();
-      const d = current_date.toISOString().split("T")[0];
-      let paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
+      // const current_date = new Date();
+      // const d = current_date.toISOString().split("T")[0];
+      // let paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
 
-      const is_control_number = await this.db.collection('applicant').findOne({ control_number: paddedNumber });
+      // const is_control_number = await this.db.collection('applicant').findOne({ control_number: paddedNumber });
 
-      if (is_control_number) {
-        const count = await this.db.collection('counters').findOne({}, { projection: { number: 1 } });
-        if (!count) return Promise.reject("Failed to locate counting");
+      // if (is_control_number) {
+      //   const count = await this.db.collection('counters').findOne({}, { projection: { number: 1 } });
+      //   if (!count) return Promise.reject("Failed to locate counting");
 
-        const { number } = count;
+      //   const { number } = count;
 
-        const current_date = new Date();
-        const d = current_date.toISOString().split("T")[0];
-        paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
-      }
+      //   const current_date = new Date();
+      //   const d = current_date.toISOString().split("T")[0];
+      //   paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
+      // }
 
-      data.control_number = paddedNumber;
-      data.created_date = new Date(data.created_date);
-      data.service_record = data.service_record.map((v: any) => {
-        return {
-          ...v,
-          from: (v.from),
-          to: (v.to)
-        }
-      })
+      // data.control_number = paddedNumber;
+      // data.created_date = new Date(data.created_date);
+      // data.service_record = data.service_record.map((v: any) => {
+      //   return {
+      //     ...v,
+      //     from: (v.from),
+      //     to: (v.to)
+      //   }
+      // })
 
-      data.position = new ObjectId(data.qualification.position);
-      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
-      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
-      data.per_rating = new ObjectId(data.qualification.per_rating);
+      // data.designation.division = new ObjectId(data.designation.division);
+      // data.designation.school = new ObjectId(data.designation.school);
+      // data.position = new ObjectId(data.qualification.position);
+      // data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
+      // data.education = data.qualification.education.map((v: string) => new ObjectId(v));
+      // data.per_rating = new ObjectId(data.qualification.per_rating);
 
-      const session = this.instance.startSession();
+      // const session = this.instance.startSession();
 
-      const transactionOptions: TransactionOptions = {
-        readPreference: 'primary',
-        readConcern: { level: 'local' },
-        writeConcern: { w: 'majority' }
-      };
+      // const transactionOptions: TransactionOptions = {
+      //   readPreference: 'primary',
+      //   readConcern: { level: 'local' },
+      //   writeConcern: { w: 'majority' }
+      // };
 
-      try {
-        await session.withTransaction(async () => {
-          await this.db?.collection(collection).insertOne(data);
-          await this.db.collection('counters').updateOne({ _id: new ObjectId(_id) }, { $inc: { number: 1 } });
-        }, transactionOptions);
-      } catch (err) {
-        return Promise.reject(err)
-      }
-      finally {
-        await session.endSession();
-      }
-      return Promise.resolve("Successfully applied request");
+      // try {
+      //   await session.withTransaction(async () => {
+      //     await this.db?.collection(collection).insertOne(data);
+      //     await this.db.collection('counters').updateOne({ _id: new ObjectId(_id) }, { $inc: { number: 1 } });
+      //   }, transactionOptions);
+      // } catch (err) {
+      //   return Promise.reject("Transactions")
+      // }
+      // finally {
+      //   await session.endSession();
+      // }
+
+      // return Promise.resolve("Successfully applied request");
     },
     /**
      * PAGE: /sms/new-applicant-form
@@ -318,7 +287,39 @@ export default REST({
      */
     async get_application_qs() {
 
-      return this.db.collection('sms-qualification-standards').find({}).toArray();
+      return this.db.collection('sms-qualification-standards').aggregate(
+        [
+          {
+            $match: {},
+          },
+
+          {
+            $lookup: {
+              from: "sms-attachment",
+              let: { ids: "$attachment" },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: { $in: ["$_id", "$$ids"] }
+                  }
+                },
+                {
+                  $project: {
+                    _id: 0,
+                    title: 1
+                  }
+                }
+              ],
+              as: "attachment"
+            }
+          },
+          {
+            $set: {
+              attachment: "$attachment.title"
+            }
+          }
+
+        ]).toArray();
     },
     async get_application() {
       return this.db?.collection(collection).aggregate([
@@ -452,7 +453,12 @@ export default REST({
       data.education = data.qualification.education.map((v: string) => new ObjectId(v));
       data.per_rating = new ObjectId(data.qualification.per_rating);
 
-      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { status: "Pending" } });
+      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, {
+        $set:
+
+          { status: "Pending" }
+
+      });
       if (!result.modifiedCount) return Promise.reject("Failed to update");
       return Promise.resolve("Succesfully updated")
     },

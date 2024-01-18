@@ -30,8 +30,12 @@ paths:
     $ref: docs/admin/policy-authority.yml
   /registry:
     $ref: docs/registry.yml
+  /sms-attachment:
+    $ref: docs/sms-attachment.yml
   /sms-education:
     $ref: docs/sms-education.yml
+  /sms-eligibility:
+    $ref: docs/sms-eligibility.yml
   /sms-experience:
     $ref: docs/sms-experience.yml
   /sms-position:

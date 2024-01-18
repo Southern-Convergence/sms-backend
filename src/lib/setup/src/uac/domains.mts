@@ -59,6 +59,20 @@ export default [
       },
       {
         "basis": "Role Based",
+        "name": "Administrative Officer IV",
+        "internal": false,
+        "desc": "",
+        "resources": []
+      },
+      {
+        "basis": "Role Based",
+        "name": "Administrative Officer V",
+        "internal": false,
+        "desc": "",
+        "resources": []
+      },
+      {
+        "basis": "Role Based",
         "name": "Evaluator",
         "internal": false,
         "desc": "",

@@ -1,0 +1,92 @@
+[
+  {
+    "username": "Admin5",
+    "password": "",
+    "email": "admin4@gmail.com",
+    "type": "internal",
+    "domain_id": "",
+    "first_name": "Current",
+    "middle_name": "Admin",
+    "last_name": "IV",
+    "appelation": "Jr. III",
+    "access": [],
+    "status": "active",
+    "designation_information": {
+      "division": "",
+      "school": ""
+    },
+    "side": "RO"
+  },
+  {
+    "username": "Evaluator",
+    "password": "",
+    "email": "evaluator@gmail.com",
+    "type": "internal",
+    "domain_id": "",
+    "first_name": "Current",
+    "middle_name": "RO",
+    "last_name": "Evaluator",
+    "appelation": "Jr. III",
+    "access": [],
+    "designation_information": {
+      "division": "",
+      "school": ""
+    },
+    "status": "active",
+    "side": "RO"
+  },
+  {
+    "username": "Verifier",
+    "password": "",
+    "email": "verifier@gmail.com",
+    "type": "internal",
+    "domain_id": "",
+    "first_name": "Current",
+    "middle_name": "RO",
+    "last_name": "Verifier",
+    "appelation": "Jr. III",
+    "access": [],
+    "designation_information": {
+      "division": "",
+      "school": ""
+    },
+    "status": "active",
+    "side": "RO"
+  },
+  {
+    "username": "Recommending",
+    "password": "",
+    "email": "principal@gmail.com",
+    "type": "internal",
+    "domain_id": "",
+    "first_name": "Current",
+    "middle_name": "RO",
+    "last_name": "Recommending",
+    "appelation": "Jr. III",
+    "access": [],
+    "designation_information": {
+      "division": "",
+      "school": ""
+    },
+    "status": "active",
+    "side": "RO"
+  },
+  {
+    "username": "Approver",
+    "password": "",
+    "email": "principal@gmail.com",
+    "type": "internal",
+    "domain_id": "",
+    "first_name": "Current",
+    "middle_name": "RO",
+    "last_name": "Approver",
+    "appelation": "Jr. III",
+    "access": [],
+    "designation_information": {
+      "division": "",
+      "school": ""
+    },
+    "status": "active",
+    "side": "RO"
+  }
+]

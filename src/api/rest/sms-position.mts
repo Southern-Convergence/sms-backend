@@ -21,8 +21,16 @@ export default REST({
             training_hours: Joi.number(),
             rating: Joi.array(),
             sg: Joi.string(),
+            eligibility: Joi.string(),
+            attachment: Joi.array(),
+
+        },
+        "create-school-position": {
+            title: Joi.string(),
+            sg: Joi.string(),
         },
         "get-qs": {},
+        "get-school-position": {},
         "update-position": {
             _id: object_id,
             title: Joi.string(),
@@ -42,11 +50,20 @@ export default REST({
                     .then((data) => res.json({ data }))
                     .catch((error) => res.status(400).json({ error }));
             },
+            "create-school-position"(req, res) {
+                this.create_school_position(req.body)
+                    .then((data) => res.json({ data }))
+                    .catch((error) => res.status(400).json({ error }));
+            },
         },
         "GET": {
             "get-qs"(req, res) {
                 this.get_qs().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+            },
+            "get-school-position"(req, res) {
+                this.get_school_position().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
             }
+
         },
         "PUT": {
             "update-position"(req, res) {
@@ -63,7 +80,16 @@ export default REST({
             data.experience = data.experience.map((v: string) => new ObjectId(v));
             data.rating = data.rating.map((v: string) => new ObjectId(v));
             data.sg = new ObjectId(data.sg);
+            data.eligibility = new ObjectId(data.eligibility);
+            data.attachment = data.attachment.map((v: string) => new ObjectId(v));
             const result = await this.db?.collection(collection).insertOne(data);
+
+            if (!result.insertedId) return Promise.reject("Failed to insert position");
+            return Promise.resolve("Successfully inserted new position");
+        },
+        async create_school_position(data) {
+            data.sg = new ObjectId(data.sg);
+            const result = await this.db?.collection("sms-school-position").insertOne(data);
 
             if (!result.insertedId) return Promise.reject("Failed to insert position");
             return Promise.resolve("Successfully inserted new position");
@@ -72,6 +98,26 @@ export default REST({
             return this.db?.collection(collection).aggregate([
                 {
                     $match: {},
+                },
+                {
+                    $lookup: {
+                        from: "sms-attachment",
+                        let: { ids: "$attachment" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $in: ["$_id", "$$ids"] }
+                                }
+                            },
+                            {
+                                $project: {
+                                    _id: 0,
+                                    title: 1
+                                }
+                            }
+                        ],
+                        as: "attachment"
+                    }
                 },
                 {
                     $lookup: {
@@ -158,6 +204,11 @@ export default REST({
                 }
 
             ]).toArray()
+
+
+        },
+        async get_school_position() {
+            return this.db?.collection("sms-school-position").find({}).toArray()
         },
         async update_position(id, title, education, education_level, experience, training_hours, rating, sg) {
             const result = await this.db?.collection(collection).updateOne(
@@ -179,6 +230,5 @@ export default REST({
             }
             return result;
         }
-
     }
 })

@@ -9,6 +9,7 @@ import build_indices from "@setup/build-indices.mjs";
 import grant_def from "@setup/grant-def.mjs";
 import logger from "@lib/logger.mjs";
 import education from "./education.mjs";
+import sample from './sample.mjs'
 
 export default async function () {
   try {
@@ -17,6 +18,7 @@ export default async function () {
     await build_indices();
     await grant_def();
     await education();
+    await sample();
 
   } catch (err) {
     logger.error(err)

@@ -1,0 +1,18 @@
+{
+  "username": "principal",
+  "password": "",
+  "email": "principal@gmail.com",
+  "type": "internal",
+  "domain_id": "",
+  "first_name": "Current",
+  "middle_name": "School",
+  "last_name": "Principal",
+  "appelation": "Jr. III",
+  "access": [],
+  "status": "active",
+  "designation_information": {
+    "division": "",
+    "school": ""
+  },
+  "side": "school"
+}
