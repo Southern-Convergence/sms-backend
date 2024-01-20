@@ -6,7 +6,7 @@ import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
 
 import multers from "@lib/multers.mjs";
 import { v4 } from "uuid";
-import Application from "class/Application.1.mjs";
+import Application from "class/Application.mjs";
 
 const collection = "applicant"
 
@@ -22,7 +22,6 @@ export default REST({
       id: object_id
     },
     "get-requests": {
-
     },
     /**
      * PAGE: /sms/new-application-form
@@ -33,12 +32,15 @@ export default REST({
       applicants_data: Joi.object(),
       reason: Joi.string(),
     },
+    "get-evaluators": {
+      division_id: object_id
+    },
     "pending-application": {
       applicants_data: Joi.object(),
     },
     "assign-evaluator-application": {
-      applicants_data: Joi.object(),
-
+      app_id: object_id,
+      evaluator: object_id
     },
     "checking-application": {
       applicants_data: Joi.object(),
@@ -51,6 +53,37 @@ export default REST({
     },
     "approval-application": {
       applicants_data: Joi.object(),
+    },
+    /**
+     * APPROVAL PROCCESS
+     */
+    "evaluator-approved": {
+      approved: Joi.boolean().required(),
+      app_id: object_id
+    },
+    "handle-principal": {
+      status: Joi.boolean().required(),
+      app_id: object_id
+    },
+    "handle-admin4": {
+      status: Joi.boolean().required(),
+      app_id: object_id
+    },
+    "handle-evaluator": {
+      status: Joi.boolean().required(),
+      app_id: object_id
+    },
+    "handle-verifier": {
+      status: Joi.boolean().required(),
+      app_id: object_id
+    },
+    "handle-recommending-approver": {
+      status: Joi.boolean().required(),
+      app_id: object_id
+    },
+    "handle-approver": {
+      status: Joi.boolean().required(),
+      app_id: object_id
     },
   },
 
@@ -129,7 +162,6 @@ export default REST({
       },
 
       "pending-application"(req, res) {
-        console.log(req.body);
 
         const { personal_information, status, control_number } = req.body.applicants_data;
         const { email, lastname, firstname, } = personal_information
@@ -149,12 +181,6 @@ export default REST({
           },
         ).then(() => console.log("Success")).catch((error) => console.log(error));
         this.pending_application(req.body.applicants_data, status)
-          .then((data) => res.json({ data }))
-          .catch((error) => res.status(400).json({ error }));
-      },
-      "assign-evaluator-application"(req, res) {
-        const { status } = req.body.applicants_data;
-        this.assign_evaluator_application(req.body.applicants_data)
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
@@ -186,7 +212,7 @@ export default REST({
     },
     "GET": {
       "get-application"(req, res) {
-        this.get_application().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.get_application(req.session.user?._id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "get-application-qs"(req, res) {
         this.get_application_qs()
@@ -196,90 +222,117 @@ export default REST({
 
       "get-applicant"(req, res) {
         const { id } = req.query
-        console.log(id)
         this.get_applicant(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
-      "get-requests"(req, res) {
-        this.get_requests(req.session).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
-      }
+      "get-evaluators"(req, res) {
+        this.get_evaluators(new ObjectId(req.query.division_id?.toString())).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
     },
-
+    "PUT": {
+      "assign-evaluator-application"(req, res) {
+        this.assign_evaluator_application(req.body)
+          .then((data) => res.json({ data }))
+          .catch((error) => res.status(400).json({ error }));
+      },
+      "evaluator-approved"(req, res) {
+        this.handle_evaluator(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      /**
+       * APPROVAL PROCCESS
+       */
+      "handle-principal"(req, res) {
+        this.handle_principal(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "handle-admin4"(req, res) {
+        this.handle_principal(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "handle-evaluator"(req, res) {
+        this.handle_principal(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "handle-verifier"(req, res) {
+        this.handle_principal(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "handle-recommending-approver"(req, res) {
+        this.handle_principal(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "handle-approver"(req, res) {
+        this.handle_principal(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+    }
   },
   controllers: {
-
-    async get_requests(user: any) {
-      console.log(user);
-      return Promise.resolve("Succcessfuly ")
-    },
     async create_application(data) {
-
-      return Application.apply(data);
       /**
        * TODO: UPLOAD ONLY WHEN REQUEST IS VALID
        */
-      // const is_email = await this.db?.collection(collection).findOne({ "personal_information.email": data.personal_information.email });
-      // if (is_email) return Promise.reject("Failed to Submit Application, Email Address Already Exists");
+      const is_email = await this.db?.collection(collection).findOne({ "personal_information.email": data.personal_information.email });
+      if (is_email) return Promise.reject("Failed to Submit Application, Email Address Already Exists");
 
-      // const count = await this.db.collection('counters').findOne({});
-      // if (!count) return Promise.reject("Failed to locate counting");
+      const count = await this.db.collection('counters').findOne({});
+      if (!count) return Promise.reject("Failed to locate counting");
 
-      // const { number, _id } = count;
+      const { data: assignees, error: assingees_error } = await Application.get_assignees(new ObjectId(data.designation.school), new ObjectId(data.designation.division));
+      if (assingees_error) return Promise.reject("Failed to resolve assingees");
 
-      // const current_date = new Date();
-      // const d = current_date.toISOString().split("T")[0];
-      // let paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
+      data.assignees = assignees;
 
-      // const is_control_number = await this.db.collection('applicant').findOne({ control_number: paddedNumber });
+      const { number, _id } = count;
 
-      // if (is_control_number) {
-      //   const count = await this.db.collection('counters').findOne({}, { projection: { number: 1 } });
-      //   if (!count) return Promise.reject("Failed to locate counting");
+      const current_date = new Date();
+      const d = current_date.toISOString().split("T")[0];
+      let paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
 
-      //   const { number } = count;
+      const is_control_number = await this.db.collection('applicant').findOne({ control_number: paddedNumber });
 
-      //   const current_date = new Date();
-      //   const d = current_date.toISOString().split("T")[0];
-      //   paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
-      // }
+      if (is_control_number) {
+        const count = await this.db.collection('counters').findOne({}, { projection: { number: 1 } });
+        if (!count) return Promise.reject("Failed to locate counting");
 
-      // data.control_number = paddedNumber;
-      // data.created_date = new Date(data.created_date);
-      // data.service_record = data.service_record.map((v: any) => {
-      //   return {
-      //     ...v,
-      //     from: (v.from),
-      //     to: (v.to)
-      //   }
-      // })
+        const { number } = count;
 
-      // data.designation.division = new ObjectId(data.designation.division);
-      // data.designation.school = new ObjectId(data.designation.school);
-      // data.position = new ObjectId(data.qualification.position);
-      // data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
-      // data.education = data.qualification.education.map((v: string) => new ObjectId(v));
-      // data.per_rating = new ObjectId(data.qualification.per_rating);
+        const current_date = new Date();
+        const d = current_date.toISOString().split("T")[0];
+        paddedNumber = `${d}-${number.toString().padStart(4, "0")}`; //index comtrol number
+      }
 
-      // const session = this.instance.startSession();
+      data.control_number = paddedNumber;
+      data.created_date = new Date(data.created_date);
+      data.service_record = data.service_record.map((v: any) => {
+        return {
+          ...v,
+          from: (v.from),
+          to: (v.to)
+        }
+      })
 
-      // const transactionOptions: TransactionOptions = {
-      //   readPreference: 'primary',
-      //   readConcern: { level: 'local' },
-      //   writeConcern: { w: 'majority' }
-      // };
+      data.designation.division = new ObjectId(data.designation.division);
+      data.designation.school = new ObjectId(data.designation.school);
+      data.position = new ObjectId(data.qualification.position);
+      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
+      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
+      data.per_rating = new ObjectId(data.qualification.per_rating);
 
-      // try {
-      //   await session.withTransaction(async () => {
-      //     await this.db?.collection(collection).insertOne(data);
-      //     await this.db.collection('counters').updateOne({ _id: new ObjectId(_id) }, { $inc: { number: 1 } });
-      //   }, transactionOptions);
-      // } catch (err) {
-      //   return Promise.reject("Transactions")
-      // }
-      // finally {
-      //   await session.endSession();
-      // }
+      const session = this.instance.startSession();
 
-      // return Promise.resolve("Successfully applied request");
+      const transactionOptions: TransactionOptions = {
+        readPreference: 'primary',
+        readConcern: { level: 'local' },
+        writeConcern: { w: 'majority' }
+      };
+
+      try {
+        await session.withTransaction(async () => {
+          await this.db?.collection(collection).insertOne(data);
+          await this.db.collection('counters').updateOne({ _id: new ObjectId(_id) }, { $inc: { number: 1 } });
+        }, transactionOptions);
+      } catch (err) {
+        return Promise.reject("Transactions")
+      }
+      finally {
+        await session.endSession();
+      }
+
+      return Promise.resolve("Successfully applied request");
     },
     /**
      * PAGE: /sms/new-applicant-form
@@ -321,70 +374,72 @@ export default REST({
 
         ]).toArray();
     },
-    async get_application() {
-      return this.db?.collection(collection).aggregate([
+    async get_application(user_id: any) {
+      return Application.get_requests(new ObjectId(user_id))
+        .then(({ data }) => Promise.resolve(data))
+        .catch(({ error }) => Promise.reject(error));
+    },
+    async get_evaluators(division: ObjectId) {
+      return this.db.collection('users').aggregate([
         {
-          $match: {}
+          $match: {
+            "designation_information.division": division,
+          },
         },
         {
           $lookup: {
-            from: "sms-qualification-standards",
-            localField: "position",
-            foreignField: "_id",
-            as: "position"
-          }
-        },
-        {
-          $lookup: {
-            from: 'sms-school',
-            localField: "designation.school",
-            foreignField: "_id",
-            as: "school"
-          }
-        },
-        {
-          $lookup: {
-            from: 'sms-sdo',
-            localField: "designation.division",
-            foreignField: "_id",
-            as: "division"
-          }
-        },
-        {
-          $set: {
-            full_name: {
-              $concat: ["$personal_information.firstname", " ", "$personal_information.lastname"]
+            from: "ap-templates",
+            let: {
+              role: "$role",
             },
-
-          }
+            pipeline: [
+              {
+                $match: {
+                  $and: [
+                    {
+                      $expr: {
+                        $eq: ["$_id", "$$role"],
+                      },
+                    },
+                    {
+                      $expr: {
+                        $eq: ["$name", "Evaluator"],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            as: "evaluator",
+          },
         },
         {
           $unwind: {
-            path: "$position",
+            path: "$evaluator",
             preserveNullAndEmptyArrays: true
           }
         },
         {
-          $unwind: {
-            path: "$division",
-            preserveNullAndEmptyArrays: true,
-          },
+          $match: {
+            "evaluator.name": "Evaluator"
+          }
         },
         {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
+          $set: {
+            title: {
+              $concat: [
+                "$first_name",
+                " ",
+                "$middle_name",
+                " ",
+                "$last_name"
+              ]
+            }
+          }
         },
         {
           $project: {
-            position: "$position.title",
-            control_number: 1,
-            division: "$division.title",
-            school: "$school.title",
-            status: 1,
-            full_name: 1
-
+            title: 1
           }
         }
       ]).toArray()
@@ -463,18 +518,10 @@ export default REST({
       return Promise.resolve("Succesfully updated")
     },
     async assign_evaluator_application(data: any) {
-      const id = data._id;
-      delete data._id;
-      data.status = "For Evaluation";
-      const document = await this.db.collection(collection).findOne({ _id: new ObjectId(id) });
-      if (!document) return Promise.reject("Could not find application");
-      data.position = new ObjectId(data.qualification.position);
-      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
-      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
-      data.per_rating = new ObjectId(data.qualification.per_rating);
+      const { app_id, evaluator } = data;
 
-      const result = await this.db.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { ...data } });
-      if (!result.modifiedCount) return Promise.reject("Failed to Assign to Evaluator!");
+      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.2.id": new ObjectId(evaluator), "assignees.1.approved": true } });
+      if (!result.modifiedCount) return Promise.reject("Failed to assign evaluator.");
       return Promise.resolve("Succesfully Assigned to Evaluator!")
     },
     async checking_application(data: any) {
@@ -537,5 +584,46 @@ export default REST({
       if (!result.modifiedCount) return Promise.reject("Failed to Update!");
       return Promise.resolve("Succesfully Approved!")
     },
+    /**
+     * APPROVAL PROCCESS
+     */
+    async handle_principal(data: any) {
+      const { status, app_id } = data;
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.0.approved ": status, status: "Pending" } })
+      if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
+      return Promise.resolve("Success Verifier")
+    },
+    async handle_admin4(data: any) {
+      const { app_id, evaluator } = data;
+      //add loic here
+      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.2.id": new ObjectId(evaluator), "assignees.1.approved": true, status: "For Evaluation" } });
+      if (!result.modifiedCount) return Promise.reject("Failed to assign evaluator.");
+      return Promise.resolve("Succesfully Assigned to Evaluator!")
+    },
+    async handle_evaluator(data: any) {
+      const { approved, app_id } = data;
+
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assingees.2.approved": approved, "assigness.1.evaluator_approved": approved, status: "For Checking" } });
+      if (!result.modifiedCount) return Promise.reject("Failed to update evaluator")
+      return Promise.resolve("success")
+    },
+    async handle_verifier(data: any) {
+      const { status, app_id } = data;
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.3.approved ": status, status: "Recommending for Approval" } })
+      if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
+      return Promise.resolve("Success Verifier")
+    },
+    async handle_recommending_approver(data: any) {
+      const { status, app_id } = data;
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.4.approved ": status, status: "For Approval" } })
+      if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
+      return Promise.resolve("Success recommending")
+    },
+    async handle_approver(data: any) {
+      const { status, app_id } = data;
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.5.approved ": status, status: "Completed" } })
+      if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
+      return Promise.resolve("Success Verifier")
+    }
   }
 })

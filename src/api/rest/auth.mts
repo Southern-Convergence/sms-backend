@@ -5,7 +5,7 @@ import Joi from "joi";
 import { UAParser } from "ua-parser-js";
 import otpgen from "@lib/otpgen.mjs";
 
-import {handle_res, object_id} from "@lib/api-utils.mjs";
+import { handle_res, object_id } from "@lib/api-utils.mjs";
 import Grant from "@lib/grant.mjs";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -19,7 +19,7 @@ export default REST({
   cfg: {
     public: true,
 
-    service : "Identity Management"
+    service: "Identity Management"
   },
 
   validators: {
@@ -29,43 +29,43 @@ export default REST({
     },
     logout: {},
     recovery: { email: Joi.string().email().required() },
-    "update-password" : {
-      otp : Joi.string().required(),
-      password : Joi.string().min(MIN_PASSWORD_LENGTH).required(),
-      confirm_password : Joi.string().min(MIN_PASSWORD_LENGTH).required()
+    "update-password": {
+      otp: Joi.string().required(),
+      password: Joi.string().min(MIN_PASSWORD_LENGTH).required(),
+      confirm_password: Joi.string().min(MIN_PASSWORD_LENGTH).required()
     },
     "get-page-resources": {},
     "get-user": {},
     "get-sessions": {},
     "terminate-session": { session_id: Joi.string().required() },
 
-    "verify-invitation-code" : {
-      code : Joi.string().required()
+    "verify-invitation-code": {
+      code: Joi.string().required()
     },
 
-    "finalize" : {
-      user_id     : object_id,
-      invite_id   : Joi.string().required(),
+    "finalize": {
+      user_id: object_id,
+      invite_id: Joi.string().required(),
 
-      first_name  : Joi.string().required(),
-      middle_name : Joi.string().allow(""),
-      last_name   : Joi.string().required(),
+      first_name: Joi.string().required(),
+      middle_name: Joi.string().allow(""),
+      last_name: Joi.string().required(),
 
-      username : Joi.string().min(MIN_USERNAME_LENGTH).required(),
-      password : Joi.string().min(MIN_PASSWORD_LENGTH).required(),
+      username: Joi.string().min(MIN_USERNAME_LENGTH).required(),
+      password: Joi.string().min(MIN_PASSWORD_LENGTH).required(),
     },
 
-    "update-credentials" : {
-      old_password : Joi.string().min(MIN_PASSWORD_LENGTH),
-      new_password : Joi.string().min(MIN_PASSWORD_LENGTH)
+    "update-credentials": {
+      old_password: Joi.string().min(MIN_PASSWORD_LENGTH),
+      new_password: Joi.string().min(MIN_PASSWORD_LENGTH)
     },
 
-    "update-user-id" : {
-      email    : Joi.string().email(),
-      username : Joi.string().min(MIN_USERNAME_LENGTH)
+    "update-user-id": {
+      email: Joi.string().email(),
+      username: Joi.string().min(MIN_USERNAME_LENGTH)
     },
 
-    "profile-completion" : {}
+    "profile-completion": {}
   },
 
   handlers: {
@@ -114,85 +114,85 @@ export default REST({
       async recovery(req, res) {
         const { email } = req.body;
         const user = await this.get_user_by_email(email);
-        if(!user)return res.status(400).json({error : "Account recovery failed, no such email."});
-        
+        if (!user) return res.status(400).json({ error: "Account recovery failed, no such email." });
+
         const otp = otpgen();
         this.save_otp(otp, user._id)
-        .then(()=> {
-          this.postoffice[EMAIL_TRANSPORT].post({
-            to      : (email.toString() || ""),
-            subject : "Account Recovery"
-          }, {
-            template : "uac-recovery",
-            layout   : "default",
-            context  : {
-              link : `${ALLOWED_ORIGIN}/account-recovery?ref=${otp}`,
-              name : `${user.first_name} ${user.last_name}`
-            }
+          .then(() => {
+            this.postoffice[EMAIL_TRANSPORT].post({
+              to: (email.toString() || ""),
+              subject: "Account Recovery"
+            }, {
+              template: "uac-recovery",
+              layout: "default",
+              context: {
+                link: `${ALLOWED_ORIGIN}/account-recovery?ref=${otp}`,
+                name: `${user.first_name} ${user.last_name}`
+              }
+            })
+              .then(() => res.json({ data: "Successfully issued recovery otp." }))
+              .catch((error) => res.status(400).json({ error: `Failed to issue recovery otp. Please contact an administrator.` }))
           })
-          .then(()=> res.json({data : "Successfully issued recovery otp."}))
-          .catch((error)=> res.status(400).json({error : `Failed to issue recovery otp. Please contact an administrator.`}))
-        })
       },
 
-      async "update-password"(req, res){
-        const { otp, password, confirm_password  } = req.body;
+      async "update-password"(req, res) {
+        const { otp, password, confirm_password } = req.body;
 
-        if(password !== confirm_password)return res.status(400).json({error : "Failed to update password, password's must match."});
-        
+        if (password !== confirm_password) return res.status(400).json({ error: "Failed to update password, password's must match." });
+
         const matched_otp = await this.get_otp(otp);
-        if(!matched_otp)return res.status(400).json({error : "Failed to update user password, otp not found or has expired."});
+        if (!matched_otp) return res.status(400).json({ error: "Failed to update user password, otp not found or has expired." });
 
         this.delete_otp(matched_otp._id);
         bcrypt.hash(password, SALT_ROUNDS)
-        .then((pass)=> {
-          this.update_user_password(matched_otp.user_id, pass)
-          .then(()=> res.json({data : "Successfully updated user password"}))
-          .catch((error)=> res.status(400).json({error}));
-        });
+          .then((pass) => {
+            this.update_user_password(matched_otp.user_id, pass)
+              .then(() => res.json({ data: "Successfully updated user password" }))
+              .catch((error) => res.status(400).json({ error }));
+          });
       },
 
-      async "update-credentials"(req, res){
-        if(!req.session.user)return res.status(400).json({error : "No Session Found."});
+      async "update-credentials"(req, res) {
+        if (!req.session.user) return res.status(400).json({ error: "No Session Found." });
         const { old_password, new_password } = req.body;
 
         const user = await this.get_password(req.session.user._id);
-        if(!user)return res.status(400).json({error : "Failed to update credentials, user not found"});
+        if (!user) return res.status(400).json({ error: "Failed to update credentials, user not found" });
 
         const is_match = await bcrypt.compare(old_password, user.password)
-        if(!is_match)return res.status(400).json({error : "Failed to update credentials, old password did not match."});
+        if (!is_match) return res.status(400).json({ error: "Failed to update credentials, old password did not match." });
 
         bcrypt.hash(new_password, SALT_ROUNDS)
-        .then((pass)=> {
-          this.update_user_password(req.session.user?._id!, pass)
-          .then(()=> res.json({data : "Successfully updated user password"}))
-          .catch((error)=> res.status(400).json({error}));
-        });
+          .then((pass) => {
+            this.update_user_password(req.session.user?._id!, pass)
+              .then(() => res.json({ data: "Successfully updated user password" }))
+              .catch((error) => res.status(400).json({ error }));
+          });
       },
 
-      async "update-user-id"(req, res){
-        if(!req.session.user)return res.status(400).json({error : "No Session Found"});
+      async "update-user-id"(req, res) {
+        if (!req.session.user) return res.status(400).json({ error: "No Session Found" });
         const { username, email } = req.body;
 
-        if(!username && !email)return res.status(400).json({error : "Failed to update credentials, no arguments provided."});
+        if (!username && !email) return res.status(400).json({ error: "Failed to update credentials, no arguments provided." });
 
         const user = await this.get_user(req.session.user._id);
-        if(!user)return res.status(400).json({error : "No such user."});
+        if (!user) return res.status(400).json({ error: "No such user." });
 
-        let temp:any = {};
+        let temp: any = {};
 
-        if(username)temp.username = username;
-        if(email)temp.email = email;
-        
+        if (username) temp.username = username;
+        if (email) temp.email = email;
+
         this.update_user(req.session.user._id, temp)
-        .then(()=> res.json({data : "Successfully updated user id."}))
-        .catch(()=> res.status(400).json({error : "Failed to update credentials."}));
+          .then(() => res.json({ data: "Successfully updated user id." }))
+          .catch(() => res.status(400).json({ error: "Failed to update credentials." }));
       },
 
-      "finalize"(req, res){
+      "finalize"(req, res) {
         this.finalize_user(req.body)
-        .then(()=> res.json({data : "Successfully finalized user account."}))
-        .catch((error)=> res.status(400).json({error}));
+          .then(() => res.json({ data: "Successfully finalized user account." }))
+          .catch((error) => res.status(400).json({ error }));
       }
     },
 
@@ -220,9 +220,9 @@ export default REST({
       "get-page-resources"(req, res) {
         const user = req.session.user;
         if (!user) return res.status(401).json({ error: "No Session Found." });
-        const pages = user.access.flatMap((apt)=> Grant.get_pages(apt.toString()));
+        const pages = user.access.flatMap((apt) => Grant.get_pages(apt.toString()));
 
-        res.json({data : pages});
+        res.json({ data: pages });
       },
 
       async "get-sessions"(req, res) {
@@ -245,21 +245,23 @@ export default REST({
         res.json({ data });
       },
 
-      "verify-invitation-code"(req, res){
+      "verify-invitation-code"(req, res) {
         const { code } = req.query;
         handle_res(this.get_finalization_details(code), res);
       },
 
-      "profile-completion"(req, res){
+      "profile-completion"(req, res) {
         //Base score of 100
         //A criteria object is used as reference for calculating the completion score.
 
         //For now, I return 100% cuz it's not needed yet.
 
-        res.json({data : {
-          score   : 100,
-          details : {}
-        }});
+        res.json({
+          data: {
+            score: 100,
+            details: {}
+          }
+        });
       }
     }
   },
@@ -270,13 +272,13 @@ export default REST({
         { username },
         {
           projection: {
-            _id      : 1,
-            username : 1,
-            password : 1,
-            email    : 1,
-            type     : 1,
-            access   : 1
-           }
+            _id: 1,
+            username: 1,
+            password: 1,
+            email: 1,
+            type: 1,
+            access: 1
+          }
         }
       );
 
@@ -368,12 +370,26 @@ export default REST({
             },
           },
           {
+            $lookup: {
+              from: "ap-templates",
+              localField: "role",
+              foreignField: "_id",
+              as: "role",
+            }
+          },
+          {
+            $unwind: {
+              path: "$role",
+              preserveNullAndEmptyArrays: true,
+            }
+          },
+          {
             $project: {
-              username    : 1,
-              first_name  : 1,
-              middle_name : 1,
-              last_name   : 1,
-              appelation  : 1,
+              username: 1,
+              first_name: 1,
+              middle_name: 1,
+              last_name: 1,
+              appelation: 1,
               type: 1,
               status: 1,
               access: {
@@ -385,6 +401,8 @@ export default REST({
               office: "$office.name",
               unit: "$unit.name",
               position: "$position.name",
+              role: "$role.name",
+              division: "$designation_information.division",
             },
           },
         ])
@@ -409,76 +427,76 @@ export default REST({
         .collection("sessions")
         .deleteOne({ _id })
         .then((v) => {
-          if (!v.deletedCount)return Promise.reject("Failed to terminate session, Session not found.");
+          if (!v.deletedCount) return Promise.reject("Failed to terminate session, Session not found.");
         });
     },
 
-    get_user_by_email(email){
-      return this.db.collection("users").findOne({email});
+    get_user_by_email(email) {
+      return this.db.collection("users").findOne({ email });
     },
 
-    get_otp(token){
-      return this.db.collection("otp").findOne({token});
+    get_otp(token) {
+      return this.db.collection("otp").findOne({ token });
     },
 
-    save_otp(token, user_id){
-      return this.db.collection("otp").updateOne({ user_id }, {$set : { token, expiry : new Date(Date.now() + EXPIRY), user_id }}, {upsert : true});
+    save_otp(token, user_id) {
+      return this.db.collection("otp").updateOne({ user_id }, { $set: { token, expiry: new Date(Date.now() + EXPIRY), user_id } }, { upsert: true });
     },
 
-    delete_otp(token_id){
-      this.db.collection("otp").deleteOne({_id : token_id});
+    delete_otp(token_id) {
+      this.db.collection("otp").deleteOne({ _id: token_id });
     },
 
-    async update_user_password(user_id, password){
+    async update_user_password(user_id, password) {
 
-      const result = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
-        $set : {
+      const result = await this.db.collection("users").updateOne({ _id: new ObjectId(user_id) }, {
+        $set: {
           password
         }
       })
 
-      if(!result.modifiedCount)return Promise.reject("Failed to update user password, user not found.");
+      if (!result.modifiedCount) return Promise.reject("Failed to update user password, user not found.");
     },
 
-    async get_finalization_details(code){
-      const temp = await this.db.collection("invites").findOne({code : code}, { projection : {user : 1}});
+    async get_finalization_details(code) {
+      const temp = await this.db.collection("invites").findOne({ code: code }, { projection: { user: 1 } });
 
-      if(!temp)return Promise.reject("Failed to get invitation details, it is either expired or is invalid.");
+      if (!temp) return Promise.reject("Failed to get invitation details, it is either expired or is invalid.");
       return temp;
     },
 
-    finalize_user(user){
+    finalize_user(user) {
       const { user_id, invite_id, username, password, first_name, middle_name, last_name } = user;
 
       const session = this.instance.startSession();
 
-      return session.withTransaction(async()=> {
-        const user_res = await this.db.collection("users").findOne({username});
-      
-        if(user_res)return Promise.reject("Username is already taken");
+      return session.withTransaction(async () => {
+        const user_res = await this.db.collection("users").findOne({ username });
+
+        if (user_res) return Promise.reject("Username is already taken");
         const hashed_password = await bcrypt.hash(password, SALT_ROUNDS);
-        this.db.collection("invites").deleteOne({code : invite_id});
-        const update_op = await this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
-          $set : {
+        this.db.collection("invites").deleteOne({ code: invite_id });
+        const update_op = await this.db.collection("users").updateOne({ _id: new ObjectId(user_id) }, {
+          $set: {
             username,
-            status : "active",
-            
-            password : hashed_password,
+            status: "active",
+
+            password: hashed_password,
             first_name, middle_name, last_name
           }
         });
 
-        if(!update_op.modifiedCount)return Promise.reject("Failed to finalize account");
-      }).finally(()=> session.endSession());
+        if (!update_op.modifiedCount) return Promise.reject("Failed to finalize account");
+      }).finally(() => session.endSession());
     },
 
-    get_password(user_id){
-      return this.db.collection("users").findOne({_id : new ObjectId(user_id)}, { projection : {password : 1}});
+    get_password(user_id) {
+      return this.db.collection("users").findOne({ _id: new ObjectId(user_id) }, { projection: { password: 1 } });
     },
 
-    update_user(user_id, obj){
-      return this.db.collection("users").updateOne({_id : new ObjectId(user_id)}, {
-        $set : { ...obj }
+    update_user(user_id, obj) {
+      return this.db.collection("users").updateOne({ _id: new ObjectId(user_id) }, {
+        $set: { ...obj }
       })
     }
   },

@@ -173,6 +173,7 @@ export default REST({
                         },
                     },
                 },
+
                 {
                     $lookup: {
                         from: "sms-performance-rating",
@@ -197,10 +198,30 @@ export default REST({
                     },
                 },
                 {
+                    $lookup: {
+                        from: "sms-eligibility",
+                        localField: "eligibility",
+                        foreignField: "_id",
+                        as: "eligibility",
+                    },
+                },
+                {
                     $unwind: {
                         path: "$sg",
                         preserveNullAndEmptyArrays: true
                     }
+                },
+                {
+                    $unwind: {
+                        path: "$eligibility",
+                        preserveNullAndEmptyArrays: true
+                    }
+                },
+                {
+                    $set: {
+                        eligibility: "$eligibility.title"
+                    }
+
                 }
 
             ]).toArray()
