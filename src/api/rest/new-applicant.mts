@@ -22,7 +22,13 @@ export default REST({
     "get-applicant": {
       id: object_id
     },
+    "get-erf": {
+      id: object_id
+    },
     "get-requests": {
+    },
+    "get-signatory": {
+      id: object_id
     },
     /**
      * PAGE: /sms/new-application-form
@@ -59,7 +65,6 @@ export default REST({
      * APPROVAL PROCCESS
      */
     "evaluator-approved": {
-
       approved: Joi.boolean().required(),
       app_id: object_id
     },
@@ -225,6 +230,14 @@ export default REST({
       "get-applicant"(req, res) {
         const { id } = req.query
         this.get_applicant(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "get-erf"(req, res) {
+        const { id } = req.query
+        this.get_erf(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "get-signatory"(req, res) {
+        const { id } = req.query
+        this.get_signatory(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "get-evaluators"(req, res) {
         this.get_evaluators(new ObjectId(req.query.division_id?.toString())).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
@@ -493,6 +506,43 @@ export default REST({
       ).next()
 
     },
+    async get_erf(id) {
+      return this.db?.collection(collection).aggregate(
+        [
+          {
+            $match: {
+              _id: new ObjectId(id)
+
+            }
+          },
+
+
+          {
+            $project: {
+
+              full_name: {
+                $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
+              },
+              birthday: "$personal_information.birthday",
+              plantilla_no: "$designation.plantilla_no",
+              item_no: "$designation.item_no",
+              current_position: "$designation.current_position",
+              educational_attainment: 1,
+              service_record: 1,
+              public_years_teaching: "$equivalent_unit.public_years_teaching",
+              yt_equivalent: "$equivalent_unit.yt_equivalent",
+              professional_study: 1,
+              ipcrf_rating: "$designation.ipcrf_rating",
+
+
+
+            }
+          }
+
+        ]
+      ).next()
+
+    },
     async dissapproved_application(id, email, status, reason) {
       return this.db?.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { email: email, status: "Dissapproved", reason: reason } }, { upsert: true })
     },
@@ -590,39 +640,46 @@ export default REST({
      */
     async handle_principal(data: any) {
       const { status, app_id } = data;
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.0.approved ": status, status: "Pending" } })
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.0.approved": status, status: "Pending", "assignees.0.timestamp": Date.now() } })
       if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
       return Promise.resolve("Successfully submitted to Schools Division Office!")
     },
     async handle_admin4(data: any) {
       const { status, app_id } = data;
+
       const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, {
         $set: {
           // "assignees.1.approved": status,
           // status: "For Evaluation",
-          "assignees.2.id": new ObjectId(app_id),
-          status: "For Verifying"
+          // "assignees.1.timestamp": Date.now() 
+
+          "assignees.1.evaluator_approved": true,
+          status: "For Verifying",
+
+
         }
-      })
+      });
+
+
       if (!result.modifiedCount) return Promise.reject("Failed to verify!")
       return Promise.resolve("Successfully verify!")
     },
 
     async handle_evaluator(data: any) {
       const { status, app_id } = data;
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.1.evaluator_approved": status, "assignees.2.approved": status, status: "For Checking" } })
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.1.evaluator_approved": status, "assignees.2.approved": status, status: "For Checking", "assignees.2.timestamp": Date.now() } })
       if (!result.modifiedCount) return Promise.reject("Failed to submit")
       return Promise.resolve("Successfully Checked! ")
     },
     async handle_verifier(data: any) {
       const { status, app_id } = data;
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.3.approved": status, status: "Recommending for Approval" } })
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.3.approved": status, status: "Recommending for Approval", "assignees.3.timestamp": Date.now() } })
       if (!result.modifiedCount) return Promise.reject("Failed to Recommend for  Approval")
       return Promise.resolve("Successfully Recommended!")
     },
     async handle_recommending_approver(data: any) {
       const { status, app_id } = data;
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.4.approved": status, status: "For Approval" } })
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.4.approved": status, status: "For Approval", "assignees.4.timestamp": Date.now() } })
       if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
       return Promise.resolve("Successdully Approved!")
     },
@@ -631,6 +688,61 @@ export default REST({
       const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.5.approved": status, status: "Completed" } })
       if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
       return Promise.resolve("Successfully Indorsed to Regional Office!")
-    }
+    },
+    async get_signatory(id) {
+      return this.db?.collection(collection).aggregate(
+        [
+          {
+            $match: {
+              _id: new ObjectId(id)
+
+            }
+          },
+          {
+            $lookup: {
+              from: 'sms-school',
+              localField: 'designation.school',
+              foreignField: '_id',
+              as: 'school'
+            }
+          },
+          {
+            $lookup: {
+              from: 'sms-sdo',
+              localField: 'designation.division',
+              foreignField: '_id',
+              as: 'division'
+            }
+          },
+          {
+            $unwind: {
+              path: '$division',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $unwind: {
+              path: '$school',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $project: {
+              division: '$division.title',
+              school: '$school.title',
+              assignees: '$assignees',
+              control_number: '$control_number',
+              full_name: {
+                $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
+              },
+              created_date: '$created_date',
+              status: '$status'
+            }
+          }
+        ]
+      ).next()
+
+    },
+
   }
 })

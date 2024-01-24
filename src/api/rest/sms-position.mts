@@ -23,6 +23,7 @@ export default REST({
             sg: Joi.string(),
             eligibility: Joi.string(),
             attachment: Joi.array(),
+            sdo_attachment: Joi.array(),
 
         },
         "create-school-position": {

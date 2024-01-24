@@ -285,17 +285,7 @@ export default class Application {
             as: "division",
           },
         },
-        {
-          $set: {
-            full_name: {
-              $concat: [
-                "$requests.personal_information.firstname",
-                "$requests.personal_information.middle_name ",
-                "$requests.personal_information.lastname",
-              ],
-            },
-          },
-        },
+
         {
           $unwind: {
             path: "$position",
@@ -322,9 +312,9 @@ export default class Application {
             division: "$division.title",
             school: "$school.title",
             status: "$requests.status",
-            full_name: {
-              $concat: ["$requests.personal_information.first_name", " ", "$requests.personal_information.last_name"]
-            }
+            first_name: "$requests.personal_information.first_name",
+            last_name: "$requests.personal_information.last_name"
+
           },
         },
       ]
@@ -358,10 +348,10 @@ export default class Application {
                         ],
                       },
                     },
-                    { status: "For Checking" },
-                    { "assignees.1.evaluator_approved": true },
-                    { "assignees.2.approved": true },
-                    // { $or: [{ status: "Pending", "assignees.0.approved": true }] }
+                    { $or: [{ "assignees.0.approved": true }, { $and: [{ "assignees.2.approved": true }, { "assignees.1.evaluator_approved": true }] }] },
+
+                    { status: { $in: ["Pending", "For Checking"] } }
+
 
 
 
@@ -435,9 +425,8 @@ export default class Application {
             division: "$division.title",
             school: "$school.title",
             status: "$requests.status",
-            full_name: {
-              $concat: ["$requests.personal_information.first_name", " ", "$requests.personal_information.last_name"]
-            }
+            first_name: "$requests.personal_information.first_name",
+            last_name: "$requests.personal_information.last_name"
           },
         },
       ]
@@ -516,17 +505,7 @@ export default class Application {
             as: "division",
           },
         },
-        {
-          $set: {
-            full_name: {
-              $concat: [
-                "$requests.personal_information.firstname",
-                "$requests.personal_information.middle_name ",
-                "$requests.personal_information.lastname",
-              ],
-            },
-          },
-        },
+
         {
           $unwind: {
             path: "$position",
@@ -553,9 +532,8 @@ export default class Application {
             division: "$division.title",
             school: "$school.title",
             status: "$requests.status",
-            full_name: {
-              $concat: ["$requests.personal_information.first_name", " ", "$requests.personal_information.last_name"]
-            }
+            first_name: "$requests.personal_information.first_name",
+            last_name: "$requests.personal_information.last_name"
           },
         },
       ]
@@ -662,9 +640,8 @@ export default class Application {
             division: "$division.title",
             school: "$school.title",
             status: "$requests.status",
-            full_name: {
-              $concat: ["$requests.personal_information.first_name", " ", "$requests.personal_information.last_name"]
-            }
+            first_name: "$requests.personal_information.first_name",
+            last_name: "$requests.personal_information.last_name"
           },
         },
       ]
@@ -770,9 +747,8 @@ export default class Application {
             division: "$division.title",
             school: "$school.title",
             status: "$requests.status",
-            full_name: {
-              $concat: ["$requests.personal_information.first_name", " ", "$requests.personal_information.last_name"]
-            }
+            first_name: "$requests.personal_information.first_name",
+            last_name: "$requests.personal_information.last_name"
           },
         },
       ]
@@ -806,8 +782,13 @@ export default class Application {
                         ],
                       },
                     },
-                    { "assignees.4.approved": true },
-                    { status: "For Approval" }
+                    // { "assignees.4.approved": true },
+                    // { status: "For Approval" },
+                    // { "assignees.5.approved": true },
+                    // { status: "Completed" }
+                    { $or: [{ "assignees.4.approved": true }, { $and: [{ "assignees.5.approved": true }] }] },
+                    { status: { $in: ["For Approval", "Completed"] } }
+
                   ],
                 },
               },
@@ -878,9 +859,8 @@ export default class Application {
             division: "$division.title",
             school: "$school.title",
             status: "$requests.status",
-            full_name: {
-              $concat: ["$requests.personal_information.first_name", " ", "$requests.personal_information.last_name"]
-            }
+            first_name: "$requests.personal_information.first_name",
+            last_name: "$requests.personal_information.last_name"
           },
         },
       ]
