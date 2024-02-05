@@ -21,7 +21,7 @@ export default REST({
             training_hours: Joi.number(),
             rating: Joi.array(),
             sg: Joi.string(),
-            eligibility: Joi.string(),
+            eligibility: Joi.array(),
             attachment: Joi.array(),
             sdo_attachment: Joi.array(),
 
@@ -83,6 +83,7 @@ export default REST({
             data.sg = new ObjectId(data.sg);
             data.eligibility = new ObjectId(data.eligibility);
             data.attachment = data.attachment.map((v: string) => new ObjectId(v));
+            data.sdo_attachment = data.sdo_attachment.map((v: string) => new ObjectId(v));
             const result = await this.db?.collection(collection).insertOne(data);
 
             if (!result.insertedId) return Promise.reject("Failed to insert position");

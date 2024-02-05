@@ -29,7 +29,7 @@ export default class Application {
         name: "Principal",
         id: principal_data,
         approved: false,
-        remarks: "",
+        remarks: [],
         timestamp: "",
 
       },
@@ -38,35 +38,35 @@ export default class Application {
         id: admin4_data,
         approved: false,
         evaluator_approved: false,
-        remarks: "",
+        remarks: [],
         timestamp: "",
       },
       {
         name: "Evaluator",
         id: evaluator_data,
         approved: false,
-        remarks: "",
+        remarks: [],
         timestamp: "",
       },
       {
         name: "Verifier",
         id: verifier_data,
         approved: false,
-        remarks: "",
+        remarks: [],
         timestamp: "",
       },
       {
         name: "Recommending Approver",
         id: recommender_data,
         approved: false,
-        remarks: "",
+        remarks: [],
         timestamp: "",
       },
       {
         name: "Approver",
         id: approver_data,
         approved: false,
-        remarks: "",
+        remarks: [],
         timestamp: "",
       },
     ]
@@ -128,6 +128,41 @@ export default class Application {
     if (!sdo_admin) return Promise.reject({ data: null, error: "Failed to find Recommending Approver" });
     return Promise.resolve({ data: sdo_admin._id, error: null })
   }
+  // SCHOOL DIVISION OFFICE
+  /**
+   * REGIONAL OPFFICE
+   */
+
+  static async get_ro_admin5(): Promise<{ data: ObjectId, error: any }> {
+    const result = await Database.collection('ap-templates')?.aggregate([
+      {
+        $match: { name: "Administrative Officer V" }
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "role",
+          as: "user"
+        }
+      },
+      {
+        $unwind: {
+          path: "$user",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          id: "$user._id"
+        }
+      }
+    ]).toArray();
+
+    if (!result?.length) return Promise.reject({ data: null, error: "Could not find admin 5" });
+    return Promise.resolve({ data: result[0].id, error: null })
+  };
 
   static async get_requests(user_id: ObjectId): Promise<{ data: any, error: any }> {
 
@@ -349,12 +384,7 @@ export default class Application {
                       },
                     },
                     { $or: [{ "assignees.0.approved": true }, { $and: [{ "assignees.2.approved": true }, { "assignees.1.evaluator_approved": true }] }] },
-
                     { status: { $in: ["Pending", "For Checking"] } }
-
-
-
-
                   ],
                 },
               },
