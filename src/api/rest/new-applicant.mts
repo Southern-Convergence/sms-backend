@@ -25,6 +25,7 @@ export default REST({
     "get-erf": {
       id: object_id
     },
+    "get-selected-qs": {},
     "get-requests": {
     },
     "get-signatory": {
@@ -65,23 +66,28 @@ export default REST({
       app_id: object_id
     },
     "handle-principal": {
+      sdo_attachment: Joi.any().allow(null),
       attachment: Joi.object().required(),
       app_id: object_id,
     },
     "handle-admin4": {
+      sdo_attachment: Joi.any().allow(null),
       attachment: Joi.object().required(),
       app_id: object_id
     },
     "handle-evaluator": multers["sms-docs"].any(),
     "handle-verifier": {
+      sdo_attachment: Joi.object().required(),
       attachment: Joi.object().required(),
       app_id: object_id
     },
     "handle-recommending-approver": {
+      sdo_attachment: Joi.object().required(),
       attachment: Joi.object().required(),
       app_id: object_id
     },
     "handle-approver": {
+      sdo_attachment: Joi.object().required(),
       attachment: Joi.object().required(),
       app_id: object_id
     },
@@ -171,6 +177,12 @@ export default REST({
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
+      "get-selected-qs"(req, res) {
+        this.get_selected_qs()
+          .then((data) => res.json({ data }))
+          .catch((error) => res.status(400).json({ error }));
+      },
+
 
       "get-applicant"(req, res) {
         const { id } = req.query
@@ -211,7 +223,6 @@ export default REST({
         this.handle_admin4(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       async "handle-evaluator"(req, res) {
-        console.log("endpoint reached")
         const form = Object.assign({}, JSON.parse(req.body.form));
 
         if (req.files?.length) {
@@ -242,9 +253,7 @@ export default REST({
               },
             }).then(() => `${dir}/${uuid}`)
           }));
-
           Object.entries(form.sdo_attachments).forEach(([key, value]) => {
-
             const links = result.filter((v: string) => v.match(key));
             const payload = {
               link: links,
@@ -252,7 +261,6 @@ export default REST({
               remarks: "",
               description: key,
             }
-
             form.sdo_attachments[key] = payload;
           })
         };
@@ -564,8 +572,6 @@ export default REST({
               professional_study: 1,
               ipcrf_rating: "$designation.ipcrf_rating",
 
-
-
             }
           }
 
@@ -576,7 +582,6 @@ export default REST({
     async dissapproved_application(id, email, status, reason) {
       return this.db?.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { email: email, status: "Dissapproved", reason: reason } }, { upsert: true })
     },
-
     async assign_evaluator_application(data: any) {
       const { app_id, evaluator, status } = data;
 
@@ -584,7 +589,6 @@ export default REST({
       if (!result.modifiedCount) return Promise.reject("Failed to assign evaluator.");
       return Promise.resolve("Succesfully Assigned to Evaluator!")
     },
-
     /**
      * APPROVAL PROCCESS
      */
@@ -603,6 +607,24 @@ export default REST({
 
       });
       let status = !statuses.includes(false);
+      if (data.sdo_attachment) {
+        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
+          {
+            $set: {
+              "assignees.0.approved": status,
+              "assignees.0.timestamp": Date.now(),
+              status: status ? 'Pending' : 'Invalid',
+              attachments: attachment,
+              sdo_attachments: data.sdo_attachment
+            },
+            $push: {
+              "assignees.0.remarks": attachment_log
+            }
+          });
+
+        if (!result.modifiedCount) return Promise.reject("Failed to Approve")
+        return Promise.resolve("Successfully submitted to Schools Division Office!")
+      }
       const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
         {
           $set: {
@@ -623,6 +645,8 @@ export default REST({
       const { app_id, attachment } = data;
       const statuses: boolean[] = [];
       let attachment_log = {}
+
+      //todo: bug
       Object.entries(attachment).forEach(([k, v]: [any, any]) => {
         statuses.push(v.valid);
         if (!v.valid) {
@@ -633,28 +657,47 @@ export default REST({
         };
 
       });
-      let status = !statuses.includes(false);
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
 
+      let status = !statuses.includes(false);
+
+      if (data.sdo_attachment) {
+        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
+          {
+            $set: {
+              "assignees.1.evaluator_approved": status,
+              status: status ? 'For Verifying' : 'Invalid',
+              attachments: attachment,
+              "assignees.1.timestamp": Date.now(),
+              sdo_attachments: data.sdo_attachment
+            },
+            $push: {
+              "assignees.1.remarks": attachment_log
+            }
+          });
+
+        if (!result.modifiedCount) return Promise.reject("Failed to verify!")
+        return Promise.resolve("Successfully Checked!")
+      };
+
+      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
         {
           $set: {
             "assignees.1.evaluator_approved": status,
             status: status ? 'For Verifying' : 'Invalid',
             attachments: attachment,
-            "assignees.3.timestamp": Date.now()
+            "assignees.1.timestamp": Date.now()
           },
           $push: {
-            "assignees.3.remarks": attachment_log
+            "assignees.1.remarks": attachment_log
           }
         });
+
       if (!result.modifiedCount) return Promise.reject("Failed to verify!")
       return Promise.resolve("Successfully Checked!")
 
+
     },
-
     async handle_evaluator(data: any) {
-
-
       const { app_id, attachment, sdo_attachments } = data;
       const statuses: boolean[] = [];
       let attachment_log = {}
@@ -702,7 +745,26 @@ export default REST({
         };
 
       });
+
       let status = !statuses.includes(false);
+      if (data.sdo_attachment) {
+        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
+          {
+            $set: {
+              "assignees.3.approved": status,
+              status: status ? 'Recommending for Approval' : 'Invalid',
+              "assignees.3.timestamp": Date.now(),
+              attachments: attachment,
+              sdo_attachments: data.sdo_attachment
+            },
+            $push: {
+              "assignees.3.remarks": attachment_log
+            }
+          });
+
+        if (!result.modifiedCount) return Promise.reject("Failed to Recommend for  Approval")
+        return Promise.resolve("Successfully Recommended!")
+      };
       const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
         {
           $set: {
@@ -718,7 +780,11 @@ export default REST({
 
       if (!result.modifiedCount) return Promise.reject("Failed to Recommend for  Approval")
       return Promise.resolve("Successfully Recommended!")
+
     },
+
+
+
     async handle_recommending_approver(data: any) {
       const { attachment, app_id } = data;
 
@@ -734,7 +800,26 @@ export default REST({
         };
 
       });
+
       let status = !statuses.includes(false);
+      if (data.sdo_attachment) {
+        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
+          {
+            $set: {
+              "assignees.4.approved": status,
+              status: status ? 'For Approval' : 'Invalid',
+              "assignees.4.timestamp": Date.now(),
+              attachments: attachment,
+              sdo_attachments: data.sdo_attachment
+            },
+            $push: {
+              "assignees.4.remarks": attachment_log
+            }
+          });
+
+        if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
+        return Promise.resolve("Successdully Recommended!")
+      }
       const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
         {
           $set: {
@@ -750,10 +835,11 @@ export default REST({
 
       if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
       return Promise.resolve("Successdully Recommended!")
+
     },
+
     async handle_approver(data: any) {
       const { attachment, app_id } = data;
-
       const statuses: boolean[] = [];
       let attachment_log = {}
       Object.entries(attachment).forEach(([k, v]: [any, any]) => {
@@ -767,6 +853,24 @@ export default REST({
 
       });
       let status = !statuses.includes(false);
+      if (data.sdo_attachment) {
+        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
+          {
+            $set: {
+              "assignees.5.approved": status,
+              status: status ? 'Completed' : 'Invalid',
+              "assignees.5.timestamp": Date.now(),
+              attachments: attachment,
+              sdo_attachments: data.sdo_attachment
+            },
+            $push: {
+              "assignees.5.remarks": attachment_log
+            }
+          });
+
+        if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
+        return Promise.resolve("Successfully Indorsed to Regional Office!")
+      }
       const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
         {
           $set: {
@@ -835,6 +939,69 @@ export default REST({
           }
         ]
       ).next()
+
+    },
+    async get_selected_qs() {
+      return this.db?.collection('sms-qualification-standards').aggregate(
+        [
+          {
+            $match: {}
+          },
+          {
+            $lookup: {
+              from: "sms-education",
+              localField: "education",
+              foreignField: "_id",
+              as: "education",
+            }
+          },
+          {
+            $lookup: {
+              from: "sms-experience",
+              localField: "experience",
+              foreignField: "_id",
+              as: "experience",
+            }
+          },
+          {
+            $lookup: {
+              from: "sms-performance-rating",
+              localField: "rating",
+              foreignField: "_id",
+              as: "rating",
+            }
+          },
+          {
+            $lookup: {
+              from: "sms-salary-grade",
+              localField: "sg",
+              foreignField: "_id",
+              as: "sg",
+            }
+          },
+
+
+
+          {
+            $unwind: {
+              path: "$sg",
+              preserveNullAndEmptyArrays: true,
+            }
+          },
+          {
+            $project: {
+              title: 1,
+              "sg.salary_grade": 1,
+              education_level: 1,
+              training_hours: 1,
+              "education.title": 1,
+              "experience.title": 1,
+              "rating.title": 1
+
+            }
+          }
+        ]
+      ).toArray()
 
     },
     async get_endorsement(id) {

@@ -165,7 +165,6 @@ export default class Application {
   };
 
   static async get_requests(user_id: ObjectId): Promise<{ data: any, error: any }> {
-
     const { data: role, error: role_error } = await Application.get_role(user_id);
     if (role_error) return Promise.reject({ data: null, error: role_error });
     const name = role.name;

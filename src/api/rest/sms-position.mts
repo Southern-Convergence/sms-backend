@@ -21,7 +21,6 @@ export default REST({
             training_hours: Joi.number(),
             rating: Joi.array(),
             sg: Joi.string(),
-            eligibility: Joi.array(),
             attachment: Joi.array(),
             sdo_attachment: Joi.array(),
 
@@ -81,7 +80,6 @@ export default REST({
             data.experience = data.experience.map((v: string) => new ObjectId(v));
             data.rating = data.rating.map((v: string) => new ObjectId(v));
             data.sg = new ObjectId(data.sg);
-            data.eligibility = new ObjectId(data.eligibility);
             data.attachment = data.attachment.map((v: string) => new ObjectId(v));
             data.sdo_attachment = data.sdo_attachment.map((v: string) => new ObjectId(v));
             const result = await this.db?.collection(collection).insertOne(data);
@@ -199,32 +197,14 @@ export default REST({
                         as: "sg",
                     },
                 },
-                {
-                    $lookup: {
-                        from: "sms-eligibility",
-                        localField: "eligibility",
-                        foreignField: "_id",
-                        as: "eligibility",
-                    },
-                },
+
                 {
                     $unwind: {
                         path: "$sg",
                         preserveNullAndEmptyArrays: true
                     }
                 },
-                {
-                    $unwind: {
-                        path: "$eligibility",
-                        preserveNullAndEmptyArrays: true
-                    }
-                },
-                {
-                    $set: {
-                        eligibility: "$eligibility.title"
-                    }
 
-                }
 
             ]).toArray()
 
@@ -244,7 +224,8 @@ export default REST({
                         experience: experience,
                         training_hours: training_hours,
                         rating: rating,
-                        sg: sg
+                        sg: sg,
+
                     }
                 }
             );
