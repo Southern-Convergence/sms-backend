@@ -26,6 +26,7 @@ export default REST({
 
         },
         "create-school-position": {
+
             title: Joi.string(),
             sg: Joi.string(),
         },

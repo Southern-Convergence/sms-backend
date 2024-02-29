@@ -8,12 +8,14 @@ import multers from "@lib/multers.mjs";
 import { v4 } from "uuid";
 import Application from "class/Application.mjs";
 import { log } from 'handlebars';
+import App from 'class/App.mjs';
 
 const collection = "applicant"
 
 export default REST({
   cfg: {
-    service: "ERF"
+    service: "ERF",
+    public: true
   },
 
   validators: {
@@ -46,8 +48,12 @@ export default REST({
     "get-evaluators": {
       division_id: object_id
     },
-
+    "get-ro-evaluators": {},
     "assign-evaluator-application": {
+      app_id: object_id,
+      evaluator: object_id
+    },
+    "assign-ro-evaluator-application": {
       app_id: object_id,
       evaluator: object_id
     },
@@ -87,6 +93,11 @@ export default REST({
       app_id: object_id
     },
     "handle-approver": {
+      sdo_attachment: Joi.object().required(),
+      attachment: Joi.object().required(),
+      app_id: object_id
+    },
+    "handle-admin5": {
       sdo_attachment: Joi.object().required(),
       attachment: Joi.object().required(),
       app_id: object_id
@@ -134,6 +145,7 @@ export default REST({
               valid: null,
               remarks: "",
               description: key,
+              timestamp: Date.now()
             }
 
             form.attachments[key] = payload;
@@ -170,7 +182,7 @@ export default REST({
     },
     "GET": {
       "get-application"(req, res) {
-        this.get_application(req.session.user?._id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.get_application(new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "get-application-qs"(req, res) {
         this.get_application_qs()
@@ -203,6 +215,9 @@ export default REST({
       "get-evaluators"(req, res) {
         this.get_evaluators(new ObjectId(req.query.division_id?.toString())).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
+      "get-ro-evaluators"(req, res) {
+        this.get_ro_evaluators().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
     },
     "PUT": {
       "assign-evaluator-application"(req, res) {
@@ -210,21 +225,25 @@ export default REST({
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
+      "assign-ro-evaluator-application"(req, res) {
+        this.assign_ro_evaluator_application(req.body)
+          .then((data) => res.json({ data }))
+          .catch((error) => res.status(400).json({ error }));
+      },
       "evaluator-approved"(req, res) {
-        this.handle_evaluator(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.handle_evaluator(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       /**
        * APPROVAL PROCCESS
        */
       "handle-principal"(req, res) {
-        this.handle_principal(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.handle_principal(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "handle-admin4"(req, res) {
-        this.handle_admin4(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.handle_admin4(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       async "handle-evaluator"(req, res) {
         const form = Object.assign({}, JSON.parse(req.body.form));
-
         if (req.files?.length) {
 
           //@ts-ignore
@@ -260,21 +279,25 @@ export default REST({
               valid: null,
               remarks: "",
               description: key,
+              timestamp: Date.now()
             }
             form.sdo_attachments[key] = payload;
           })
         };
 
-        this.handle_evaluator(form).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.handle_evaluator(form, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "handle-verifier"(req, res) {
-        this.handle_verifier(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.handle_verifier(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "handle-recommending-approver"(req, res) {
-        this.handle_recommending_approver(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.handle_recommending_approver(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "handle-approver"(req, res) {
-        this.handle_approver(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.handle_approver(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "handle-admin5"(req, res) {
+        this.handle_admin5(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
     }
   },
@@ -289,7 +312,7 @@ export default REST({
       const count = await this.db.collection('counters').findOne({});
       if (!count) return Promise.reject("Failed to locate counting");
 
-      const { data: assignees, error: assingees_error } = await Application.get_assignees(new ObjectId(data.designation.school), new ObjectId(data.designation.division));
+      const { data: assignees, error: assingees_error } = await App.GET_ASSIGNEES();
       if (assingees_error) return Promise.reject("Failed to resolve assingees");
 
       data.assignees = assignees;
@@ -325,6 +348,7 @@ export default REST({
 
       data.designation.division = new ObjectId(data.designation.division);
       data.designation.school = new ObjectId(data.designation.school);
+      data.designation.current_sg = new ObjectId(data.designation.current_sg);
       data.position = new ObjectId(data.qualification.position);
       data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
       data.education = data.qualification.education.map((v: string) => new ObjectId(v));
@@ -427,8 +451,8 @@ export default REST({
           }
         ]).toArray();
     },
-    async get_application(user_id: any) {
-      return Application.get_requests(new ObjectId(user_id))
+    async get_application(user: ObjectId) {
+      return App.GET_REQUESTS(user)
         .then(({ data }) => Promise.resolve(data))
         .catch(({ error }) => Promise.reject(error));
     },
@@ -437,6 +461,71 @@ export default REST({
         {
           $match: {
             "designation_information.division": division,
+          },
+        },
+        {
+          $lookup: {
+            from: "ap-templates",
+            let: {
+              role: "$role",
+            },
+            pipeline: [
+              {
+                $match: {
+                  $and: [
+                    {
+                      $expr: {
+                        $eq: ["$_id", "$$role"],
+                      },
+                    },
+                    {
+                      $expr: {
+                        $eq: ["$name", "Evaluator"],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+            as: "evaluator",
+          },
+        },
+        {
+          $unwind: {
+            path: "$evaluator",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $match: {
+            "evaluator.name": "Evaluator"
+          }
+        },
+        {
+          $set: {
+            title: {
+              $concat: [
+                "$first_name",
+                " ",
+                "$middle_name",
+                " ",
+                "$last_name"
+              ]
+            }
+          }
+        },
+        {
+          $project: {
+            title: 1
+          }
+        }
+      ]).toArray()
+    },
+    async get_ro_evaluators() {
+      return this.db.collection('users').aggregate([
+        {
+          $match: {
+            side: "RO"
           },
         },
         {
@@ -535,7 +624,29 @@ export default REST({
             },
           },
           {
+            $unwind: {
+              path: '$school',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $lookup: {
+              from: "sms-salary-grade",
+              localField: "designation.current_sg",
+              foreignField: "_id",
+              as: "current_sg",
+            }
+          },
+
+          {
+            $unwind: {
+              path: "$scurrent_sg",
+              preserveNullAndEmptyArrays: true,
+            }
+          },
+          {
             $set: {
+              current_sg: { $arrayElemAt: ["$current_sg.salary_grade", 0] },
               division: '$division.title',
               school: '$school.title',
             }
@@ -584,308 +695,56 @@ export default REST({
     },
     async assign_evaluator_application(data: any) {
       const { app_id, evaluator, status } = data;
-
       const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.2.id": new ObjectId(evaluator), "assignees.1.approved": true, status: "For Evaluation" } });
-      if (!result.modifiedCount) return Promise.reject("Failed to assign evaluator.");
-      return Promise.resolve("Succesfully Assigned to Evaluator!")
+      if (!result) return Promise.reject("Failed to assign!");
+      return Promise.resolve("Successfully assigned evaluator!");
+    },
+    async assign_ro_evaluator_application(data: any) {
+      const { app_id, evaluator, status } = data;
+      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.6.id": new ObjectId(evaluator), "assignees.6.approved": true, status: "For Evaluation" } });
+      if (!result) return Promise.reject("Failed to assign!");
+      return Promise.resolve("Successfully assigned evaluator!");
     },
     /**
      * APPROVAL PROCCESS
      */
-    async handle_principal(data: any) {
-      const { app_id, attachment } = data;
-      const statuses: boolean[] = [];
-      let attachment_log = {}
-      Object.entries(attachment).forEach(([k, v]: [any, any]) => {
-        statuses.push(v.valid);
-        if (!v.valid) {
-          attachment_log = {
-            description: v.description,
-            remarks: v.remarks
-          }
-        };
-
-      });
-      let status = !statuses.includes(false);
-      if (data.sdo_attachment) {
-        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-          {
-            $set: {
-              "assignees.0.approved": status,
-              "assignees.0.timestamp": Date.now(),
-              status: status ? 'Pending' : 'Invalid',
-              attachments: attachment,
-              sdo_attachments: data.sdo_attachment
-            },
-            $push: {
-              "assignees.0.remarks": attachment_log
-            }
-          });
-
-        if (!result.modifiedCount) return Promise.reject("Failed to Approve")
-        return Promise.resolve("Successfully submitted to Schools Division Office!")
-      }
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.0.approved": status,
-            "assignees.0.timestamp": Date.now(),
-            status: status ? 'Pending' : 'Invalid',
-            attachments: attachment,
-          },
-          $push: {
-            "assignees.0.remarks": attachment_log
-          }
-        });
-
-      if (!result.modifiedCount) return Promise.reject("Failed to Approve")
-      return Promise.resolve("Successfully submitted to Schools Division Office!")
-    },
-    async handle_admin4(data: any) {
-      const { app_id, attachment } = data;
-      const statuses: boolean[] = [];
-      let attachment_log = {}
-
-      //todo: bug
-      Object.entries(attachment).forEach(([k, v]: [any, any]) => {
-        statuses.push(v.valid);
-        if (!v.valid) {
-          attachment_log = {
-            description: v.description,
-            remarks: v.remarks
-          }
-        };
-
-      });
-
-      let status = !statuses.includes(false);
-
-      if (data.sdo_attachment) {
-        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-          {
-            $set: {
-              "assignees.1.evaluator_approved": status,
-              status: status ? 'For Verifying' : 'Invalid',
-              attachments: attachment,
-              "assignees.1.timestamp": Date.now(),
-              sdo_attachments: data.sdo_attachment
-            },
-            $push: {
-              "assignees.1.remarks": attachment_log
-            }
-          });
-
-        if (!result.modifiedCount) return Promise.reject("Failed to verify!")
-        return Promise.resolve("Successfully Checked!")
-      };
-
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.1.evaluator_approved": status,
-            status: status ? 'For Verifying' : 'Invalid',
-            attachments: attachment,
-            "assignees.1.timestamp": Date.now()
-          },
-          $push: {
-            "assignees.1.remarks": attachment_log
-          }
-        });
-
-      if (!result.modifiedCount) return Promise.reject("Failed to verify!")
-      return Promise.resolve("Successfully Checked!")
-
-
-    },
-    async handle_evaluator(data: any) {
-      const { app_id, attachment, sdo_attachments } = data;
-      const statuses: boolean[] = [];
-      let attachment_log = {}
-
-      Object.entries(attachment).forEach(([k, v]: [any, any]) => {
-        statuses.push(v.valid);
-        if (!v.valid) {
-          attachment_log = {
-            description: v.description,
-            remarks: v.remarks
-          }
-        };
-      });
-
-      let status = !statuses.includes(false);
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.1.evaluator_approved": status,
-            "assignees.2.approved": status,
-            "assignees.2.timestamp": Date.now(),
-            status: status ? 'For Checking' : 'Invalid',
-            attachments: attachment,
-            sdo_attachments: sdo_attachments
-          },
-          $push: {
-            "assignees.2.remarks": attachment_log
-          }
-        });
-      if (!result.modifiedCount) return Promise.reject("Failed to submit")
-      return Promise.resolve("Successfully Evaluated! ")
-    },
-    async handle_verifier(data: any) {
-      const { attachment, app_id } = data;
-
-      const statuses: boolean[] = [];
-      let attachment_log = {}
-      Object.entries(attachment).forEach(([k, v]: [any, any]) => {
-        statuses.push(v.valid);
-        if (!v.valid) {
-          attachment_log = {
-            description: v.description,
-            remarks: v.remarks
-          }
-        };
-
-      });
-
-      let status = !statuses.includes(false);
-      if (data.sdo_attachment) {
-        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-          {
-            $set: {
-              "assignees.3.approved": status,
-              status: status ? 'Recommending for Approval' : 'Invalid',
-              "assignees.3.timestamp": Date.now(),
-              attachments: attachment,
-              sdo_attachments: data.sdo_attachment
-            },
-            $push: {
-              "assignees.3.remarks": attachment_log
-            }
-          });
-
-        if (!result.modifiedCount) return Promise.reject("Failed to Recommend for  Approval")
-        return Promise.resolve("Successfully Recommended!")
-      };
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.3.approved": status,
-            status: status ? 'Recommending for Approval' : 'Invalid',
-            "assignees.3.timestamp": Date.now(),
-            attachments: attachment,
-          },
-          $push: {
-            "assignees.3.remarks": attachment_log
-          }
-        });
-
-      if (!result.modifiedCount) return Promise.reject("Failed to Recommend for  Approval")
-      return Promise.resolve("Successfully Recommended!")
-
+    async handle_principal(data: any, user: ObjectId) {
+      const result = App.HANDLE_PRINCIPAL(data, user)
+      if (!result) return Promise.reject("Failed to submit!");
+      return Promise.resolve("Successfully submitted to the Schools Division Office!");
     },
 
-
-
-    async handle_recommending_approver(data: any) {
-      const { attachment, app_id } = data;
-
-      const statuses: boolean[] = [];
-      let attachment_log = {}
-      Object.entries(attachment).forEach(([k, v]: [any, any]) => {
-        statuses.push(v.valid);
-        if (!v.valid) {
-          attachment_log = {
-            description: v.description,
-            remarks: v.remarks
-          }
-        };
-
-      });
-
-      let status = !statuses.includes(false);
-      if (data.sdo_attachment) {
-        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-          {
-            $set: {
-              "assignees.4.approved": status,
-              status: status ? 'For Approval' : 'Invalid',
-              "assignees.4.timestamp": Date.now(),
-              attachments: attachment,
-              sdo_attachments: data.sdo_attachment
-            },
-            $push: {
-              "assignees.4.remarks": attachment_log
-            }
-          });
-
-        if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
-        return Promise.resolve("Successdully Recommended!")
-      }
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.4.approved": status,
-            status: status ? 'For Approval' : 'Invalid',
-            "assignees.4.timestamp": Date.now(),
-            attachments: attachment,
-          },
-          $push: {
-            "assignees.4.remarks": attachment_log
-          }
-        });
-
-      if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
-      return Promise.resolve("Successdully Recommended!")
-
+    async handle_admin4(data: any, user: ObjectId) {
+      const result = App.HANDLE_ADMIN4(data, user)
+      if (!result) return Promise.reject("Failed to submit!");
+      return Promise.resolve("Successfully checked!");
+    },
+    async handle_evaluator(data: any, user: ObjectId) {
+      const result = App.HANDLE_EVALUATOR(data, user)
+      if (!result) return Promise.reject("Failed to submit!");
+      return Promise.resolve("Successfully evaluated!");
+    },
+    async handle_verifier(data: any, user: ObjectId) {
+      const result = App.HANDLE_VERIFIER(data, user)
+      if (!result) return Promise.reject("Failed to submit!");
+      return Promise.resolve("Successfully verified!");
     },
 
-    async handle_approver(data: any) {
-      const { attachment, app_id } = data;
-      const statuses: boolean[] = [];
-      let attachment_log = {}
-      Object.entries(attachment).forEach(([k, v]: [any, any]) => {
-        statuses.push(v.valid);
-        if (!v.valid) {
-          attachment_log = {
-            description: v.description,
-            remarks: v.remarks
-          }
-        };
+    async handle_recommending_approver(data: any, user: ObjectId) {
+      const result = App.HANDLE_RECOMMENDING_APPROVER(data, user)
+      if (!result) return Promise.reject("Failed to submit!");
+      return Promise.resolve("Successfully recommended!");
+    },
 
-      });
-      let status = !statuses.includes(false);
-      if (data.sdo_attachment) {
-        const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-          {
-            $set: {
-              "assignees.5.approved": status,
-              status: status ? 'Completed' : 'Invalid',
-              "assignees.5.timestamp": Date.now(),
-              attachments: attachment,
-              sdo_attachments: data.sdo_attachment
-            },
-            $push: {
-              "assignees.5.remarks": attachment_log
-            }
-          });
-
-        if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
-        return Promise.resolve("Successfully Indorsed to Regional Office!")
-      }
-      const result = await this.db.collection('applicant').updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.5.approved": status,
-            status: status ? 'Completed' : 'Invalid',
-            "assignees.5.timestamp": Date.now(),
-            attachments: attachment,
-          },
-          $push: {
-            "assignees.5.remarks": attachment_log
-          }
-        });
-
-      if (!result.modifiedCount) return Promise.reject("Failed to approve approver")
-      return Promise.resolve("Successfully Indorsed to Regional Office!")
+    async handle_approver(data: any, user: ObjectId) {
+      const result = App.HANDLE_APPROVER(data, user)
+      if (!result) return Promise.reject("Failed to submit!");
+      return Promise.resolve("Successfully approved!");
+    },
+    async handle_admin5(data: any) {
+      const result = App.HANDLE_ADMIN5(data)
+      if (!result) return Promise.reject("Failed to submit!");
+      return Promise.resolve("Successfully checked!");
     },
     async get_signatory(id) {
       return this.db?.collection(collection).aggregate(
@@ -930,6 +789,7 @@ export default REST({
               school: '$school.title',
               assignees: '$assignees',
               control_number: '$control_number',
+
               full_name: {
                 $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
               },

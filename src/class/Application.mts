@@ -69,6 +69,43 @@ export default class Application {
         remarks: [],
         timestamp: "",
       },
+      //RO 6
+      {
+        name: "Administrative Officer V",
+        id: admin4_data,
+        approved: false,
+        evaluator_approved: false,
+        remarks: [],
+        timestamp: "",
+      },
+      {
+        name: "Evaluator",
+        id: evaluator_data,
+        approved: false,
+        remarks: [],
+        timestamp: "",
+      },
+      {
+        name: "Verifier",
+        id: verifier_data,
+        approved: false,
+        remarks: [],
+        timestamp: "",
+      },
+      {
+        name: "Recommending Approver",
+        id: recommender_data,
+        approved: false,
+        remarks: [],
+        timestamp: "",
+      },
+      {
+        name: "Approver",
+        id: approver_data,
+        approved: false,
+        remarks: [],
+        timestamp: "",
+      },
     ]
     return Promise.resolve({ data: assignees, error: null });
   }

@@ -398,6 +398,7 @@ export default REST({
                 domain_id: 1,
                 name: 1,
               },
+              side: 1,
               office: "$office.name",
               unit: "$unit.name",
               position: "$position.name",

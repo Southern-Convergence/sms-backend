@@ -80,6 +80,13 @@ export default [
       },
       {
         "basis": "Role Based",
+        "name": "RO Evaluator",
+        "internal": false,
+        "desc": "",
+        "resources": []
+      },
+      {
+        "basis": "Role Based",
         "name": "Checker",
         "internal": false,
         "desc": "",
