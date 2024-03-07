@@ -9,14 +9,15 @@ const collection = "sms-qualification-standards"
 
 export default REST({
     cfg: {
-        service: "MAIN"
+        service: "MAIN",
+        public: true
     },
 
     validators: {
         "create-position": {
             title: Joi.string(),
             education: Joi.array(),
-            education_level: Joi.string(),
+            education_level: Joi.string().allow(),
             experience: Joi.array(),
             training_hours: Joi.number(),
             rating: Joi.array(),

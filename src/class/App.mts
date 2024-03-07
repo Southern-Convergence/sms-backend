@@ -195,9 +195,10 @@ export default class App {
           $and: [
             { "designation.school": school_id },
             { "designation.division": division_id },
-            { "assignees.0.approved": null },
-            { status: "For Signature" },
+            { $or: [{ "assignees.0.approved": null }, { $and: [{ "assignees.10.approved": true }, { "assignees.9.approved": true }] }] },
+            { status: { $in: ["For Signature", "Completed"] } }
           ]
+
         }
       },
       {
@@ -883,7 +884,7 @@ export default class App {
         $match: {
           $and: [
             { "assignees.8.approved": true },
-            { "assignees.9.approved": false },
+            { "assignees.9.approved": null },
             { status: "Recommending for Approval" }
           ]
         }

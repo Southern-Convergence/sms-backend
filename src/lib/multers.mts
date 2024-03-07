@@ -44,7 +44,6 @@ export default {
       file_size: 2_048_000,
       header_pair: 24,
       fields: 24,
-      files: 5,
     },
     [
       "application/pdf",

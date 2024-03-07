@@ -102,12 +102,16 @@ export default REST({
       attachment: Joi.object().required(),
       app_id: object_id
     },
+    "get-pending-dashboard": {
+    },
+    "get-ro-completed-dashboard": {}
   },
 
   handlers: {
     "POST": {
       async "create-application"(req, res) {
         let form = Object.assign({}, JSON.parse(req.body.form));
+
         if (req.files?.length) {
 
           //@ts-ignore
@@ -135,7 +139,8 @@ export default REST({
                 mimetype: v.mimetype
               },
             }).then(() => `${dir}/${uuid}`)
-          }));
+          }))
+            .catch(console.error)
 
           Object.entries(form.attachments).forEach(([key, value]) => {
 
@@ -153,8 +158,25 @@ export default REST({
         }
 
         this.create_application(form)
-          .then((data) => res.json({ data }))
-          .catch((error) => res.status(400).json({ error }))
+          .catch(console.error)
+          .then((data) => {
+            this.postoffice[EMAIL_TRANSPORT].post(
+              {
+                from: "mariannemaepaclian@gmail.com",
+                to: form.personal_information.email
+              },
+              {
+                context: {
+                  name: `${form.personal_information.last_name} ${form.personal_information.first_name}`,
+                  control_number: `${form.control_number}`,
+                  link: `/sms/applicant-history/${form._id}`
+                },
+                template: "sms-approved",
+                layout: "centered"
+              }
+            );
+            res.json({ data }
+          });
       },
       "dissapproved-application"(req, res) {
         const { email, status, lastname, firstname, control_number } = req.body.applicants_data.personal_information;
@@ -217,6 +239,12 @@ export default REST({
       },
       "get-ro-evaluators"(req, res) {
         this.get_ro_evaluators().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "get-pending-dashboard"(req, res) {
+        this.get_pending_dashboard().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
+      "get-ro-completed-dashboard"(req, res) {
+        this.get_ro_completed_dashboard().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
     },
     "PUT": {
@@ -787,7 +815,7 @@ export default REST({
             $project: {
               division: '$division.title',
               school: '$school.title',
-              assignees: '$assignees',
+              request_log: '$request_log',
               control_number: '$control_number',
 
               full_name: {
@@ -916,6 +944,35 @@ export default REST({
       ).next()
 
     },
+    async get_pending_dashboard() {
+      const pending = await this.db?.collection('applicant')?.aggregate([
+        {
+          $match: {
+            $and: [
+              { "assignees.5.approved": true },
+              { status: "Completed" }
+            ]
+          }
+        }
+      ]).toArray();
+      return pending.length;
+    },
+    async get_ro_completed_dashboard() {
+      const completed = await this.db?.collection('applicant')?.aggregate([
+        {
+          $match: {
+            $and: [
+              { "assignees.10.approved": true },
+              { status: "Completed" }
+
+            ]
+          }
+        }
+      ]).toArray();
+      return completed.length;
+    },
+
+
 
   }
 })

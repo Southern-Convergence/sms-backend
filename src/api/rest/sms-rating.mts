@@ -9,7 +9,8 @@ const collection = "sms-performance-rating"
 
 export default REST({
     cfg: {
-        service: "MAIN"
+        service: "MAIN",
+        public: true
     },
 
     validators: {
