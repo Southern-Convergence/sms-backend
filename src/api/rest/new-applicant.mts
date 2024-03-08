@@ -144,7 +144,7 @@ export default REST({
 
           Object.entries(form.attachments).forEach(([key, value]) => {
 
-            const links = result.filter((v: string) => v.match(key));
+            const links = result?.filter((v: string) => v.match(key));
             const payload = {
               link: links,
               valid: null,
@@ -175,7 +175,7 @@ export default REST({
                 layout: "centered"
               }
             );
-            res.json({ data }
+            res.json({ data });
           });
       },
       "dissapproved-application"(req, res) {
@@ -325,7 +325,7 @@ export default REST({
         this.handle_approver(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "handle-admin5"(req, res) {
-        this.handle_admin5(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.handle_admin5(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
     }
   },
@@ -373,14 +373,17 @@ export default REST({
           to: (v.to)
         }
       })
+      data.position = data.qualification.position ? new ObjectId(data.qualification.position) : "";
+      data.education = data.qualification.education ? data.qualification.education.map((v: string) => new ObjectId(v)) : "";
+      data.experience = data.qualification.experience ? data.qualification.experience.map((v: string) => new ObjectId(v)) : "";
 
-      data.designation.division = new ObjectId(data.designation.division);
-      data.designation.school = new ObjectId(data.designation.school);
-      data.designation.current_sg = new ObjectId(data.designation.current_sg);
-      data.position = new ObjectId(data.qualification.position);
-      data.experience = data.qualification.experience.map((v: string) => new ObjectId(v));
-      data.education = data.qualification.education.map((v: string) => new ObjectId(v));
-      data.per_rating = new ObjectId(data.qualification.per_rating);
+      data.designation.division = data.designation.division ? new ObjectId(data.designation.division) : "";
+      data.designation.school = data.designation.school ? new ObjectId(data.designation.school) : "";
+      data.designation.current_sg = data.designation.current_sg ? new ObjectId(data.designation.current_sg) : "";
+
+
+
+      data.per_rating = data.qualification.per_rating ? new ObjectId(data.qualification.per_rating) : "";
 
       const session = this.instance.startSession();
 
@@ -689,14 +692,46 @@ export default REST({
           {
             $match: {
               _id: new ObjectId(id)
-
             }
           },
-
-
+          {
+            $unwind: "$assignees"
+          },
+          {
+            $lookup: {
+              from: "users",
+              localField: "assignees.id",
+              foreignField: "_id",
+              as: "assignee_info"
+            }
+          },
+          {
+            $unwind: "$assignee_info"
+          },
+          {
+            $group: {
+              _id: null,
+              assignees_fullnames: {
+                $push: {
+                  $concat: [
+                    "$assignee_info.first_name",
+                    " ",
+                    "$assignee_info.last_name"
+                  ]
+                }
+              },
+              document: { $first: "$$ROOT" }
+            }
+          },
+          {
+            $replaceRoot: {
+              newRoot: {
+                $mergeObjects: ["$document", { assignees_fullnames: "$assignees_fullnames" }]
+              }
+            }
+          },
           {
             $project: {
-
               full_name: {
                 $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
               },
@@ -710,10 +745,10 @@ export default REST({
               yt_equivalent: "$equivalent_unit.yt_equivalent",
               professional_study: 1,
               ipcrf_rating: "$designation.ipcrf_rating",
+              assignees_fullnames: 1,
 
             }
           }
-
         ]
       ).next()
 
@@ -769,8 +804,8 @@ export default REST({
       if (!result) return Promise.reject("Failed to submit!");
       return Promise.resolve("Successfully approved!");
     },
-    async handle_admin5(data: any) {
-      const result = App.HANDLE_ADMIN5(data)
+    async handle_admin5(data: any, user: ObjectId) {
+      const result = App.HANDLE_ADMIN5(data, user)
       if (!result) return Promise.reject("Failed to submit!");
       return Promise.resolve("Successfully checked!");
     },

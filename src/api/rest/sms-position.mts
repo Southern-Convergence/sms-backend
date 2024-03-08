@@ -17,7 +17,7 @@ export default REST({
         "create-position": {
             title: Joi.string(),
             education: Joi.array(),
-            education_level: Joi.string().allow(),
+            education_level: Joi.string().allow(""),
             experience: Joi.array(),
             training_hours: Joi.number(),
             rating: Joi.array(),

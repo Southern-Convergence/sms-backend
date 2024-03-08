@@ -1275,13 +1275,14 @@ export default class App {
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
-          "assignees.8.approved": true,
+          "assignees.8.approved": status,
           status: status ? 'Recommending for Approval' : 'Invalid',
           "assignees.8.timestamp": new Date(),
           attachments: attachment,
         },
         $push: {
-          "assignees.8.remarks": attachment_log
+          "assignees.8.remarks": attachment_log,
+          request_log: request_logs
         }
       });
 
@@ -1291,7 +1292,6 @@ export default class App {
   };
 
   static async HANDLE_RECOMMENDING_APPROVER(data: any, user: ObjectId) {
-
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.RECOMMENDING_APPROVER) return Promise.reject({ data: null, error: "Not Recommending Approver" });
@@ -1310,7 +1310,14 @@ export default class App {
         });
       }
     });
-
+    const request_logs = {
+      signatory: designation.name,
+      role: designation.role_name,
+      side: designation.side,
+      status: "",
+      remarks: attachment_log,
+      timestamp: new Date()
+    };
     let status = !statuses.includes(false);
     if (data.sdo_attachment && designation.side === SIDE.SDO) {
       const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
@@ -1323,28 +1330,31 @@ export default class App {
 
           },
           $push: {
-            "assignees.4.remarks": attachment_log
+            "assignees.4.remarks": attachment_log,
+            request_log: request_logs
+          }
+        });
+
+      if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
+      return Promise.resolve("Successdully Recommended!")
+    } else {
+      const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
+        {
+          $set: {
+            "assignees.9.approved": true,
+            status: status ? 'For Approval' : 'Invalid',
+            "assignees.9.timestamp": new Date(),
+            attachments: attachment,
+          },
+          $push: {
+            "assignees.9.remarks": attachment_log,
+            request_log: request_logs
           }
         });
 
       if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
       return Promise.resolve("Successdully Recommended!")
     }
-    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-      {
-        $set: {
-          "assignees.9.approved": true,
-          status: status ? 'For Approval' : 'Invalid',
-          "assignees.9.timestamp": new Date(),
-          attachments: attachment,
-        },
-        $push: {
-          "assignees.9.remarks": attachment_log
-        }
-      });
-
-    if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
-    return Promise.resolve("Successdully Recommended!")
 
   };
   static async HANDLE_APPROVER(data: any, user: ObjectId) {
@@ -1365,6 +1375,14 @@ export default class App {
         });
       }
     });
+    const request_logs = {
+      signatory: designation.name,
+      role: designation.role_name,
+      side: designation.side,
+      status: "",
+      remarks: attachment_log,
+      timestamp: new Date()
+    };
     const status = !statuses.includes(false);
     if (data.sdo_attachment && designation.side === SIDE.SDO) {
       const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
@@ -1377,7 +1395,8 @@ export default class App {
             sdo_attachments: data.sdo_attachment
           },
           $push: {
-            "assignees.5.remarks": attachment_log
+            "assignees.5.remarks": attachment_log,
+            request_log: request_logs
           }
         });
 
@@ -1394,14 +1413,18 @@ export default class App {
           attachments: attachment,
         },
         $push: {
-          "assignees.10.remarks": attachment_log
+          "assignees.10.remarks": attachment_log,
+          request_log: request_logs
         }
       });
 
     if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
     return Promise.resolve("Successfully Indorsed to Regional Office!")
   };
-  static async HANDLE_ADMIN5(data: any) {
+  static async HANDLE_ADMIN5(data: any, user: ObjectId) {
+    const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
+    if (designation_error) return Promise.reject({ data: null, error: designation_error });
+    if (designation?.role_name !== ROLES.RECOMMENDING_APPROVER) return Promise.reject({ data: null, error: "Not Administrative Officer V" });
     const { app_id, attachment } = data;
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
@@ -1416,9 +1439,15 @@ export default class App {
         });
       }
     });
-
+    const request_logs = {
+      signatory: designation.name,
+      role: designation.role_name,
+      side: designation.side,
+      status: "",
+      remarks: attachment_log,
+      timestamp: new Date()
+    };
     let status = !statuses.includes(false);
-
 
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
@@ -1429,7 +1458,8 @@ export default class App {
           "assignees.6.timestamp": new Date()
         },
         $push: {
-          "assignees.6.remarks": attachment_log
+          "assignees.6.remarks": attachment_log,
+          request_log: request_logs
         }
       });
 
