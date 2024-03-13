@@ -95,7 +95,9 @@ export default REST({
     "handle-approver": {
       sdo_attachment: Joi.object().required(),
       attachment: Joi.object().required(),
-      app_id: object_id
+      app_id: object_id,
+
+
     },
     "handle-admin5": {
       sdo_attachment: Joi.object().required(),
@@ -764,6 +766,8 @@ export default REST({
     },
     async assign_ro_evaluator_application(data: any) {
       const { app_id, evaluator, status } = data;
+      console.log(data);
+
       const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.6.id": new ObjectId(evaluator), "assignees.6.approved": true, status: "For Evaluation" } });
       if (!result) return Promise.reject("Failed to assign!");
       return Promise.resolve("Successfully assigned evaluator!");
@@ -803,6 +807,7 @@ export default REST({
       const result = App.HANDLE_APPROVER(data, user)
       if (!result) return Promise.reject("Failed to submit!");
       return Promise.resolve("Successfully approved!");
+
     },
     async handle_admin5(data: any, user: ObjectId) {
       const result = App.HANDLE_ADMIN5(data, user)
