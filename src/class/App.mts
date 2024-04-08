@@ -1,6 +1,9 @@
 import Database from "@lib/database.mjs";
 import { log } from "handlebars";
 import { ObjectId } from "mongodb";
+import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
+
+import { PostOffice } from "@lib/mailman.mjs";
 
 
 const enum ROLES {
@@ -108,37 +111,23 @@ export default class App {
           remarks: [],
           timestamp: null,
         },
-        {
-          name: "RO Recommending Approver",
-          id: recommending_approver?._id,
-          approved: null,
-          remarks: [],
-          timestamp: null,
-        },
-        {
-          name: "RO Approver",
-          id: approver?._id,
-          approved: null,
-          remarks: [],
-          timestamp: null,
-        }];
-
+      ];
       return Promise.resolve({ data: assignees, error: null });
     }).catch((error) => Promise.reject({ data: null, error: error }))
   };
 
-  static async GET_REQUESTS(user_id: ObjectId): Promise<{ data: any, error: any }> {
+  static async GET_REQUESTS(user_id: ObjectId, filter: any): Promise<{ data: any, error: any }> {
+
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user_id);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (!designation) return Promise.reject({ data: null, error: "Could not resolve designation." });
-
 
     const { role_name, division_id, school_id, side } = designation;
     if (!role_name) return Promise.reject({ data: null, error: "hello world" });
 
     switch (role_name) {
       case ROLES.PRINCIPAL:
-        const PRINCIPAL_PENDING = await App.GET_PENDING_PRINCIPAL(division_id, school_id);
+        const PRINCIPAL_PENDING = await App.GET_PENDING_PRINCIPAL(division_id, school_id, filter);
         return Promise.resolve({ data: PRINCIPAL_PENDING, error: null });
 
       case ROLES.ADMIN_4:
@@ -179,7 +168,7 @@ export default class App {
         return Promise.resolve({ data: APPROVER_PENDING, error: null })
 
       case ROLES.ADMIN_5:
-        const ADMIN_5_PENDING = await App.GET_PENDING_ADMIN_5()
+        const ADMIN_5_PENDING = await App.GET_PENDING_ADMIN_5(filter)
         return Promise.resolve({ data: ADMIN_5_PENDING, error: null });
 
       default:
@@ -189,30 +178,35 @@ export default class App {
   /**
    * PENDING APPLICATION
    */
-  private static async GET_PENDING_PRINCIPAL(division_id: ObjectId, school_id: ObjectId) {
+  private static async GET_PENDING_PRINCIPAL(division_id: ObjectId, school_id: ObjectId, filter: any) {
+    //filter condition
+    const { position, sdo } = filter;
+    let query = {};
+    if (sdo && position) {
+      query = {
+        $and: [
+          { "designation.division": new ObjectId(sdo) },
+          { "qualification.position": new ObjectId(position) }
+        ]
+      };
+    } else if (sdo) {
+      query = { "designation.division": new ObjectId(sdo) };
+    } else if (position) {
+      query = { "qualification.position": new ObjectId(position) };
+    }
+    const match = {
+      $match: {
+        $and: [
+          { "designation.school": school_id },
+          { "designation.division": division_id },
+          { "assignees.0.approved": { "$eq": null } },
+          { status: { $in: ["Disapproved", "For Signature"] } }
+        ]
+
+      }
+    };
     return await Database.collection('applicant')?.aggregate([
-      {
-        $match: {
-          $and: [
-            { "designation.school": school_id },
-            { "designation.division": division_id },
-            { "assignees.0.approved": { "$eq": null } },
-            { status: "For Signature" }
-          ]
-
-        }
-      },
-      // {
-      //   $match: {
-      //     $and: [
-      //       { "designation.school": school_id },
-      //       { "designation.division": division_id },
-      //       { $or: [{ "assignees.0.approved": null }, { $and: [{ "assignees.10.approved": true }, { "assignees.9.approved": true }] }] },
-      //       { status: { $in: ["For Signature", "Completed"] } }
-      //     ]
-
-      //   }
-      // },
+      match,
       {
         $lookup: {
           from: "sms-school",
@@ -238,6 +232,20 @@ export default class App {
       {
         $unwind: {
           path: "$division",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -273,7 +281,8 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
 
         },
       },
@@ -283,14 +292,7 @@ export default class App {
     return await Database.collection('applicant')?.aggregate([
       {
         $match:
-        // {
-        //   $and: [
-        //     { "designation.division": division_id },
-        //     { $or: [{ "assignees.0.approved": true }, { $and: [{ "assignees.2.approved": true }, { "assignees.1.evaluator_approved": false }] }, { $and: [{ "assignees.3.approved": false }, { "assignees.1.evaluator_approved": false }] }] },
-        //     { status: { $in: ["Pending", "For Checking", "Dissapproved"] } }
 
-        //   ]
-        // }
         {
           $and: [
             { "designation.division": division_id },
@@ -301,7 +303,7 @@ export default class App {
                 { $and: [{ "assignees.3.approved": false }, { "assignees.1.evaluator_approved": false }] }
               ]
             },
-            { status: { $in: ["Pending", "For Checking", "Disapproved"] } }
+            { status: { $in: ["Pending", "For Checking", "Disapproved", "Approved for Printing", "For DBM"] } }
           ]
         }
 
@@ -331,6 +333,20 @@ export default class App {
       {
         $unwind: {
           path: "$division",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -366,7 +382,9 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title",
+          district: "$designation.district",
         },
       },
     ]).toArray();
@@ -376,13 +394,16 @@ export default class App {
       {
         $match: {
           $and: [
-
-
             {
               $or: [
-                { "designation.division": division_id },
-                { "assignees.2.approved": { "$eq": null } },
-                { "assignees.2.approved": { "$eq": null } },
+                {
+                  $and: [
+                    { "designation.division": division_id },
+                    { "assignees.1.approved": true },
+                    { "assignees.2.approved": { "$not": { "$eq": true } } },
+                    { "assignees.3.approved": { "$not": { "$eq": true } } }
+                  ]
+                },
                 {
                   $and: [
                     { "assignees.5.approved": false },
@@ -399,31 +420,7 @@ export default class App {
         }
 
       },
-      // {
-      //   "$match": {
-      //     "$and": [
-      //       { "designation.division": division_id },
-      //       { "assignees.1.approved": true },
-      //       { "assignees.2.approved": { "$ne": true } },
-      //       { "assignees.3.approved": { "$eq": null } },
-      //       { status: "For Evaluation" },
-      //       {
-      //         "$or": [
-      //           {
-      //             "$and": [
-      //               { "assignees.5.approved": false },
-      //               { "assignees.4.approved": false },
-      //               { "assignees.3.approved": false },
-      //               { "assignees.1.approved": false },
-      //               { "assignees.1.evaluator_approved": true },
-      //               { "status": "Disapproved" }
-      //             ]
-      //           }
-      //         ]
-      //       }
-      //     ]
-      //   }
-      // },
+
       {
         $lookup: {
           from: "sms-school",
@@ -449,6 +446,20 @@ export default class App {
       {
         $unwind: {
           path: "$division",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -484,7 +495,9 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
+
         },
       },
     ]).toArray();
@@ -531,6 +544,20 @@ export default class App {
         },
       },
       {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $set: {
           full_name: {
             $concat: [
@@ -562,7 +589,9 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
+
         },
       },
     ]).toArray();
@@ -608,6 +637,20 @@ export default class App {
         },
       },
       {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $set: {
           full_name: {
             $concat: [
@@ -639,7 +682,8 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
         },
       },
     ]).toArray();
@@ -658,60 +702,6 @@ export default class App {
           ]
         }
       },
-      // {
-      //   $match: {
-      //     $and: [
-
-      //       {
-      //         $or: [
-      //           { "designation.division": division_id },
-      //           { "assignees.4.approved": true },
-      //           { "assignees.5.approved": { "$eq": null } },
-      //           {
-      //             $and: [
-      //               { "assignees.6.approved": false },
-      //               { "assignees.5.approved": true }
-      //             ]
-      //           }
-      //         ]
-      //       },
-      //       { status: { $in: ["For Approval", "Disapproved"] } }
-      //     ]
-      //   }
-      // },
-      // {
-      //   "$match": {
-
-      //     "$and": [
-      //       { "designation.division": division_id },
-      //       { "assignees.4.approved": true },
-      //       { "assignees.5.approved": { "$eq": null } },
-      //       { "status": "For Approval" }
-      //     ]
-      //   }
-      // },
-      // {
-      //   "$match": {
-      //     "$and": [
-      //       { "assignees.6.approved": false },
-      //       { "assignees.5.approved": true },
-      //       { "status": "Disapproved" }
-      //     ]
-      //   }
-      // },
-
-
-      // {
-      //   $match: {
-      //     $and: [
-      //       { "designation.division": division_id },
-      //       { "assignees.4.approved": true },
-      //       { "assignees.5.approved": null },
-      //       { status: "For Approval" }
-
-      //     ]
-      //   }
-      // },
       {
         $lookup: {
           from: "sms-school",
@@ -737,6 +727,20 @@ export default class App {
       {
         $unwind: {
           path: "$division",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -772,27 +776,46 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
         },
       },
     ]).toArray();
   };
-  private static async GET_PENDING_ADMIN_5() {
+  private static async GET_PENDING_ADMIN_5(filter: any) {
+    //filter condition
+    const { position, sdo } = filter;
+    let query = {};
+    if (sdo && position) {
+      query = {
+        $and: [
+          { "designation.division": new ObjectId(sdo) },
+          { "qualification.position": new ObjectId(position) }
+        ]
+      };
+    } else if (sdo) {
+      query = { "designation.division": new ObjectId(sdo) };
+    } else if (position) {
+      query = { "qualification.position": new ObjectId(position) };
+    }
+    const match = {
+      $match: {
+        $and: [
+          {
+            $or: [
+              { "assignees.5.approved": true },
+              { $and: [{ "assignees.7.approved": { "$eq": null } }, { "assignees.6.evaluator_approved": true }] },
+              { $and: [{ "assignees.7.approved": false }, { "assignees.5.approved": true }] }
+            ]
+          },
+          { status: { $in: ["Pending", "For Checking", "Disapproved"] } },
+          query
+        ]
+      }
+    };
+
     return await Database.collection('applicant')?.aggregate([
-      {
-        $match: {
-          $and: [
-            {
-              $or: [
-                { "assignees.5.approved": true },
-                { $and: [{ "assignees.7.approved": { "$eq": null } }, { "assignees.6.evaluator_approved": true }] },
-                { $and: [{ "assignees.7.approved": false }, { "assignees.5.approved": true }] }
-              ]
-            },
-            { status: { $in: ["Completed", "For Checking", "Dissapproved"] } }
-          ]
-        }
-      },
+      match,
       {
         $lookup: {
           from: "sms-school",
@@ -818,6 +841,20 @@ export default class App {
       {
         $unwind: {
           path: "$division",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -853,7 +890,8 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
         },
       },
     ]).toArray();
@@ -861,22 +899,33 @@ export default class App {
   private static async GET_PENDING_EVALUATOR_RO(user_id: any) {
     return await Database.collection('applicant')?.aggregate([
       {
-        $match: {
-          $and: [
-
+        "$match": {
+          "$and": [
             {
-              $or: [
+              "$or": [
                 { "assignees.7.id": new ObjectId(user_id) },
-                { "assignees.6.approved": true },
-                { "assignees.7.approved": { "$eq": null } },
-                { $and: [{ "assignees.10.approved": false }, { "assignees.9.approved": false }, { "assignees.8.approved": false }, { "assignees.6.approved": true }] }
+                {
+                  "$and": [
+                    { "assignees.6.approved": true },
+                    { "assignees.2.approved": true },
+                    { "assignees.7.approved": { "$not": { "$eq": true } } }
+                  ]
+                },
+                {
+                  "$and": [
+
+                    { "assignees.6.approved": false },
+                    { "assignees.7.approved": { "$not": { "$eq": false } } }
+                  ]
+                }
               ]
             },
-            { status: { $in: ["For Evaluation", "Dissapproved"] } }
-
+            { "status": { "$in": ["For Evaluation", "Disapproved", "Approved for Printing", "For DBM", "Completed"] } }
           ]
         }
       },
+
+
       {
         $lookup: {
           from: "sms-school",
@@ -902,6 +951,20 @@ export default class App {
       {
         $unwind: {
           path: "$division",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
           preserveNullAndEmptyArrays: true,
         },
       },
@@ -937,7 +1000,9 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          approved: 1,
+          position: "$position.title"
         },
       },
     ]).toArray();
@@ -980,6 +1045,19 @@ export default class App {
           path: "$division",
           preserveNullAndEmptyArrays: true,
         },
+      }, {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
+          preserveNullAndEmptyArrays: true,
+        },
       },
       {
         $set: {
@@ -1013,7 +1091,8 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
         },
       },
     ]).toArray();
@@ -1059,6 +1138,20 @@ export default class App {
         },
       },
       {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $set: {
           full_name: {
             $concat: [
@@ -1090,7 +1183,8 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
         },
       },
     ]).toArray();
@@ -1134,6 +1228,20 @@ export default class App {
         },
       },
       {
+        $lookup: {
+          from: "sms-qualification-standards",
+          localField: "qualification.position",
+          foreignField: "_id",
+          as: "position",
+        },
+      },
+      {
+        $unwind: {
+          path: "$position",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
         $set: {
           full_name: {
             $concat: [
@@ -1165,7 +1273,8 @@ export default class App {
           status: 1,
           full_name: 1,
           last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name"
+          first_name: "$personal_information.first_name",
+          position: "$position.title"
         },
       },
     ]).toArray();
@@ -1181,10 +1290,9 @@ export default class App {
     const { app_id, attachment } = data;
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
-
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
-      if (!v.valid && v.remarks) {
+      if (!v.valid && v.remarks && v.remarks.length > 0) {
         attachment_log.push({
           description: v.description,
           remarks: v.remarks,
@@ -1192,25 +1300,21 @@ export default class App {
         });
       }
     });
-
     const request_logs = {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: "",
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : "Pending",
       remarks: attachment_log,
       timestamp: new Date()
     };
-    const filter_null = statuses.filter(status => status === null);
-    const status = !statuses.includes(false) && filter_null.length > 0;
-
-
+    const status = !statuses.includes(false)
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
           "assignees.0.approved": status,
           "assignees.0.timestamp": new Date(),
-          status: status === true ? "Pending" : "Dissapproved",
+          status: request_logs.status,
           attachments: attachment,
           sdo_attachments: data.sdo_attachment,
         },
@@ -1218,10 +1322,8 @@ export default class App {
           request_log: request_logs,
           "assignees.0.remarks": { $each: attachment_log },
         },
-
       });
     if (!result?.modifiedCount) return Promise.reject("Failed to Approve")
-    attachment_log.length = 0;
     return Promise.resolve("Successfully submitted to Schools Division Office!")
 
   };
@@ -1229,13 +1331,12 @@ export default class App {
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.ADMIN_4) return Promise.reject({ data: null, error: "Not principal" });
-    const { app_id, attachment } = data;
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
-
+    const { app_id, attachment, sdo_attachments } = data;
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
-      if (!v.valid && v.remarks) {
+      if (!v.valid && v.remarks && v.remarks.length > 0) {
         attachment_log.push({
           description: v.description,
           remarks: v.remarks,
@@ -1243,25 +1344,24 @@ export default class App {
         });
       }
     });
+
     const request_logs = {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: "",
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : (data.sdo_attachment ? "For Verifying" : "For Evaluation"),
       remarks: attachment_log,
       timestamp: new Date()
     };
 
-
     const status = !statuses.includes(false);
 
-
-    if (data.sdo_attachment && designation.side === SIDE.SDO) {
+    if (data.sdo_attachment) {
       const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
         {
           $set: {
             "assignees.1.evaluator_approved": status,
-            status: status === true ? 'For Verifying' : 'Dissapproved',
+            status: request_logs.status,
             attachments: attachment,
             "assignees.1.timestamp": new Date(),
             sdo_attachments: data.sdo_attachment
@@ -1270,7 +1370,7 @@ export default class App {
             "assignees.1.remarks": { $each: attachment_log },
             request_log: request_logs
           }
-        });
+        })
 
       if (!result?.modifiedCount) return Promise.reject("Failed to verify!")
       return Promise.resolve("Successfully Checked!")
@@ -1280,7 +1380,7 @@ export default class App {
       {
         $set: {
           "assignees.1.evaluator_approved": status,
-          status: status === true ? 'For Verifying' : 'Dissapproved',
+          status: request_logs.status,
           attachments: attachment,
           "assignees.1.timestamp": new Date()
         },
@@ -1291,9 +1391,13 @@ export default class App {
       });
 
     if (!result?.modifiedCount) return Promise.reject("Failed to verify!")
+    // Object.keys(attachment).forEach(key => {
+    //   attachment[key].valid = null;
+    //   attachment[key].remarks = null;
+    // });
+
     return Promise.resolve("Successfully Checked!")
   };
-
 
   static async HANDLE_EVALUATOR(data: any, user: ObjectId) {
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
@@ -1306,7 +1410,7 @@ export default class App {
 
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
-      if (!v.valid && v.remarks) {
+      if (!v.valid && v.remarks && v.remarks.length > 0) {
         attachment_log.push({
           description: v.description,
           remarks: v.remarks,
@@ -1314,21 +1418,15 @@ export default class App {
         });
       }
     });
-
-    if (!designation.side) return Promise.reject({ data: null, error: "Could not resolve side" });
-
     const request_logs = {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: "",
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : "For Checking",
       remarks: attachment_log,
       timestamp: new Date()
     };
-    const filter_null = statuses.filter(status => status !== null);
-    const status = !statuses.includes(false) && filter_null.length > 0;
-
-
+    const status = !statuses.includes(false)
     if (designation.side === SIDE.SDO) {
       const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
         {
@@ -1336,7 +1434,7 @@ export default class App {
             "assignees.1.evaluator_approved": true,
             "assignees.2.approved": status,
             "assignees.2.timestamp": new Date(),
-            status: status === true ? 'For Checking' : 'Dissapproved',
+            status: request_logs.status,
             attachments: attachment,
             sdo_attachments: sdo_attachments
           },
@@ -1348,16 +1446,14 @@ export default class App {
         });
       if (!result?.modifiedCount) return Promise.reject("Failed to submit")
       return Promise.resolve("Successfully Evaluated! ");
-    };
-
-
+    }
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
           "assignees.6.evaluator_approved": status,
           "assignees.7.approved": status,
           "assignees.7.timestamp": new Date(),
-          status: status === true ? 'For Checking' : 'Dissapproved',
+          status: request_logs.status,
           attachments: attachment,
 
         },
@@ -1369,20 +1465,49 @@ export default class App {
     if (!result?.modifiedCount) return Promise.reject("Failed to submit")
     return Promise.resolve("Successfully Evaluated! ");
 
+
+
+
+
   };
 
   static async HANDLE_VERIFIER(data: any, user: ObjectId) {
+
+
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.VERIFIER) return Promise.reject({ data: null, error: "Not Verifier" });
     const { attachment, app_id } = data;
+
+    const applicant = await Database.collection('applicant')?.aggregate(
+      [
+        {
+          $match:
+
+          {
+            _id: new ObjectId(app_id),
+          },
+        },
+        {
+          $project:
+
+          {
+            "personal_information.last_name": 1,
+            "personal_information.first_name": 1,
+            "personal_information.email": 1,
+            control_number: 1,
+          },
+        },
+      ]
+    ).next()
+
 
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
 
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
-      if (!v.valid && v.remarks) {
+      if (!v.valid && v.remarks && v.remarks.length > 0) {
         attachment_log.push({
           description: v.description,
           remarks: v.remarks,
@@ -1394,19 +1519,18 @@ export default class App {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: "",
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : (designation.side === SIDE.SDO ? "Recommending for Approval" : "Approved for Printing"),
       remarks: attachment_log,
       timestamp: new Date()
     };
-    const filter_null = statuses.filter(status => status === null);
-    const status = !statuses.includes(false) && filter_null.length > 0;
+    const status = !statuses.includes(false)
 
     if (data.sdo_attachment && designation.side === SIDE.SDO) {
       const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
         {
           $set: {
             "assignees.3.approved": status,
-            status: status === true ? 'Recommending for Approval' : 'Dissapproved',
+            status: request_logs.status,
             "assignees.3.timestamp": new Date(),
             attachments: attachment,
             sdo_attachments: data.sdo_attachment
@@ -1420,11 +1544,12 @@ export default class App {
       if (!result?.modifiedCount) return Promise.reject("Failed to Recommend for  Approval")
       return Promise.resolve("Successfully Recommended!")
     };
-    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
+
+    return Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
           "assignees.8.approved": status,
-          status: status === true ? 'Recommending for Approval' : 'Dissapproved',
+          status: request_logs.status,
           "assignees.8.timestamp": new Date(),
           attachments: attachment,
         },
@@ -1432,10 +1557,26 @@ export default class App {
           "assignees.8.remarks": { $each: attachment_log },
           request_log: request_logs
         }
-      });
+      })
+      .then((data) => {
+        PostOffice.get_instances()[EMAIL_TRANSPORT].post(
+          {
+            from: "mariannemaepaclian@gmail.com",
+            to: applicant?.personal_information.email
+          },
+          {
+            context: {
+              name: `${applicant?.personal_information.last_name} ${applicant?.personal_information.first_name}`,
+              control_number: `${applicant?.control_number}`,
 
-    if (!result?.modifiedCount) return Promise.reject("Failed to Recommend for  Approval")
-    return Promise.resolve("Successfully Recommended!")
+            },
+            template: "sms-for-printing",
+            layout: "centered"
+          }
+        );
+
+        return Promise.resolve("Successfully Approved for Printing!")
+      }).catch(() => Promise.reject("Failed to Recommend for  Approval"));
 
   };
 
@@ -1447,10 +1588,9 @@ export default class App {
 
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
-
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
-      if (!v.valid && v.remarks) {
+      if (!v.valid && v.remarks && v.remarks.length > 0) {
         attachment_log.push({
           description: v.description,
           remarks: v.remarks,
@@ -1462,54 +1602,29 @@ export default class App {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: "",
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : "For Approval",
       remarks: attachment_log,
       timestamp: new Date()
     };
+    const status = !statuses.includes(false)
+    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
+      {
+        $set: {
+          "assignees.4.approved": status,
+          status: request_logs.status,
+          "assignees.4.timestamp": new Date(),
+          attachments: attachment,
+          sdo_attachments: data.sdo_attachment
 
-    const filter_null = statuses.filter(status => status === null);
-    const status = !statuses.includes(false) && filter_null.length > 0;
+        },
+        $push: {
+          "assignees.4.remarks": { $each: attachment_log },
+          request_log: request_logs
+        }
+      });
 
-
-    if (data.sdo_attachment && designation.side === 'SDO') {
-      const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.4.approved": status,
-            status: status ? 'For Approval' : 'Disapproved',
-            "assignees.4.timestamp": new Date(),
-            attachments: attachment,
-            sdo_attachments: data.sdo_attachment
-
-          },
-          $push: {
-            "assignees.4.remarks": { $each: attachment_log },
-            request_log: request_logs
-          }
-        });
-
-      if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
-      return Promise.resolve("Successdully SDO Recommended!")
-    } else {
-      const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.9.approved": status,
-            status: status ? 'For Approval' : 'Disapproved',
-            "assignees.9.timestamp": new Date(),
-            attachments: attachment,
-
-          },
-          $push: {
-            "assignees.9.remarks": { $each: attachment_log },
-            request_log: request_logs
-          }
-        });
-
-      if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
-      return Promise.resolve("Successdully Recommended!")
-    }
-
+    if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
+    return Promise.resolve("Successdully SDO Recommended!")
   };
   static async HANDLE_APPROVER(data: any, user: ObjectId) {
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
@@ -1522,7 +1637,7 @@ export default class App {
 
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
-      if (!v.valid && v.remarks) {
+      if (!v.valid && v.remarks && v.remarks.length > 0) {
         attachment_log.push({
           description: v.description,
           remarks: v.remarks,
@@ -1534,72 +1649,51 @@ export default class App {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: "",
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : "Pending",
       remarks: attachment_log,
       timestamp: new Date()
     };
+    const status = !statuses.includes(false)
 
-    const filter_null = statuses.filter(status => status === null);
-    const status = !statuses.includes(false) && filter_null.length > 0;
 
-    const samp = true
-    if (data.sdo_attachment && designation.side === 'SDO') {
 
-      const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.5.approved": status,
-            status: status ? 'Completed' : 'Disapproved',
-            "assignees.5.timestamp": new Date(),
-            attachments: attachment,
-            sdo_attachments: data.sdo_attachment
+    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
+      {
+        $set: {
+          "assignees.5.approved": status,
+          status: request_logs.status,
+          "assignees.5.timestamp": new Date(),
+          attachments: attachment,
+          sdo_attachments: data.sdo_attachment
 
-          },
-          $push: {
-            "assignees.5.remarks": { $each: attachment_log },
-            request_log: request_logs
-          }
-        });
+        },
+        $push: {
+          "assignees.5.remarks": { $each: attachment_log },
+          request_log: request_logs
+        }
+      });
 
-      if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
-      return Promise.resolve("Successdully SDO Approved!")
-    } else {
+    if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
+    return Promise.resolve("Successfully SDO Approved!")
 
-      const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.10.approved": status,
-            status: status ? 'Completed' : 'Disapproved',
-            "assignees.10.timestamp": new Date(),
-            attachments: attachment,
-
-          },
-          $push: {
-            "assignees.10.remarks": { $each: attachment_log },
-            request_log: request_logs
-          }
-        });
-
-      if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
-      return Promise.resolve("Successdully Approved!")
-    }
 
   };
-
-
-
 
   static async HANDLE_ADMIN5(data: any, user: ObjectId) {
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.ADMIN_5) return Promise.reject({ data: null, error: "Not Administrative Officer V" });
-    const { app_id, attachment } = data;
+
+    const { attachment, sdo_attachment, app_id } = data;
+
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
+    const all_attachments = { ...attachment, ...sdo_attachment };
 
-    Object.entries(attachment).forEach(([k, v]: [any, any]) => {
+
+    Object.entries(all_attachments).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
-      if (!v.valid && v.remarks) {
+      if (!v.valid) {
         attachment_log.push({
           description: v.description,
           remarks: v.remarks,
@@ -1607,28 +1701,27 @@ export default class App {
         });
       }
     });
+
     const request_logs = {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: "",
+      status: statuses.includes(false) ? "Disapproved" : "For Verifying",
       remarks: attachment_log,
       timestamp: new Date()
     };
-
-
     const status = !statuses.includes(false)
 
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
-          "assignees.6.evaluator_approved": status,
-          status: status === true ? "For Verifying" : "Dissapproved",
+          "assignees.6.approved": status,
+          status: request_logs.status,
           attachments: attachment,
-          "assignees.6.timestamp": new Date()
+          "assignees.6.timestamp": new Date(),
+          "assignees.6.remarks": attachment_log,
         },
         $push: {
-          "assignees.6.remarks": { $each: attachment_log },
           request_log: request_logs
         }
       });

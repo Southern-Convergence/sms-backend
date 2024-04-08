@@ -8,7 +8,7 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 import compression from "compression";
 import auac from "auac";
-import {v4} from "uuid";
+import { v4 } from "uuid";
 import web_push from "web-push";
 
 import path from "path";
@@ -27,13 +27,13 @@ import pe_bundler from "@core/pe-bundler.mjs";
 
 import logger, { uac as auac_logger, services } from "@lib/logger.mjs";
 import morgan from "morgan";
-import {ObjectId} from "mongodb";
+import { ObjectId } from "mongodb";
 
 const { DOMAIN, SERVICE, PORT, UAC_KEY } = process.env;
 const IS_DEV = NODE_ENV === "development";
 
-if(!DOMAIN)throw new Error(`Failed to initialize server, please provide a valid "DOMAIN" name.`);
-if(!SERVICE)throw new Error(`Failed to initialize server, please provide a valid "SERVICE" name.`);
+if (!DOMAIN) throw new Error(`Failed to initialize server, please provide a valid "DOMAIN" name.`);
+if (!SERVICE) throw new Error(`Failed to initialize server, please provide a valid "SERVICE" name.`);
 
 //Head does not use UAC_KEY, Headless repo soon to be made.
 //if(!UAC_KEY)throw new Error(`Failed to initialize server, for service discoverability, please provide a valid "UAC_KEY"`);
@@ -51,14 +51,14 @@ const server = createServer({}, app);
 app.use(express.json({ limit: "100mb" }));
 app.use(
   express_limiter({
-    windowMs        : 1 * 60 * 1000, // 15 minutes
-    max             : 500,           // Limit each IP to 100 requests per `window` (here, per 15 minutes)
-    standardHeaders : true,          // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders   : false,         // Disable the `X-RateLimit-*` headers
+    windowMs: 1 * 60 * 1000, // 15 minutes
+    max: 500,           // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+    standardHeaders: true,          // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false,         // Disable the `X-RateLimit-*` headers
   })
 );
 
-app.use((_, res, next)=> {
+app.use((_, res, next) => {
   res.setHeader("rid", v4());
   next();
 })
@@ -100,24 +100,23 @@ app.use(
   session({
     secret: "ERWEEEEEEEEEEN~",
     store: new MongoStore({
-      mongoUrl       : CONNECTION_STRING,
-      dbName         : DATABASE,
-      collectionName : "sessions",
-      stringify      : false,
+      mongoUrl: CONNECTION_STRING,
+      dbName: DATABASE,
+      collectionName: "sessions",
+      stringify: false,
     }),
-    resave : false,
+    resave: false,
     saveUninitialized: false,
     cookie: {
-      httpOnly : !IS_DEV,
-      secure   : !IS_DEV,
-      sameSite : IS_DEV ? "strict" : "none",
+      httpOnly: !IS_DEV,
+      secure: !IS_DEV,
+      sameSite: IS_DEV ? "strict" : "none",
     },
   })
 );
 
-app.use((req, res, next)=> {
+app.use((req, res, next) => {
   const uid = req.session.user ? req.session.user?._id! : "";
-  console.log(req.session.user);
   res.setHeader("uid", uid);
   next();
 });
@@ -126,16 +125,16 @@ app.use((req, res, next)=> {
 //Used to build object parsed from morgan using split(" ") fn.
 const mappings = ["req_ip", "method", "message", "status", "content_length", "agent", "response_time", "rid", "uid"];
 app.use(morgan(":remote-addr , :method , :url , :status , :res[content-length] , :user-agent , :total-time , :res[rid] , :res[uid]", {
-  stream : {
-    write(string){
+  stream: {
+    write(string) {
       const temp = string.split(" , ");
-      const obj:any = Object.fromEntries(mappings.map((v, i)=> [v, temp[i].trimEnd()]));
-      
-      obj["response_time"]  = Number(obj["response_time"]);
+      const obj: any = Object.fromEntries(mappings.map((v, i) => [v, temp[i].trimEnd()]));
+
+      obj["response_time"] = Number(obj["response_time"]);
       obj["content_length"] = Number(obj["content_length"]);
 
       const uid = (obj["uid"] || "").replaceAll("-", "").trim();
-      if(uid)obj["uid"] = new ObjectId(uid);
+      if (uid) obj["uid"] = new ObjectId(uid);
 
       services.http(obj);
     }
@@ -146,13 +145,13 @@ app.use("/docs", express.static(path.join(directory, "static/docs")));
 
 /* UAC Middleware */
 app.use(auac({
-  engine     : "default",
-  deconflict : "sequence"
+  engine: "default",
+  deconflict: "sequence"
 }))
 
 const io = new Server(server, {
-  maxHttpBufferSize : 1e9,
-  pingTimeout       : 60000,
+  maxHttpBufferSize: 1e9,
+  pingTimeout: 60000,
 });
 
 //Catches Most Request errors.
@@ -165,13 +164,13 @@ app.use((err: Error, _: Request, res: Response, next: NextFunction) => {
       details: err.message,
     };
   }
-  
-  if (err instanceof Error){
+
+  if (err instanceof Error) {
     //If it is an auac exception
-    if(err.name === "AUAC Exception"){
+    if (err.name === "AUAC Exception") {
       const rid = res.getHeader("rid");
-      auac_logger.verbose({message : "APT Decision: Deny", rid})
-      auac_logger.verbose({message : `Details: ${err.message}`, end : true, allow : false, rid});
+      auac_logger.verbose({ message: "APT Decision: Deny", rid })
+      auac_logger.verbose({ message: `Details: ${err.message}`, end: true, allow: false, rid });
       return res.status(403).json(temp);
     }
 

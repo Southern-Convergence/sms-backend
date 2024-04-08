@@ -16,6 +16,7 @@ export default REST({
     validators: {
         "create-position": {
             title: Joi.string(),
+            with_erf: Joi.boolean(),
             education: Joi.array(),
             education_level: Joi.string().allow(""),
             experience: Joi.array(),
@@ -42,7 +43,11 @@ export default REST({
             training_hours: Joi.number(),
             rating: Joi.array(),
             sg: Joi.string(),
-        }
+        },
+        "update-application": {
+            enable_application: Joi.boolean()
+        },
+        "get-submission-status": {}
     },
 
     handlers: {
@@ -64,6 +69,9 @@ export default REST({
             },
             "get-school-position"(req, res) {
                 this.get_school_position().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+            },
+            "get-submission-status"(req, res) {
+                this.get_submission_status().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
             }
 
         },
@@ -72,7 +80,12 @@ export default REST({
                 const { _id, title, education, education_level, experience, training_hours, rating, sg } = req.body
                 this.update_position(_id, title, education, education_level, experience, training_hours, rating, sg).then(() => res.json({ data: "Successfully Update Position!" }))
                     .catch((error) => res.status(400).json({ error }))
-
+            },
+            "update-application"(req, res) {
+                const { enable_application } = req.body;
+                this.update_application(enable_application)
+                    .then(() => res.json({ data: enable_application ? 'Successfully opened for submission!' : 'Successfully closed for submission!' }))
+                    .catch((error) => res.status(400).json({ error }));
             }
         }
     },
@@ -119,6 +132,26 @@ export default REST({
                             }
                         ],
                         as: "attachment"
+                    }
+                },
+                {
+                    $lookup: {
+                        from: "sms-attachment",
+                        let: { ids: "$sdo_attachment" },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $in: ["$_id", "$$ids"] }
+                                }
+                            },
+                            {
+                                $project: {
+                                    _id: 0,
+                                    title: 1
+                                }
+                            }
+                        ],
+                        as: "sdo_attachment"
                     }
                 },
                 {
@@ -212,6 +245,20 @@ export default REST({
 
 
         },
+        async get_submission_status() {
+            return this.db?.collection('counters').aggregate([
+                {
+                    $match: {}
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        enable_application: 1
+                    }
+                }
+            ]).next();
+        },
+
         async get_school_position() {
             return this.db?.collection("sms-school-position").find({}).toArray()
         },
@@ -235,6 +282,22 @@ export default REST({
                 return Promise.reject("Item not Found, Failed to Update!");
             }
             return result;
+        },
+        async update_application(enable_application) {
+            const count = await this.db.collection('counters').findOne({});
+            if (!count) return Promise.reject("Failed to locate counting");
+
+            const result = await this.db.collection('counters').updateOne({ _id: new ObjectId(count._id) }, {
+                $set: {
+                    enable_application: enable_application
+                }
+            });
+
+            if (result.matchedCount === 0) {
+                return Promise.reject("Item not found, failed to update!");
+            }
+            return result;
         }
+
     }
 })

@@ -403,7 +403,9 @@ export default REST({
               unit: "$unit.name",
               position: "$position.name",
               role: "$role.name",
+              school: "$designation_information.school",
               division: "$designation_information.division",
+
             },
           },
         ])
