@@ -20,6 +20,7 @@ export default REST({
             education: Joi.array(),
             education_level: Joi.string().allow(""),
             experience: Joi.array(),
+            is_experience: Joi.boolean(),
             training_hours: Joi.number(),
             rating: Joi.array(),
             sg: Joi.string(),
@@ -27,6 +28,7 @@ export default REST({
             sdo_attachment: Joi.array(),
 
         },
+
         "create-school-position": {
 
             title: Joi.string(),

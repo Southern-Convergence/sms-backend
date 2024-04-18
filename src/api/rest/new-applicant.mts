@@ -114,6 +114,7 @@ export default REST({
     "handle-admin5": {
       sdo_attachment: Joi.object().required(),
       attachment: Joi.object().required(),
+      status: Joi.string(),
       app_id: object_id
     },
 
@@ -141,7 +142,7 @@ export default REST({
 
         let form = Object.assign({}, JSON.parse(req.body.form));
 
-        console.log(form.sdo_attachments);
+
 
         if (req.files?.length) {
           //@ts-ignore
@@ -185,6 +186,7 @@ export default REST({
             form.attachments[key] = payload;
           })
         }
+
 
         this.create_application(form)
           .catch(console.error)
@@ -878,6 +880,8 @@ export default REST({
      */
     async handle_principal(data: any, user: ObjectId) {
       const result = App.HANDLE_PRINCIPAL(data, user)
+      console.log('Datasssss', data);
+
       if (!result) return Promise.reject("Failed to submit!");
       return Promise.resolve("Successfully submitted to the Schools Division Office!");
     },
@@ -1075,8 +1079,9 @@ export default REST({
               full_name: {
                 $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
               },
-              current_position: '$designation_.current_position',
+              current_position: "$designation.current_position",
               created_date: '$created_date',
+
             }
           }
         ]

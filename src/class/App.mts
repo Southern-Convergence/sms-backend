@@ -808,7 +808,7 @@ export default class App {
               { $and: [{ "assignees.7.approved": false }, { "assignees.5.approved": true }] }
             ]
           },
-          { status: { $in: ["Pending", "For Checking", "Disapproved"] } },
+          { status: { $in: ["Pending", "For Checking", "Checked", "Disapproved"] } },
           query
         ]
       }
@@ -906,8 +906,7 @@ export default class App {
                 { "assignees.7.id": new ObjectId(user_id) },
                 {
                   "$and": [
-                    { "assignees.6.approved": true },
-                    { "assignees.2.approved": true },
+                    { "assignees.5.approved": true },
                     { "assignees.7.approved": { "$not": { "$eq": true } } }
                   ]
                 },
@@ -1283,13 +1282,16 @@ export default class App {
    * APPLICATION PROCCESS
    */
   static async HANDLE_PRINCIPAL(data: any, user: ObjectId) {
+
+
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.PRINCIPAL) return Promise.reject({ data: null, error: "Not principal" });
 
-    const { app_id, attachment } = data;
+    const { app_id, attachment, sdo_attachment } = data;
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
+
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
       if (!v.valid && v.remarks && v.remarks.length > 0) {
@@ -1327,13 +1329,15 @@ export default class App {
     return Promise.resolve("Successfully submitted to Schools Division Office!")
 
   };
+
+
   static async HANDLE_ADMIN4(data: any, user: ObjectId) {
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.ADMIN_4) return Promise.reject({ data: null, error: "Not principal" });
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
-    const { app_id, attachment, sdo_attachments } = data;
+    const { app_id, attachment, sdo_attachment } = data;
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
       if (!v.valid && v.remarks && v.remarks.length > 0) {
@@ -1472,8 +1476,6 @@ export default class App {
   };
 
   static async HANDLE_VERIFIER(data: any, user: ObjectId) {
-
-
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.VERIFIER) return Promise.reject({ data: null, error: "Not Verifier" });
@@ -1680,11 +1682,13 @@ export default class App {
   };
 
   static async HANDLE_ADMIN5(data: any, user: ObjectId) {
+    console.log(data);
+
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.ADMIN_5) return Promise.reject({ data: null, error: "Not Administrative Officer V" });
 
-    const { attachment, sdo_attachment, app_id } = data;
+    const { attachment, sdo_attachment, app_id, status } = data;
 
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
@@ -1706,16 +1710,21 @@ export default class App {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: statuses.includes(false) ? "Disapproved" : "For Verifying",
+      status: statuses.includes(false) ? "Disapproved" : (status === 'For Checking' ? 'Checked' : 'For Verifying'),
       remarks: attachment_log,
       timestamp: new Date()
     };
-    const status = !statuses.includes(false)
+
+
+
+    const is_status = !statuses.includes(false)
+
 
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
-          "assignees.6.approved": status,
+          "assignees.6.checked": status === 'For Checking' ? is_status : false,
+          "assignees.6.approved": is_status,
           status: request_logs.status,
           attachments: attachment,
           "assignees.6.timestamp": new Date(),
@@ -1728,6 +1737,9 @@ export default class App {
 
     if (!result?.modifiedCount) return Promise.reject("Failed to verify!")
     return Promise.resolve("Successfully Checked!")
+
+
+
   };
   /**
    * HELPER FUNCTION
