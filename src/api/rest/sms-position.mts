@@ -26,11 +26,11 @@ export default REST({
             sg: Joi.string(),
             attachment: Joi.array(),
             sdo_attachment: Joi.array(),
+            code: Joi.string(),
 
         },
 
         "create-school-position": {
-
             title: Joi.string(),
             sg: Joi.string(),
         },
@@ -45,6 +45,7 @@ export default REST({
             training_hours: Joi.number(),
             rating: Joi.array(),
             sg: Joi.string(),
+            code: Joi.string(),
         },
         "update-application": {
             enable_application: Joi.boolean()
@@ -79,8 +80,8 @@ export default REST({
         },
         "PUT": {
             "update-position"(req, res) {
-                const { _id, title, education, education_level, experience, training_hours, rating, sg } = req.body
-                this.update_position(_id, title, education, education_level, experience, training_hours, rating, sg).then(() => res.json({ data: "Successfully Update Position!" }))
+                const { _id, title, education, education_level, experience, training_hours, rating, sg, code } = req.body
+                this.update_position(_id, title, education, education_level, experience, training_hours, rating, sg, code).then(() => res.json({ data: "Successfully Update Position!" }))
                     .catch((error) => res.status(400).json({ error }))
             },
             "update-application"(req, res) {
@@ -264,7 +265,7 @@ export default REST({
         async get_school_position() {
             return this.db?.collection("sms-school-position").find({}).toArray()
         },
-        async update_position(id, title, education, education_level, experience, training_hours, rating, sg) {
+        async update_position(id, title, education, education_level, experience, training_hours, rating, sg, code) {
             const result = await this.db?.collection(collection).updateOne(
                 { _id: new ObjectId(id) },
                 {
@@ -276,6 +277,7 @@ export default REST({
                         training_hours: training_hours,
                         rating: rating,
                         sg: sg,
+                        code: code
 
                     }
                 }

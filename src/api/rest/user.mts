@@ -9,7 +9,8 @@ const collection = "users"
 
 export default REST({
     cfg: {
-        service: "USERS"
+        service: "USERS",
+        public: true
     },
 
     validators: {

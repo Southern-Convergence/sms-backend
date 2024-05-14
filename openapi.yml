@@ -18,8 +18,6 @@ paths:
     $ref: docs/erf-form.yml
   /hbs-samples:
     $ref: docs/hbs-samples.yml
-  /ma-units:
-    $ref: docs/ma-units.yml
   /new-applicant:
     $ref: docs/new-applicant.yml
   /notification:
@@ -38,6 +36,8 @@ paths:
     $ref: docs/sms-education.yml
   /sms-eligibility:
     $ref: docs/sms-eligibility.yml
+  /sms-endorsement:
+    $ref: docs/sms-endorsement.yml
   /sms-experience:
     $ref: docs/sms-experience.yml
   /sms-ma-units:

@@ -39,6 +39,7 @@ export default REST({
       address: Joi.string(),
       email: Joi.string(),
       telephone: Joi.string(),
+      code: Joi.string(),
     },
     "get-sdo": {},
     "update-sdo": {

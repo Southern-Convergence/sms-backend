@@ -36,6 +36,7 @@ declare interface HandlerFacilities {
 declare interface ControllerFacilities {
   db: Db,
   instance: MongoClient,
+  postoffice: TransportDict,
 }
 
 /**
