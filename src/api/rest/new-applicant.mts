@@ -47,11 +47,7 @@ export default REST({
     "get-application-qs": {
 
     },
-    "dissapproved-application": {
-      id: object_id,
-      applicants_data: Joi.object(),
-      reason: Joi.string(),
-    },
+
     "get-evaluators": {
       division_id: object_id
     },
@@ -258,28 +254,7 @@ export default REST({
             res.json({ data });
           });
       },
-      "dissapproved-application"(req, res) {
-        const { email, status, lastname, firstname, control_number } = req.body.applicants_data.personal_information;
 
-        this.postoffice[EMAIL_TRANSPORT].post(
-          {
-            from: "mariannemaepaclian@gmail.com",
-            to: email
-          },
-          {
-            context: {
-              name: `${lastname} ${firstname}`,
-              control_number: `${control_number}`,
-              reason: req.body.reason,
-            },
-            template: "sms-dissapproved",
-            layout: "centered"
-          },
-        ).then(() => console.log("Success")).catch((error) => console.log(error));
-
-        this.dissapproved_application(req.body.id, email, status, req.body.reason).then((data) => res.json({ data }))
-          .catch((error) => res.status(400).json({ error }));
-      },
 
       "assign-to-dbm"(req, res) {
         const { app_id } = req.body
@@ -870,9 +845,6 @@ export default REST({
 
     },
 
-    async dissapproved_application(id, email, status, reason) {
-      return this.db?.collection(collection).updateOne({ _id: new ObjectId(id) }, { $set: { email: email, status: "Dissapproved", reason: reason } }, { upsert: true })
-    },
     async assign_evaluator_application(data: any) {
       const { app_id, evaluator, status } = data;
       const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.2.id": new ObjectId(evaluator), "assignees.1.approved": true, status: "For Evaluation" } });

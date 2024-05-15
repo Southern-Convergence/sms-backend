@@ -150,22 +150,22 @@ export default class App {
         const VERIFIER_PENDING = await App.GET_PENDING_VERIFIER_RO()
         return Promise.resolve({ data: VERIFIER_PENDING, error: null });
 
-      case ROLES.RECOMMENDING_APPROVER:
-        if (side === SIDE.SDO) {
-          const RECOMMENDING_PENDING = await App.GET_PENDING_RECOMMENDING(division_id)
-          return Promise.resolve({ data: RECOMMENDING_PENDING, error: null });
-        }
-        const RECOMMENDING_PENDING = await App.GET_PENDING_RECOMMENDING_APPROVER_RO()
-        return Promise.resolve({ data: RECOMMENDING_PENDING, error: null });
+      // case ROLES.RECOMMENDING_APPROVER:
+      //   if (side === SIDE.SDO) {
+      //     const RECOMMENDING_PENDING = await App.GET_PENDING_RECOMMENDING(division_id)
+      //     return Promise.resolve({ data: RECOMMENDING_PENDING, error: null });
+      //   }
+      //   const RECOMMENDING_PENDING = await App.GET_PENDING_RECOMMENDING_APPROVER_RO()
+      //   return Promise.resolve({ data: RECOMMENDING_PENDING, error: null });
 
-      case ROLES.APPROVER:
-        if (side === SIDE.SDO) {
-          const APPROVER_PENDING = await App.GET_PENDING_APPROVER(division_id)
-          return Promise.resolve({ data: APPROVER_PENDING, error: null })
-        }
+      // case ROLES.APPROVER:
+      //   if (side === SIDE.SDO) {
+      //     const APPROVER_PENDING = await App.GET_PENDING_APPROVER(division_id)
+      //     return Promise.resolve({ data: APPROVER_PENDING, error: null })
+      //   }
 
-        const APPROVER_PENDING = await App.GET_PENDING_APPROVER_RO()
-        return Promise.resolve({ data: APPROVER_PENDING, error: null })
+      //   const APPROVER_PENDING = await App.GET_PENDING_APPROVER_RO()
+      //   return Promise.resolve({ data: APPROVER_PENDING, error: null })
 
       case ROLES.ADMIN_5:
         const ADMIN_5_PENDING = await App.GET_PENDING_ADMIN_5(filter)
@@ -324,8 +324,7 @@ export default class App {
           {
             $or: [
               {
-                $and: [{ "assignees.0.approved": true }, { "assignees.1.evaluator_approved": null }, { "assignees.2.approved": true },
-                { "assignees.2.approved": false }, { status: "Pending" }]
+                $and: [{ "assignees.0.approved": true }, { "assignees.2.approved": { "$ne": null } }, { status: "Pending" }]
               },
               { $and: [{ "assignees.2.approved": true }, { "assignees.1.approved": true }, { status: "For Checking" }] },
               { $and: [{ "assignees.2.approved": false }, { "assignees.3.approved": false }, { "assignees.3.evaluator_approved": false }, { status: "Disapproved" }] },
@@ -1162,188 +1161,7 @@ export default class App {
       },
     ]).toArray();
   };
-  private static async GET_PENDING_RECOMMENDING_APPROVER_RO() {
-    return await Database.collection('applicant')?.aggregate([
-      {
-        $match: {
 
-          $and: [
-            { "assignees.8.approved": true },
-            { "assignees.9.approved": { "$eq": null } },
-            { status: "Recommending for Approval" }
-          ]
-        }
-      },
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "sms-sdo",
-          localField: "designation.division",
-          foreignField: "_id",
-          as: "division",
-        },
-      },
-      {
-        $unwind: {
-          path: "$division",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "sms-qualification-standards",
-          localField: "qualification.position",
-          foreignField: "_id",
-          as: "position",
-        },
-      },
-      {
-        $unwind: {
-          path: "$position",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $set: {
-          full_name: {
-            $concat: [
-              "$personal_information.first_name",
-              " ",
-              {
-                "$cond": {
-                  "if": { "$ne": ["$personal_information.middle_name", ""] },
-                  "then": {
-                    "$concat": [
-                      { "$substr": ["$personal_information.middle_name", 0, 1] },
-                      "."
-                    ]
-                  },
-                  "else": ""
-                }
-              },
-              " ",
-              "$personal_information.last_name",
-            ]
-          }
-        },
-      },
-      {
-        $project: {
-          division: "$division.title",
-          school: "$school.title",
-          control_number: 1,
-          status: 1,
-          full_name: 1,
-          last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name",
-          position: "$position.title"
-        },
-      },
-    ]).toArray();
-  };
-  private static async GET_PENDING_APPROVER_RO() {
-    return await Database.collection('applicant')?.aggregate([
-      {
-        $match: {
-          $and: [
-            { $or: [{ "assignees.9.approved": true }, { $and: [{ "assignees.10.approved": true }] }] },
-            { status: { $in: ["For Approval", "Completed"] } }
-          ]
-        }
-      },
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "sms-sdo",
-          localField: "designation.division",
-          foreignField: "_id",
-          as: "division",
-        },
-      },
-      {
-        $unwind: {
-          path: "$division",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "sms-qualification-standards",
-          localField: "qualification.position",
-          foreignField: "_id",
-          as: "position",
-        },
-      },
-      {
-        $unwind: {
-          path: "$position",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $set: {
-          full_name: {
-            $concat: [
-              "$personal_information.first_name",
-              " ",
-              {
-                "$cond": {
-                  "if": { "$ne": ["$personal_information.middle_name", ""] },
-                  "then": {
-                    "$concat": [
-                      { "$substr": ["$personal_information.middle_name", 0, 1] },
-                      "."
-                    ]
-                  },
-                  "else": ""
-                }
-              },
-              " ",
-              "$personal_information.last_name",
-            ]
-          }
-        },
-      },
-      {
-        $project: {
-          division: "$division.title",
-          school: "$school.title",
-          control_number: 1,
-          status: 1,
-          full_name: 1,
-          last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name",
-          position: "$position.title"
-        },
-      },
-    ]).toArray();
-  };
   /**
    * APPLICATION PROCCESS
    */
@@ -1698,104 +1516,7 @@ export default class App {
 
   };
 
-  // static async HANDLE_RECOMMENDING_APPROVER(data: any, user: ObjectId) {
-  //   const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
-  //   if (designation_error) return Promise.reject({ data: null, error: designation_error });
-  //   if (designation?.role_name !== ROLES.RECOMMENDING_APPROVER) return Promise.reject({ data: null, error: "Not Recommending Approver" });
-  //   const { attachment, app_id } = data;
 
-  //   const statuses: boolean[] = [];
-  //   const attachment_log: any[] = [];
-  //   Object.entries(attachment).forEach(([k, v]: [any, any]) => {
-  //     statuses.push(v.valid);
-  //     if (!v.valid && v.remarks && v.remarks.length > 0) {
-  //       attachment_log.push({
-  //         description: v.description,
-  //         remarks: v.remarks,
-  //         timestamp: new Date()
-  //       });
-  //     }
-  //   });
-  //   const request_logs = {
-  //     signatory: designation.name,
-  //     role: designation.role_name,
-  //     side: designation.side,
-  //     status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : "For Approval",
-  //     remarks: attachment_log,
-  //     timestamp: new Date()
-  //   };
-  //   const status = !statuses.includes(false)
-  //   const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-  //     {
-  //       $set: {
-  //         "assignees.4.approved": status,
-  //         status: request_logs.status,
-  //         "assignees.4.timestamp": new Date(),
-  //         attachments: attachment,
-  //         sdo_attachments: data.sdo_attachment
-
-  //       },
-  //       $push: {
-  //         "assignees.4.remarks": { $each: attachment_log },
-  //         request_log: request_logs
-  //       }
-  //     });
-
-  //   if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
-  //   return Promise.resolve("Successdully SDO Recommended!")
-  // };
-  // static async HANDLE_APPROVER(data: any, user: ObjectId) {
-  //   const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
-  //   if (designation_error) return Promise.reject({ data: null, error: designation_error });
-  //   if (designation?.role_name !== ROLES.APPROVER) return Promise.reject({ data: null, error: "Not  Approver" });
-  //   const { attachment, app_id } = data;
-
-  //   const statuses: boolean[] = [];
-  //   const attachment_log: any[] = [];
-
-  //   Object.entries(attachment).forEach(([k, v]: [any, any]) => {
-  //     statuses.push(v.valid);
-  //     if (!v.valid && v.remarks && v.remarks.length > 0) {
-  //       attachment_log.push({
-  //         description: v.description,
-  //         remarks: v.remarks,
-  //         timestamp: new Date()
-  //       });
-  //     }
-  //   });
-  //   const request_logs = {
-  //     signatory: designation.name,
-  //     role: designation.role_name,
-  //     side: designation.side,
-  //     status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : "Pending",
-  //     remarks: attachment_log,
-  //     timestamp: new Date()
-  //   };
-  //   const status = !statuses.includes(false)
-
-
-
-  //   const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-  //     {
-  //       $set: {
-  //         "assignees.5.approved": status,
-  //         status: request_logs.status,
-  //         "assignees.5.timestamp": new Date(),
-  //         attachments: attachment,
-  //         sdo_attachments: data.sdo_attachment
-
-  //       },
-  //       $push: {
-  //         "assignees.5.remarks": { $each: attachment_log },
-  //         request_log: request_logs
-  //       }
-  //     });
-
-  //   if (!result?.modifiedCount) return Promise.reject("Failed to approve approver")
-  //   return Promise.resolve("Successfully SDO Approved!")
-
-
-  // };
   // updated with return
   static async HANDLE_ADMIN5(data: any, user: ObjectId) {
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
@@ -1874,7 +1595,7 @@ export default class App {
           attachments: attachment,
           sdo_attachments: sdo_attachment,
           "assignees.3.timestamp": new Date(),
-          "assignees.3.remarks": attachment_log,
+          // "assignees.3.remarks": attachment_log,
         },
         $push: {
           request_log: request_logs
