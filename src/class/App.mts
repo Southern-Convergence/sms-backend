@@ -324,7 +324,7 @@ export default class App {
           {
             $or: [
               {
-                $and: [{ "assignees.0.approved": true }, { "assignees.2.approved": { "$ne": null } }, { status: "Pending" }]
+                $and: [{ "assignees.0.approved": true }, { status: "Pending" }]
               },
               { $and: [{ "assignees.2.approved": true }, { "assignees.1.approved": true }, { status: "For Checking" }] },
               { $and: [{ "assignees.2.approved": false }, { "assignees.3.approved": false }, { "assignees.3.evaluator_approved": false }, { status: "Disapproved" }] },
@@ -417,6 +417,7 @@ export default class App {
           first_name: "$personal_information.first_name",
           position: "$position.title",
           district: "$designation.district",
+          current_position: "$designation.current_position"
         },
       },
     ]).toArray();
@@ -531,7 +532,8 @@ export default class App {
           full_name: 1,
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
-          position: "$position.title"
+          position: "$position.title",
+          current_position: "$designation.current_position"
 
         },
       },
@@ -625,198 +627,199 @@ export default class App {
           full_name: 1,
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
-          position: "$position.title"
+          position: "$position.title",
+          current_position: "$designation.current_position"
 
         },
       },
     ]).toArray();
   };
-  private static async GET_PENDING_RECOMMENDING(division_id: ObjectId) {
-    return await Database.collection('applicant')?.aggregate([
-      {
-        $match: {
-          $and: [
-            { "designation.division": division_id },
-            { "assignees.3.approved": true },
-            { "assignees.4.approved": { "$eq": null } },
-            { status: "Recommending for Approval" }
-          ]
-        }
-      },
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "sms-sdo",
-          localField: "designation.division",
-          foreignField: "_id",
-          as: "division",
-        },
-      },
-      {
-        $unwind: {
-          path: "$division",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "sms-qualification-standards",
-          localField: "qualification.position",
-          foreignField: "_id",
-          as: "position",
-        },
-      },
-      {
-        $unwind: {
-          path: "$position",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $set: {
-          full_name: {
-            $concat: [
-              "$personal_information.first_name",
-              " ",
-              {
-                "$cond": {
-                  "if": { "$ne": ["$personal_information.middle_name", ""] },
-                  "then": {
-                    "$concat": [
-                      { "$substr": ["$personal_information.middle_name", 0, 1] },
-                      "."
-                    ]
-                  },
-                  "else": ""
-                }
-              },
-              " ",
-              "$personal_information.last_name",
-            ]
-          }
-        },
-      },
-      {
-        $project: {
-          division: "$division.title",
-          school: "$school.title",
-          control_number: 1,
-          status: 1,
-          full_name: 1,
-          last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name",
-          position: "$position.title"
-        },
-      },
-    ]).toArray();
-  };
-  private static async GET_PENDING_APPROVER(division_id: ObjectId) {
-    return await Database.collection('applicant')?.aggregate([
-      {
-        $match: {
-          $and: [
-            { "designation.division": division_id },
-            { "assignees.4.approved": true },
-            { "assignees.5.approved": { "$eq": null } },
-            { "assignees.9.approved": { "$ne": true } },
-            { "status": "For Approval" }
+  // private static async GET_PENDING_RECOMMENDING(division_id: ObjectId) {
+  //   return await Database.collection('applicant')?.aggregate([
+  //     {
+  //       $match: {
+  //         $and: [
+  //           { "designation.division": division_id },
+  //           { "assignees.3.approved": true },
+  //           { "assignees.4.approved": { "$eq": null } },
+  //           { status: "Recommending for Approval" }
+  //         ]
+  //       }
+  //     },
+  //     {
+  //       $lookup: {
+  //         from: "sms-school",
+  //         localField: "designation.school",
+  //         foreignField: "_id",
+  //         as: "school",
+  //       },
+  //     },
+  //     {
+  //       $unwind: {
+  //         path: "$school",
+  //         preserveNullAndEmptyArrays: true,
+  //       },
+  //     },
+  //     {
+  //       $lookup: {
+  //         from: "sms-sdo",
+  //         localField: "designation.division",
+  //         foreignField: "_id",
+  //         as: "division",
+  //       },
+  //     },
+  //     {
+  //       $unwind: {
+  //         path: "$division",
+  //         preserveNullAndEmptyArrays: true,
+  //       },
+  //     },
+  //     {
+  //       $lookup: {
+  //         from: "sms-qualification-standards",
+  //         localField: "qualification.position",
+  //         foreignField: "_id",
+  //         as: "position",
+  //       },
+  //     },
+  //     {
+  //       $unwind: {
+  //         path: "$position",
+  //         preserveNullAndEmptyArrays: true,
+  //       },
+  //     },
+  //     {
+  //       $set: {
+  //         full_name: {
+  //           $concat: [
+  //             "$personal_information.first_name",
+  //             " ",
+  //             {
+  //               "$cond": {
+  //                 "if": { "$ne": ["$personal_information.middle_name", ""] },
+  //                 "then": {
+  //                   "$concat": [
+  //                     { "$substr": ["$personal_information.middle_name", 0, 1] },
+  //                     "."
+  //                   ]
+  //                 },
+  //                 "else": ""
+  //               }
+  //             },
+  //             " ",
+  //             "$personal_information.last_name",
+  //           ]
+  //         }
+  //       },
+  //     },
+  //     {
+  //       $project: {
+  //         division: "$division.title",
+  //         school: "$school.title",
+  //         control_number: 1,
+  //         status: 1,
+  //         full_name: 1,
+  //         last_name: "$personal_information.last_name",
+  //         first_name: "$personal_information.first_name",
+  //         position: "$position.title"
+  //       },
+  //     },
+  //   ]).toArray();
+  // };
+  // private static async GET_PENDING_APPROVER(division_id: ObjectId) {
+  //   return await Database.collection('applicant')?.aggregate([
+  //     {
+  //       $match: {
+  //         $and: [
+  //           { "designation.division": division_id },
+  //           { "assignees.4.approved": true },
+  //           { "assignees.5.approved": { "$eq": null } },
+  //           { "assignees.9.approved": { "$ne": true } },
+  //           { "status": "For Approval" }
 
-          ]
-        }
-      },
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "sms-sdo",
-          localField: "designation.division",
-          foreignField: "_id",
-          as: "division",
-        },
-      },
-      {
-        $unwind: {
-          path: "$division",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $lookup: {
-          from: "sms-qualification-standards",
-          localField: "qualification.position",
-          foreignField: "_id",
-          as: "position",
-        },
-      },
-      {
-        $unwind: {
-          path: "$position",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $set: {
-          full_name: {
-            $concat: [
-              "$personal_information.first_name",
-              " ",
-              {
-                "$cond": {
-                  "if": { "$ne": ["$personal_information.middle_name", ""] },
-                  "then": {
-                    "$concat": [
-                      { "$substr": ["$personal_information.middle_name", 0, 1] },
-                      "."
-                    ]
-                  },
-                  "else": ""
-                }
-              },
-              " ",
-              "$personal_information.last_name",
-            ]
-          }
-        },
-      },
-      {
-        $project: {
-          division: "$division.title",
-          school: "$school.title",
-          control_number: 1,
-          status: 1,
-          full_name: 1,
-          last_name: "$personal_information.last_name",
-          first_name: "$personal_information.first_name",
-          position: "$position.title"
-        },
-      },
-    ]).toArray();
-  };
+  //         ]
+  //       }
+  //     },
+  //     {
+  //       $lookup: {
+  //         from: "sms-school",
+  //         localField: "designation.school",
+  //         foreignField: "_id",
+  //         as: "school",
+  //       },
+  //     },
+  //     {
+  //       $unwind: {
+  //         path: "$school",
+  //         preserveNullAndEmptyArrays: true,
+  //       },
+  //     },
+  //     {
+  //       $lookup: {
+  //         from: "sms-sdo",
+  //         localField: "designation.division",
+  //         foreignField: "_id",
+  //         as: "division",
+  //       },
+  //     },
+  //     {
+  //       $unwind: {
+  //         path: "$division",
+  //         preserveNullAndEmptyArrays: true,
+  //       },
+  //     },
+  //     {
+  //       $lookup: {
+  //         from: "sms-qualification-standards",
+  //         localField: "qualification.position",
+  //         foreignField: "_id",
+  //         as: "position",
+  //       },
+  //     },
+  //     {
+  //       $unwind: {
+  //         path: "$position",
+  //         preserveNullAndEmptyArrays: true,
+  //       },
+  //     },
+  //     {
+  //       $set: {
+  //         full_name: {
+  //           $concat: [
+  //             "$personal_information.first_name",
+  //             " ",
+  //             {
+  //               "$cond": {
+  //                 "if": { "$ne": ["$personal_information.middle_name", ""] },
+  //                 "then": {
+  //                   "$concat": [
+  //                     { "$substr": ["$personal_information.middle_name", 0, 1] },
+  //                     "."
+  //                   ]
+  //                 },
+  //                 "else": ""
+  //               }
+  //             },
+  //             " ",
+  //             "$personal_information.last_name",
+  //           ]
+  //         }
+  //       },
+  //     },
+  //     {
+  //       $project: {
+  //         division: "$division.title",
+  //         school: "$school.title",
+  //         control_number: 1,
+  //         status: 1,
+  //         full_name: 1,
+  //         last_name: "$personal_information.last_name",
+  //         first_name: "$personal_information.first_name",
+  //         position: "$position.title"
+  //       },
+  //     },
+  //   ]).toArray();
+  // };
   private static async GET_PENDING_ADMIN_5(filter: any) {
     //filter condition
     const { position, sdo, status } = filter;
@@ -931,7 +934,8 @@ export default class App {
           full_name: 1,
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
-          position: "$position.title"
+          position: "$position.title",
+          current_position: "$designation.current_position"
         },
       },
     ]).toArray();
@@ -1066,7 +1070,8 @@ export default class App {
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
           approved: 1,
-          position: "$position.title"
+          position: "$position.title",
+          current_position: "$designation.current_position"
         },
       },
     ]).toArray();
@@ -1156,7 +1161,8 @@ export default class App {
           full_name: 1,
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
-          position: "$position.title"
+          position: "$position.title",
+          current_position: "$designation.current_position"
         },
       },
     ]).toArray();
