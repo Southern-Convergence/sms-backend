@@ -16,8 +16,7 @@ export default REST({
     validators: {
         "create-experience": {
             title: Joi.string(),
-            // is_ma_equivalent: Joi.boolean(),
-            // master_arts: Joi.string(),
+            equivalent: Joi.number()
         },
         "get-experience": {},
         "update-experience": {
@@ -41,8 +40,8 @@ export default REST({
         },
         "PUT": {
             "update-experience"(req, res) {
-                const { _id, title } = req.body
-                this.update_experience(_id, title).then(() => res.json({ data: "Successfully Update Experience!" }))
+                const { _id, title, equivalent } = req.body
+                this.update_experience(_id, title, equivalent).then(() => res.json({ data: "Successfully Update Experience!" }))
                     .catch((error) => res.status(400).json({ error }))
 
             }
@@ -56,10 +55,10 @@ export default REST({
         async get_experience() {
             return this.db?.collection(collection).find({}).toArray()
         },
-        async update_experience(id, title) {
+        async update_experience(id, title, equivalent) {
             const result = await this.db?.collection(collection).updateOne(
                 { _id: new ObjectId(id) },
-                { $set: { title: title } }
+                { $set: { title: title, equivalent: equivalent } }
             );
             if (result.matchedCount === 0) {
                 return Promise.reject("Item not Found, Failed to Update!");

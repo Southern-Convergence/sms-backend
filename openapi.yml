@@ -40,6 +40,8 @@ paths:
     $ref: docs/sms-endorsement.yml
   /sms-experience:
     $ref: docs/sms-experience.yml
+  /sms-leadership:
+    $ref: docs/sms-leadership.yml
   /sms-ma-units:
     $ref: docs/sms-ma-units.yml
   /sms-position:

@@ -4,6 +4,7 @@ import Joi, { object } from 'joi'
 import { REST } from 'sfr'
 import { object_id } from '@lib/api-utils.mjs'
 import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
+import { user_desig_resolver } from '@utils/marianne.mjs';
 import { log } from 'winston';
 
 
@@ -57,7 +58,7 @@ export default REST({
     },
     "PUT": {
       "update-generated-endorsement"(req, res) {
-        this.update_generated_endorsement(req.body)
+        this.update_generated_endorsement(req.body, new ObjectId(req.session.user?._id))
           .then(() => {
             res.json({ data: "Successfully Update Endorsement!" });
           })
@@ -238,100 +239,15 @@ export default REST({
         ]).next();
     },
 
-    // async update_generated_endorsement(data: any) {
-    //   const { app_id, status, remarks, applicants, position } = data;
-    //   const keyed_applicants = applicants.map((v: any) => new ObjectId(v._id));
+    async update_generated_endorsement(data: any, user_id: ObjectId) {
+      const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+      if (designation_error) return Promise.reject({ data: null, error: designation_error });
+      if (designation?.role_name !== 'Verifier') return Promise.reject({ data: null, error: "Not Verifier" });
+
+      console.log(designation);
+      console.log(data);
 
 
-    //   const result = await this.db?.collection(collection).updateOne(
-    //     { _id: new ObjectId(app_id) },
-    //     {
-    //       $set: {
-    //         status: status,
-    //         remarks: remarks,
-    //         applicants: keyed_applicants
-    //       }
-    //     }
-    //   );
-
-    //   if (status === 'Verified') {
-    //     const update_applicant_to_dbm = await this.db.collection("applicant").updateMany(
-    //       { _id: { $in: keyed_applicants } },
-    //       { $set: { status: "For DBM" } }
-    //     );
-
-
-
-    //     const evaluators_email = await this.db?.collection(collection).aggregate([
-    //       {
-    //         $match: {}
-    //       },
-
-    //       {
-    //         $lookup: {
-    //           from: "applicant",
-    //           localField: "applicants",
-    //           foreignField: "_id",
-    //           as: "applicants"
-    //         }
-    //       },
-    //       {
-    //         $project: {
-    //           evaluator: {
-    //             $map: {
-    //               input: "$applicants",
-    //               as: "applicant",
-    //               in: { "$arrayElemAt": ["$$applicant.assignees", 2] }
-    //             }
-    //           }
-    //         }
-    //       },
-    //       { $unwind: "$evaluator" },
-    //       {
-    //         $lookup: {
-    //           from: "users",
-    //           localField: "evaluator.id",
-    //           foreignField: "_id", as: "evaluator_info"
-    //         }
-    //       },
-    //       { $unwind: "$evaluator_info" },
-    //       {
-    //         $group: {
-    //           _id: "$_id",
-    //           evaluator_info: { $push: "$evaluator_info" },
-    //           evaluator: { $push: "$evaluator" }
-    //         }
-    //       },
-    //       { $project: { evaluator_email: "$evaluator_info.email" } }
-    //     ]).next();
-
-
-    //     const x = [...new Set(evaluators_email?.evaluator_email)];
-    //     Promise.all(x.map(async (email) => {
-    //       this.postoffice[EMAIL_TRANSPORT].post(
-    //         {
-    //           from: "mariannemaepaclian@gmail.com",
-    //           to: email,
-    //         },
-    //         {
-    //           context: { position: position },
-    //           template: "sms-to-evaluator",
-    //           layout: "centered"
-    //         }
-    //       );
-    //     }))
-
-
-    //     if (!result) return Promise.reject("Failed to update!");
-    //     return Promise.resolve({ updateResult: update_applicant_to_dbm, message: "Successfully updated endorsement!" });
-
-
-
-
-    //   }
-
-    // }
-    async update_generated_endorsement(data: any) {
       const { app_id, status, remarks, applicants, position } = data;
       const keyed_applicants = applicants.map((v: any) => new ObjectId(v._id));
 
@@ -345,11 +261,21 @@ export default REST({
           }
         }
       );
-
       if (status === 'Verified') {
+        const request_logs = {
+          signatory: designation.name,
+          role: designation.role_name,
+          side: designation.side,
+          status: "For DBM",
+          timestamp: new Date()
+        };
         const update_applicant_to_dbm = await this.db.collection("applicant").updateMany(
           { _id: { $in: keyed_applicants } },
-          { $set: { status: "For DBM" } }
+          {
+            $set: { status: "For DBM" },
+            $push: { request_log: { $each: [request_logs] } } as any
+          }
+
         );
 
         const evaluators_email = await this.db?.collection(collection).aggregate([
@@ -403,7 +329,6 @@ export default REST({
             this.postoffice[EMAIL_TRANSPORT].post(
               {
                 from: "mariannemaepaclian@gmail.com",
-
                 to: email as string,
 
               },

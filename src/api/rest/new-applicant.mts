@@ -3,6 +3,7 @@ import Joi from 'joi'
 import { REST } from 'sfr'
 import { object_id } from '@lib/api-utils.mjs'
 import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
+import { user_desig_resolver } from '@utils/marianne.mjs';
 
 import multers from "@lib/multers.mjs";
 import { v4 } from "uuid";
@@ -57,7 +58,7 @@ export default REST({
       evaluator: object_id
     },
 
-    "assign-to-dbm": multers["sms-docs"].any(),
+    "attach-output-requirement": multers["sms-docs"].any(),
     "complete-application": {
       app_id: object_id,
       approved: Joi.boolean()
@@ -84,6 +85,8 @@ export default REST({
       sdo_attachment: Joi.any().allow(null),
       attachment: Joi.object().required(),
       status: Joi.string(),
+      principal_esig: Joi.string().required(),
+      principal_name: Joi.string().required(),
       app_id: object_id,
     },
     "handle-admin4": {
@@ -189,8 +192,10 @@ export default REST({
           })
         }
 
-
+        console.log(form);
         this.create_application(form)
+
+
           .catch(console.error)
           .then((data) => {
             this.postoffice[EMAIL_TRANSPORT].post(
@@ -209,36 +214,12 @@ export default REST({
                 layout: "centered"
               }
             );
-            // const pos = this.db?.collection(collection).aggregate([
-            //   {
-            //     $match: {
-            //       "qualification.position": form.qualification.position
-            //     }
-            //   },
-            //   {
-            //     $lookup: {
-            //       from: 'sms-qualification-standards',
-            //       localField: 'qualification.position',
-            //       foreignField: '_id',
-            //       as: 'position'
-            //     }
-            //   },
-            //   {
-            //     $unwind: {
-            //       path: '$position',
-            //       preserveNullAndEmptyArrays: true
-            //     }
-            //   },
-            //   {
-            //     $project: {
-            //       position: "$position.title"
-            //     }
-            //   }
-            // ]).next();
+            console.log("PRINCIPAL EMAILLLL", form.principal.email);
+
             this.postoffice[EMAIL_TRANSPORT].post(
               {
                 from: "mariannemaepaclian@gmail.com",
-                to: form.principal_email
+                to: form.principal.email
               },
               {
                 context: {
@@ -256,7 +237,8 @@ export default REST({
       },
 
 
-      "assign-to-dbm"(req, res) {
+
+      "attach-output-requirement"(req, res) {
         const { app_id } = req.body
         //@ts-ignore:watch
         const { fieldname, originalname, encoding, mimetype, buffer, size } = req.files[0];
@@ -278,7 +260,7 @@ export default REST({
             mimetype: mimetype
           },
         }).then(() => `${dir}/${uuid}`)
-        this.assign_to_dbm(app_id, fn, dir)
+        this.attach_output_requirement(app_id, fn, dir, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
@@ -339,19 +321,19 @@ export default REST({
     },
     "PUT": {
       "assign-evaluator-application"(req, res) {
-        this.assign_evaluator_application(req.body)
+        this.assign_evaluator_application(req.body, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
 
       "assign-ro-evaluator-application"(req, res) {
-        this.assign_ro_evaluator_application(req.body)
+        this.assign_ro_evaluator_application(req.body, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
 
       "complete-application"(req, res) {
-        this.complete_reclass(req.body)
+        this.complete_reclass(req.body, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
@@ -423,7 +405,7 @@ export default REST({
         this.handle_admin5(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "assign-multiple-evaluator-application"(req, res) {
-        this.assign_multiple_evaluator_application(req.body)
+        this.assign_multiple_evaluator_application(req.body, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
@@ -433,7 +415,27 @@ export default REST({
           .catch((error) => res.status(400).json({ error }));
       },
       "update-applicant"(req, res) {
-        this.update_applicant(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        const { _id, personal_information, principal, control_number } = req.body.applicant;
+        const result = this.update_applicant(req.body).then((data) => {
+          this.postoffice[EMAIL_TRANSPORT].post(
+            {
+              from: "mariannemaepaclian@gmail.com",
+              to: principal.email
+            },
+            {
+              context: {
+                name: `${personal_information.last_name} ${personal_information.first_name}`,
+                control_number: `${control_number}`,
+                link: `${ALLOWED_ORIGIN}/sms/erf${`?id=`}${_id}
+        `
+              },
+              template: "sms-principal",
+              layout: "centered"
+            }
+          );
+        })
+        if (!result) return Promise.reject("Failed to assign!");
+        return Promise.resolve("Successfully resubmitted application!");
       }
     }
   },
@@ -496,6 +498,7 @@ export default REST({
       data.designation.division = data.designation.division ? new ObjectId(data.designation.division) : "";
       data.designation.school = data.designation.school ? new ObjectId(data.designation.school) : "";
       data.designation.current_sg = data.designation.current_sg ? new ObjectId(data.designation.current_sg) : "";
+      data.qualification.leadership_points = data.qualification.leadership_points ? data.qualification.leadership_points.map((v: string) => new ObjectId(v)) : "";
 
       const session = this.instance.startSession();
 
@@ -739,12 +742,13 @@ export default REST({
 
             }
           },
+
           {
             $lookup: {
-              from: 'sms-school',
-              localField: 'designation.school',
+              from: 'sms-sdo',
+              localField: 'designation.division',
               foreignField: '_id',
-              as: 'school'
+              as: 'division'
             }
           },
           {
@@ -769,12 +773,7 @@ export default REST({
               preserveNullAndEmptyArrays: true,
             },
           },
-          {
-            $unwind: {
-              path: '$school',
-              preserveNullAndEmptyArrays: true,
-            },
-          },
+
 
           {
             $lookup: {
@@ -801,7 +800,7 @@ export default REST({
             $set: {
               current_sg: { $arrayElemAt: ["$current_sg.salary_grade", 0] },
               division: '$division.title',
-              school: '$school.title',
+
               is_with_erf: '$is_with_erf.with_erf'
             }
           }
@@ -817,6 +816,72 @@ export default REST({
               _id: new ObjectId(id)
             }
           },
+          {
+            $lookup: {
+              from: "sms-education",
+              localField: "qualification.education",
+              foreignField: "_id",
+              as: "education",
+            }
+          },
+          {
+            $lookup: {
+              from: "sms-experience",
+              localField: "qualification.experience",
+              foreignField: "_id",
+              as: "experience",
+            }
+          },
+          {
+            $lookup: {
+              from: "sms-performance-rating",
+              localField: "qualification.per_rating",
+              foreignField: "_id",
+              as: "rating",
+            }
+          },
+          {
+            $lookup: {
+              from: "sms-qualification-standards",
+              localField: "qualification.position",
+              foreignField: "_id",
+              as: "position",
+            }
+          },
+          {
+            $unwind: {
+              path: "$position",
+              preserveNullAndEmptyArrays: false
+            }
+
+          },
+          {
+
+            $unwind: {
+              path: "$rating",
+              preserveNullAndEmptyArrays: false
+            }
+
+          },
+
+          {
+            $lookup: {
+              from: "sms-leadership-and-potential",
+              localField: "qualification.leadership_points",
+              foreignField: "_id",
+              as: "leadership",
+            }
+          },
+
+          {
+            $lookup: {
+              from: "sms-salary-grade",
+              localField: "sg",
+              foreignField: "_id",
+              as: "sg",
+            }
+          },
+
 
           {
 
@@ -826,6 +891,7 @@ export default REST({
               },
               birthday: "$personal_information.birthday",
               plantilla_no: "$designation.plantilla_no",
+              signature: "$personal_information.signature",
               item_no: "$designation.item_no",
               current_position: "$designation.current_position",
               educational_attainment: 1,
@@ -836,7 +902,33 @@ export default REST({
               ipcrf_rating: "$designation.ipcrf_rating",
               assignees: 1,
               created_date: 1,
-              qualification: 1
+              qualification: 1,
+              principal: 1,
+              education_level: "$qualification.education_level",
+              training_hours: "$qualification.training",
+              ma_units: "$qualification.ma_units",
+              total_ma: "$qualification.total_ma",
+              status_of_appointment: "$qualification.status_of_appointment",
+              position: "$position.title",
+              education: "$education.title",
+              leadership: "$leadership.title",
+              experience: "$experience.title",
+              rating: "$rating.title",
+              graduate_units: "$qualification.supplemented_units",
+              attachments: {
+                $map: {
+                  input: { $objectToArray: "$attachments" },
+                  as: "attachment",
+                  in: "$$attachment.v.description"
+                }
+              },
+              sdo_attachments: {
+                $map: {
+                  input: { $objectToArray: "$sdo_attachments" },
+                  as: "attachment",
+                  in: "$$attachment.v.description"
+                }
+              },
 
             }
           }
@@ -845,26 +937,88 @@ export default REST({
 
     },
 
-    async assign_evaluator_application(data: any) {
+    async assign_evaluator_application(data: any, user_id: ObjectId) {
+      const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+      if (designation_error) return Promise.reject({ data: null, error: designation_error });
+      if (designation?.role_name !== 'Administrative Officer IV') return Promise.reject({ data: null, error: "Not Administrative Officer IV" });
+
+
       const { app_id, evaluator, status } = data;
-      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.2.id": new ObjectId(evaluator), "assignees.1.approved": true, status: "For Evaluation" } });
+      const request_logs = {
+        signatory: designation.name,
+        role: designation.role_name,
+        side: designation.side,
+        status: "Assigned to Evaluator",
+        timestamp: new Date()
+      };
+      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, {
+        $set: { "assignees.2.id": new ObjectId(evaluator), "assignees.1.approved": true, status: "For Evaluation" },
+        $push: {
+          request_log: request_logs
+        }
+      });
       if (!result) return Promise.reject("Failed to assign!");
       return Promise.resolve("Successfully assigned evaluator!");
     },
-    async assign_to_dbm(app_id, fn, dir) {
-      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Received Printout/s", output_requirement: fn, output_requirement_link: dir } });
+    async attach_output_requirement(app_id, fn, dir, user_id) {
+
+      const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+      if (designation_error) return Promise.reject({ data: null, error: designation_error });
+      if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
+
+
+      const request_logs = {
+        signatory: designation.name,
+        role: designation.role_name,
+        side: designation.side,
+        status: "Received Printout/s",
+        timestamp: new Date()
+      };
+      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, {
+        $set: { status: "Received Printout/s", output_requirement: fn, output_requirement_link: dir },
+        $push: {
+          request_log: request_logs
+        }
+      });
       if (!result) return Promise.reject("Failed to assign!");
       return Promise.resolve("Successfully upload received printed  outputs!");
     },
-    async complete_reclass(data: any) {
+    async complete_reclass(data: any, user_id: ObjectId) {
+      const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+      if (designation_error) return Promise.reject({ data: null, error: designation_error });
+      if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
       const { app_id, status, approved } = data;
-      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved } });
+      const request_logs = {
+        signatory: designation.name,
+        role: designation.role_name,
+        side: designation.side,
+        status: "Completed",
+        timestamp: new Date()
+      };
+      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } });
       if (!result) return Promise.reject("Failed to assign!");
       return Promise.resolve("Successfully completed!");
     },
-    async assign_ro_evaluator_application(data: any) {
+    async assign_ro_evaluator_application(data: any, user_id: ObjectId) {
+
+      const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+      if (designation_error) return Promise.reject({ data: null, error: designation_error });
+      if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
       const { app_id, evaluator, status } = data;
-      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { "assignees.3.id": new ObjectId(evaluator), "assignees.3.approved": true, status: "For Evaluation" } });
+
+      const request_logs = {
+        signatory: designation.name,
+        role: designation.role_name,
+        side: designation.side,
+        status: "Assigned to Evaluator",
+        timestamp: new Date()
+      };
+      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, {
+        $set: { "assignees.3.id": new ObjectId(evaluator), "assignees.3.approved": true, status: "For Evaluation" },
+        $push: {
+          request_log: request_logs
+        }
+      });
       if (!result) return Promise.reject("Failed to assign!");
 
 
@@ -1010,11 +1164,20 @@ export default REST({
               "sg.salary_grade": 1,
               "sg.equivalent": 1,
               education_level: 1,
+              "education._id": 1,
               training_hours: 1,
               "education.title": 1,
               "experience.title": 1,
+              is_experience: 1,
               "rating.title": 1,
-              with_erf: 1
+              ma_units: 1,
+              with_erf: 1,
+              "education.high_degree": 1,
+              leadership_points: 1,
+              or_20_ma_units: 1,
+              supplemented_units: 1,
+              status_of_appointment: 1,
+
 
             }
           }
@@ -1122,13 +1285,27 @@ export default REST({
             last_name: "$personal_information.last_name",
             first_name: "$personal_information.first_name",
             position: "$position.title",
-            approved: 1
+            current_position: "$designation.current_position",
+            approved: 1,
+            created_date: 1
           },
         },
       ]).toArray();
     },
 
-    async assign_multiple_evaluator_application(data) {
+    async assign_multiple_evaluator_application(data, user_id: ObjectId) {
+      const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+      if (designation_error) return Promise.reject({ data: null, error: designation_error });
+      if (designation?.role_name !== 'Administrative Officer V') return Promise.reject({ data: null, error: "Not Administrative Officer V" });
+
+
+      const request_logs = {
+        signatory: designation.name,
+        role: designation.role_name,
+        side: designation.side,
+        status: "Assigned to RO Evaluator",
+        timestamp: new Date()
+      };
       const { applicants, evaluator } = data;
       const applicantIds = applicants.map((applicantId: any) => new ObjectId(applicantId));
       await Promise.all(applicantIds.map(async (applicantId: any) => {
@@ -1139,6 +1316,9 @@ export default REST({
               "assignees.4.id": new ObjectId(evaluator),
               "assignees.3.approved": true,
               status: "For Evaluation"
+            },
+            $push: {
+              request_log: request_logs
             }
           }
         );
@@ -1168,7 +1348,6 @@ export default REST({
     async update_applicant(data: any) {
 
       const { status, attachments, _id, personal_information, designation, qualification } = data.applicant;
-
 
       const request_logs = {
         signatory: `${personal_information.first_name} ${personal_information.last_name}`,

@@ -17,11 +17,14 @@ export default REST({
 
         "create-education": {
             title: Joi.string(),
+            high_degree: Joi.boolean()
         },
         "get-education": {},
         "update-education": {
             _id: object_id,
-            title: Joi.string()
+            title: Joi.string(),
+            high_degree: Joi.boolean()
+
         }
     },
 
@@ -40,8 +43,8 @@ export default REST({
         },
         "PUT": {
             "update-education"(req, res) {
-                const { _id, title } = req.body
-                this.update_education(_id, title).then(() => res.json({ data: "Successfully Update Education" }))
+                const { _id, title, high_degree } = req.body
+                this.update_education(_id, title, high_degree).then(() => res.json({ data: "Successfully Update Education" }))
                     .catch((error) => res.status(400).json({ error }))
             }
         }
@@ -56,10 +59,10 @@ export default REST({
             return this.db?.collection(collection).find({}).toArray()
         },
 
-        async update_education(id, title) {
+        async update_education(id, title, high_degree) {
             const result = await this.db?.collection(collection).updateOne(
                 { _id: new ObjectId(id) },
-                { $set: { title: title } }
+                { $set: { title: title, high_degree: high_degree } }
             );
             if (result.matchedCount === 0) {
                 return Promise.reject("Item not Found, Failed to Update!");

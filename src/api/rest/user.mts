@@ -41,7 +41,22 @@ export default REST({
         "POST": {
             "create-user"(req, res) {
                 this.create_user(req.body)
-                    .then((data) => res.json({ data }))
+                    .then((data) => {
+                        this.postoffice[EMAIL_TRANSPORT].post(
+                            {
+                                from: "mariannemaepaclian@gmail.com",
+                                to: req.body.email
+                            },
+                            {
+                                context: {
+                                    name: 'Hello'
+
+                                },
+                                template: "sms-user-invite",
+                                layout: "centered"
+                            }
+                        );
+                    })
                     .catch((error) => res.status(400).json({ error }))
             },
 
