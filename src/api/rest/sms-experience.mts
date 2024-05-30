@@ -21,7 +21,8 @@ export default REST({
         "get-experience": {},
         "update-experience": {
             _id: object_id,
-            title: Joi.string()
+            title: Joi.string(),
+            equivalent: Joi.number()
         }
     },
 
@@ -41,7 +42,7 @@ export default REST({
         "PUT": {
             "update-experience"(req, res) {
                 const { _id, title, equivalent } = req.body
-                this.update_experience(_id, title, equivalent).then(() => res.json({ data: "Successfully Update Experience!" }))
+                this.update_experience(_id, title, equivalent).then(() => res.json({ data: "Successfully Updated Experience!" }))
                     .catch((error) => res.status(400).json({ error }))
 
             }
@@ -49,7 +50,10 @@ export default REST({
     },
     controllers: {
         async create_experience(data) {
-            return this.db?.collection(collection).insertOne(data)
+            data.equivalent = parseFloat(data.equivalent);
+            const result = this.db?.collection(collection).insertOne(data)
+            if (!result) return Promise.reject("Failed to insert experience");
+            return Promise.resolve("Succesfully inserted new experience!");
         },
 
         async get_experience() {
@@ -58,12 +62,12 @@ export default REST({
         async update_experience(id, title, equivalent) {
             const result = await this.db?.collection(collection).updateOne(
                 { _id: new ObjectId(id) },
-                { $set: { title: title, equivalent: equivalent } }
+                { $set: { title: title, equivalent: parseFloat(equivalent) } }
             );
             if (result.matchedCount === 0) {
                 return Promise.reject("Item not Found, Failed to Update!");
             }
-            return result;
+            return Promise.resolve("Succesfully udpated experience!");
         }
 
 

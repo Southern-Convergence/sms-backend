@@ -2,7 +2,8 @@ import { ObjectId } from 'mongodb';
 import Joi from 'joi';
 import { REST } from 'sfr';
 import { object_id } from '@lib/api-utils.mjs';
-import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
+import { log } from 'handlebars';
+
 
 const collection = "sms-rd";
 
@@ -33,21 +34,8 @@ export default REST({
     "get-rd": {},
     "update-rd": {
       _id: object_id,
-      rd: {
-        first_name: Joi.string(),
-        middle_name: Joi.string(),
-        last_name: Joi.string(),
-        ro_address: Joi.string(),
-        position: Joi.string()
-      },
-      dbm: {
-        first_name: Joi.string(),
-        middle_name: Joi.string(),
-        last_name: Joi.string(),
-        government_agency: Joi.string(),
-        dbm_address: Joi.string(),
-        position: Joi.string()
-      }
+      rd: Joi.object(),
+      dbm: Joi.object()
     },
 
 
@@ -70,8 +58,10 @@ export default REST({
     },
     "PUT": {
       "update-rd"(req, res) {
-        const { id, rd, dbm } = req.body
-        this.update_rd(id, rd, dbm).then(() => res.json({ data: "Successfully Update Regional Director!" }))
+        const { _id, rd, dbm } = req.body
+        console.log("Hiiii", req.body);
+
+        this.update_rd(_id, rd, dbm).then(() => res.json({ data: "Successfully Update Regional Director!" }))
           .catch((error) => res.status(400).json({ error }))
       },
     }
@@ -88,22 +78,18 @@ export default REST({
     async get_rd() {
       return this.db?.collection(collection).find({}).next()
     },
-    async update_rd(id, rd, dbm) {
-      const result = await this.db?.collection(collection).updateOne(
-        { _id: new ObjectId(id) },
-        {
-          $set: {
-            rd,
-            dbm
 
-          }
-        }
+    async update_rd(_id, rd, dbm) {
+      const rd_fields = {};
+      if (rd) rd_fields.rd = rd;
+      if (dbm) rd_fields.dbm = dbm;
+      const result = await this.db?.collection(collection).updateOne(
+        { _id: new ObjectId(_id) },
+        { $set: rd_fields }
       );
-      if (result.matchedCount === 0) {
-        return Promise.reject("Item not Found, Failed to Update!");
-      }
-      return result;
-    },
+
+      return result.matchedCount ? result : Promise.reject("Item not found, failed to update!");
+    }
 
   }
 });
