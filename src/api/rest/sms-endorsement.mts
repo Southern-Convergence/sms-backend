@@ -145,14 +145,14 @@ export default REST({
             preserveNullAndEmptyArrays: true
           }
         },
-        {
-          $lookup: {
-            from: "applicant",
-            localField: "applicants",
-            foreignField: "_id",
-            as: "applicants"
-          }
-        },
+        // {
+        //   $lookup: {
+        //     from: "applicant",
+        //     localField: "applicants",
+        //     foreignField: "_id",
+        //     as: "applicants"
+        //   }
+        // },
         {
           $project: {
             division: "$division.title",
@@ -160,6 +160,7 @@ export default REST({
             position: "$position.title",
             batch_code: 1,
             status: 1,
+            generated_date: 1,
 
 
           }

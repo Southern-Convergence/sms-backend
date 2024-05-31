@@ -183,6 +183,7 @@ export default REST({
                         },
                     },
                 },
+
                 {
                     $lookup: {
                         from: "sms-experience",
@@ -232,6 +233,14 @@ export default REST({
                         localField: "sg",
                         foreignField: "_id",
                         as: "sg",
+                    },
+                },
+                {
+                    $lookup: {
+                        from: "sms-leadership-and-potential",
+                        localField: "leadership_points",
+                        foreignField: "_id",
+                        as: "leadership_points",
                     },
                 },
 

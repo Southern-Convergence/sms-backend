@@ -27,6 +27,7 @@ export default REST({
         middle_name: Joi.string(),
         last_name: Joi.string(),
         government_agency: Joi.string(),
+        region: Joi.string(),
         dbm_address: Joi.string(),
         position: Joi.string()
       }
