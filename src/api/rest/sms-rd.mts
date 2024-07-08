@@ -82,7 +82,9 @@ export default REST({
 
     async update_rd(_id, rd, dbm) {
       const rd_fields = {};
+      //@ts-ignore
       if (rd) rd_fields.rd = rd;
+      //@ts-ignore
       if (dbm) rd_fields.dbm = dbm;
       const result = await this.db?.collection(collection).updateOne(
         { _id: new ObjectId(_id) },

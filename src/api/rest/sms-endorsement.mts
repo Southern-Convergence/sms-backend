@@ -19,7 +19,9 @@ export default REST({
     "generate-endorsement": {
       applicants: Joi.array(),
       division: object_id,
-      position: object_id
+      position: object_id,
+      generated_by: object_id,
+      genarated_date: Joi.string().required(),
     },
     "get-endorsement": {},
     "get-batch-endorsement": {
@@ -37,8 +39,9 @@ export default REST({
   handlers: {
     "POST": {
       "generate-endorsement"(req, res) {
-        const { applicants, division, position } = req.body;
-        this.generate_endorsement(division, position, applicants)
+        const { applicants, division, position, generated_by } = req.body;
+
+        this.generate_endorsement(division, position, applicants, generated_by)
           .then(() => res.json({ data: "Successfully generated endorsement!" }))
           .catch((error) => res.status(500).json({ error }));
       },
@@ -68,7 +71,7 @@ export default REST({
   },
   controllers: {
 
-    async generate_endorsement(division_id, position_id, applicants: string[]) {
+    async generate_endorsement(division_id, position_id, applicants: string[], generated_by) {
       const session = this.instance.startSession();
 
       session.withTransaction(async () => {
@@ -93,15 +96,29 @@ export default REST({
 
         let batch_code = `${division.code || "DIV"}-${position.code || "POS"}-${counters[0].branch_number}`;
         const current_year = new Date().getFullYear();
+
+        const endorsement_log: any[] = [];
+
+
+        const logs = {
+          signatory: new ObjectId(generated_by),
+          status: "For Verification",
+          timestamp: new Date(),
+        }
+
         this.db.collection("sms-endorsement").insertOne({
           division: division._id,
           position: position._id,
           applicants: keyed_applicants,
           current_year: current_year,
+          generated_by: new ObjectId(generated_by),
           generated_date: new Date(),
           status: "For Verification",
-          batch_code
-        });
+          batch_code,
+          endorsement_log: [logs],
+
+        }
+        );
 
         this.db.collection("counters").updateOne({ _id: new ObjectId(counters[0]._id) }, {
           $inc: { branch_number: 1 }
@@ -145,14 +162,7 @@ export default REST({
             preserveNullAndEmptyArrays: true
           }
         },
-        // {
-        //   $lookup: {
-        //     from: "applicant",
-        //     localField: "applicants",
-        //     foreignField: "_id",
-        //     as: "applicants"
-        //   }
-        // },
+
         {
           $project: {
             division: "$division.title",
@@ -161,6 +171,7 @@ export default REST({
             batch_code: 1,
             status: 1,
             generated_date: 1,
+            endorsement_log: 1
 
 
           }
@@ -223,6 +234,7 @@ export default REST({
               current_year: 1,
               generated_date: 1,
               status: 1,
+              endorsement_log: 1,
               applicants: {
                 $map: {
                   input: "$applicants",

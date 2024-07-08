@@ -18,6 +18,8 @@ paths:
     $ref: docs/erf-form.yml
   /hbs-samples:
     $ref: docs/hbs-samples.yml
+  /hris:
+    $ref: docs/hris.yml
   /new-applicant:
     $ref: docs/new-applicant.yml
   /notification:
@@ -42,8 +44,6 @@ paths:
     $ref: docs/sms-experience.yml
   /sms-leadership:
     $ref: docs/sms-leadership.yml
-  /sms-ma-units:
-    $ref: docs/sms-ma-units.yml
   /sms-position:
     $ref: docs/sms-position.yml
   /sms-rating:

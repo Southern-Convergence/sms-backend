@@ -1,3 +1,4 @@
+import { CustomAppConfig } from './../../../../frontend/.nuxt/schema/nuxt.schema.d';
 import { ObjectId, TransactionOptions } from 'mongodb'
 import Joi from 'joi'
 import { REST } from 'sfr'
@@ -5,11 +6,14 @@ import { object_id } from '@lib/api-utils.mjs'
 import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
 import { user_desig_resolver } from '@utils/marianne.mjs';
 
+import Spaces from '@lib/spaces.mjs'
+
 import multers from "@lib/multers.mjs";
 import { v4 } from "uuid";
 import App from 'class/App.mjs';
 import { assemble_upload_params } from '@utils/index.mjs';
 import { ALLOWED_ORIGIN } from '@cfg/index.mjs';
+import { log } from 'handlebars';
 // import { create } from 'connect-mongo';
 
 const pdf = multers["sms-docs"]
@@ -41,7 +45,9 @@ export default REST({
     "get-signatory": {
       id: object_id
     },
-
+    "get-applicant-erf": {
+      id: object_id
+    },
     /**
      * PAGE: /sms/new-application-form
      */
@@ -78,44 +84,42 @@ export default REST({
      * APPROVAL PROCCESS
      */
     "evaluator-approved": {
-      approved: Joi.boolean().required(),
+
+      attachment: Joi.object().required(),
+      status: Joi.string(),
       app_id: object_id
     },
     "handle-principal": {
-      sdo_attachment: Joi.any().allow(null),
+
       attachment: Joi.object().required(),
       status: Joi.string(),
       principal_esig: Joi.string().required(),
       principal_name: Joi.string().required(),
+
       app_id: object_id,
     },
     "handle-admin4": {
-      sdo_attachment: Joi.any().allow(null),
+
       attachment: Joi.object().required(),
       status: Joi.string(),
       app_id: object_id
     },
-    "handle-evaluator": multers["sms-docs"].any(),
+    "handle-evaluator": {
+
+      attachment: Joi.object().required(),
+      status: Joi.string(),
+      app_id: object_id
+    },
+
     "handle-verifier": {
-      sdo_attachment: Joi.object().required(),
+
       attachment: Joi.object().required(),
       status: Joi.string(),
       app_id: object_id
     },
-    "handle-recommending-approver": {
-      sdo_attachment: Joi.object().required(),
-      attachment: Joi.object().required(),
-      status: Joi.string(),
-      app_id: object_id
-    },
-    "handle-approver": {
-      sdo_attachment: Joi.object().required(),
-      attachment: Joi.object().required(),
-      status: Joi.string(),
-      app_id: object_id,
-    },
+
     "handle-admin5": {
-      sdo_attachment: Joi.object().required(),
+
       attachment: Joi.object().required(),
       status: Joi.string(),
       app_id: object_id
@@ -192,16 +196,19 @@ export default REST({
           })
         }
 
-        console.log(form);
+
+
         this.create_application(form)
 
-
           .catch(console.error)
-          .then((data) => {
+          .then((data: any) => {
+
+
             this.postoffice[EMAIL_TRANSPORT].post(
               {
                 from: "mariannemaepaclian@gmail.com",
-                to: form.personal_information.email
+                to: form.personal_information.email,
+                subject: "Application Tracking Status",
               },
               {
                 context: {
@@ -211,18 +218,21 @@ export default REST({
 `
                 },
                 template: "sms-approved",
-                layout: "centered"
+                layout: "centered",
+
               }
             );
-            console.log("PRINCIPAL EMAILLLL", form.principal.email);
+
 
             this.postoffice[EMAIL_TRANSPORT].post(
               {
                 from: "mariannemaepaclian@gmail.com",
-                to: form.principal.email
+                to: form.principal.email,
+                subject: "SMS Attachments for Verification",
               },
               {
                 context: {
+
                   name: `${form.personal_information.last_name} ${form.personal_information.first_name}`,
                   control_number: `${form.control_number}`,
                   link: `${ALLOWED_ORIGIN}/sms/erf${`?id=`}${form._id}
@@ -300,6 +310,10 @@ export default REST({
         const { id } = req.query
         this.get_signatory(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
+      "get-applicant-erf"(req, res) {
+        const { id } = req.query
+        this.get_applicant_erf(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      },
 
 
       "get-evaluators"(req, res) {
@@ -346,57 +360,60 @@ export default REST({
       "handle-principal"(req, res) {
         this.handle_principal(req.body).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
-      // "handle-principal"(req, res) {
-      //   this.handle_principal(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
-      // },
+
       "handle-admin4"(req, res) {
+
         this.handle_admin4(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
-      async "handle-evaluator"(req, res) {
-        const form = Object.assign({}, JSON.parse(req.body.form));
-        if (req.files?.length) {
 
-          //@ts-ignore
-          const x = Object.fromEntries(req.files?.map((v: any) => v.fieldname.split("-")[0]).map((v: any) => [v, []]));
-          form.sdo_attachments = x;
-
-          //@ts-ignore
-          const result = await Promise.all(Array.from(req.files).map(async (v: any) => {
-            const uuid = v4();
-
-            const fn = v.fieldname.split("-")[0];
-            const dir = `sms/${req.session.user?._id}/applicant-requirements/SDO-${fn}`
-            const mime = v.originalname.split(".")[1]; //bug this shit
-
-
-            return await this.spaces["hris"].upload({
-              body: v.buffer,
-              content_type: v.mimetype,
-              dir: dir,
-              key: uuid,
-              metadata: {
-                original_name: v.originalname,
-                timestamp: `${Date.now()}`,
-                ext: mime,
-                mimetype: v.mimetype
-              },
-            }).then(() => `${dir}/${uuid}`)
-          }));
-          Object.entries(form.sdo_attachments).forEach(([key, value]) => {
-            const links = result.filter((v: string) => v.match(key));
-            const payload = {
-              link: links,
-              valid: null,
-              remarks: "",
-              description: key,
-              timestamp: Date.now()
-            }
-            form.sdo_attachments[key] = payload;
-          })
-        };
-
-        this.handle_evaluator(form, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      "handle-evaluator"(req, res) {
+        this.handle_evaluator(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
+      // async "handle-evaluator"(req, res) {
+      //   // const form = Object.assign({}, JSON.parse(req.body.form));
+      //   // if (req.files?.length) {
+
+      //   //   //@ts-ignore
+      //   //   const x = Object.fromEntries(req.files?.map((v: any) => v.fieldname.split("-")[0]).map((v: any) => [v, []]));
+      //   //   form.sdo_attachments = x;
+
+      //   //   //@ts-ignore
+      //   //   const result = await Promise.all(Array.from(req.files).map(async (v: any) => {
+      //   //     const uuid = v4();
+
+      //   //     const fn = v.fieldname.split("-")[0];
+      //   //     const dir = `sms/${req.session.user?._id}/applicant-requirements/SDO-${fn}`
+      //   //     const mime = v.originalname.split(".")[1]; //bug this shit
+
+
+      //   //     return await this.spaces["hris"].upload({
+      //   //       body: v.buffer,
+      //   //       content_type: v.mimetype,
+      //   //       dir: dir,
+      //   //       key: uuid,
+      //   //       metadata: {
+      //   //         original_name: v.originalname,
+      //   //         timestamp: `${Date.now()}`,
+      //   //         ext: mime,
+      //   //         mimetype: v.mimetype
+      //   //       },
+      //   //     }).then(() => `${dir}/${uuid}`)
+      //   //   }));
+      //   //   Object.entries(form.sdo_attachments).forEach(([key, value]) => {
+      //   //     const links = result.filter((v: string) => v.match(key));
+      //   //     const payload = {
+      //   //       link: links,
+      //   //       valid: null,
+      //   //       remarks: "",
+      //   //       description: key,
+      //   //       timestamp: Date.now()
+      //   //     }
+      //   //     form.sdo_attachments[key] = payload;
+      //   //   })
+      //   // };
+
+      //   this.handle_evaluator(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+      // },
       "handle-verifier"(req, res) {
         this.handle_verifier(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
@@ -416,7 +433,8 @@ export default REST({
       },
       "update-applicant"(req, res) {
         const { _id, personal_information, principal, control_number } = req.body.applicant;
-        const result = this.update_applicant(req.body).then((data) => {
+
+        const result = this.update_applicant(req.body, this.spaces).then((data) => {
           this.postoffice[EMAIL_TRANSPORT].post(
             {
               from: "mariannemaepaclian@gmail.com",
@@ -429,19 +447,18 @@ export default REST({
                 link: `${ALLOWED_ORIGIN}/sms/erf${`?id=`}${_id}
         `
               },
-              template: "sms-principal",
+              template: "sms-reapply",
               layout: "centered"
             }
           );
         })
         if (!result) return Promise.reject("Failed to assign!");
-        return Promise.resolve("Successfully resubmitted application!");
+        return Promise.resolve("Successfully re-apply reclass!");
       }
     }
   },
   controllers: {
     async create_application(data) {
-
 
 
       /**
@@ -469,7 +486,7 @@ export default REST({
       let paddedNumber = `${d}-${number.toString().padStart(4, "0")}`;
 
       const is_control_number = await this.db.collection('applicant').findOne({ control_number: paddedNumber });
-      console.log('hi', is_control_number);
+
 
       if (is_control_number) {
         const count = await this.db.collection('counters').findOne({}, { projection: { number: 1 } });
@@ -500,6 +517,8 @@ export default REST({
       data.designation.current_sg = data.designation.current_sg ? new ObjectId(data.designation.current_sg) : "";
       data.qualification.leadership_points = data.qualification.leadership_points ? data.qualification.leadership_points.map((v: string) => new ObjectId(v)) : "";
 
+
+
       const session = this.instance.startSession();
 
       const transactionOptions: TransactionOptions = {
@@ -521,7 +540,8 @@ export default REST({
         await session.endSession();
       }
 
-      return Promise.resolve("Successfully applied request");
+      return Promise.resolve("Successfully applied request").then((data) => Promise.resolve(data))
+        .catch(({ error }) => Promise.reject(error));
     },
     /**
      * PAGE: /sms/new-applicant-form
@@ -608,6 +628,7 @@ export default REST({
         {
           $match: {
             "designation_information.division": division,
+            side: "SDO"
           },
         },
         {
@@ -883,55 +904,55 @@ export default REST({
           },
 
 
-          {
+          // {
 
-            $project: {
-              full_name: {
-                $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
-              },
-              birthday: "$personal_information.birthday",
-              plantilla_no: "$designation.plantilla_no",
-              signature: "$personal_information.signature",
-              item_no: "$designation.item_no",
-              current_position: "$designation.current_position",
-              educational_attainment: 1,
-              service_record: 1,
-              public_years_teaching: "$equivalent_unit.public_years_teaching",
-              yt_equivalent: "$equivalent_unit.yt_equivalent",
-              professional_study: 1,
-              ipcrf_rating: "$designation.ipcrf_rating",
-              assignees: 1,
-              created_date: 1,
-              qualification: 1,
-              principal: 1,
-              education_level: "$qualification.education_level",
-              training_hours: "$qualification.training",
-              ma_units: "$qualification.ma_units",
-              total_ma: "$qualification.total_ma",
-              status_of_appointment: "$qualification.status_of_appointment",
-              position: "$position.title",
-              education: "$education.title",
-              leadership: "$leadership.title",
-              experience: "$experience.title",
-              rating: "$rating.title",
-              graduate_units: "$qualification.supplemented_units",
-              attachments: {
-                $map: {
-                  input: { $objectToArray: "$attachments" },
-                  as: "attachment",
-                  in: "$$attachment.v.description"
-                }
-              },
-              sdo_attachments: {
-                $map: {
-                  input: { $objectToArray: "$sdo_attachments" },
-                  as: "attachment",
-                  in: "$$attachment.v.description"
-                }
-              },
+          //   $project: {
+          //     full_name: {
+          //       $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
+          //     },
+          //     birthday: "$personal_information.birthday",
+          //     plantilla_no: "$designation.plantilla_no",
+          //     signature: "$personal_information.signature",
+          //     item_no: "$designation.item_no",
+          //     current_position: "$designation.current_position",
+          //     educational_attainment: 1,
+          //     service_record: 1,
+          //     public_years_teaching: "$equivalent_unit.public_years_teaching",
+          //     yt_equivalent: "$equivalent_unit.yt_equivalent",
+          //     professional_study: 1,
+          //     ipcrf_rating: "$designation.ipcrf_rating",
+          //     assignees: 1,
+          //     created_date: 1,
+          //     qualification: 1,
+          //     principal: 1,
+          //     education_level: "$qualification.education_level",
+          //     training_hours: "$qualification.training",
+          //     ma_units: "$qualification.ma_units",
+          //     total_ma: "$qualification.total_ma",
+          //     status_of_appointment: "$qualification.status_of_appointment",
+          //     position: "$position.title",
+          //     education: "$education.title",
+          //     leadership: "$leadership.title",
+          //     experience: "$experience.title",
+          //     rating: "$rating.title",
+          //     graduate_units: "$qualification.supplemented_units",
+          //     attachments: {
+          //       $map: {
+          //         input: { $objectToArray: "$attachments" },
+          //         as: "attachment",
+          //         in: "$$attachment.v.description"
+          //       }
+          //     },
+          //     sdo_attachments: {
+          //       $map: {
+          //         input: { $objectToArray: "$sdo_attachments" },
+          //         as: "attachment",
+          //         in: "$$attachment.v.description"
+          //       }
+          //     },
 
-            }
-          }
+          //   }
+          // }
         ]
       ).next()
 
@@ -1036,6 +1057,7 @@ export default REST({
     },
 
     async handle_admin4(data: any, user: ObjectId) {
+
       const result = App.HANDLE_ADMIN4(data, user)
       if (!result) return Promise.reject("Failed to submit!");
       return Promise.resolve("Successfully checked!");
@@ -1046,6 +1068,7 @@ export default REST({
       return Promise.resolve("Successfully evaluated!");
     },
     async handle_verifier(data: any, user: ObjectId) {
+
       const result = App.HANDLE_VERIFIER(data, user)
       if (!result) return Promise.reject("Failed to submit!");
       return Promise.resolve("Successfully verified!");
@@ -1109,6 +1132,130 @@ export default REST({
           }
         ]
       ).next()
+    },
+    async get_applicant_erf(id) {
+      return this.db?.collection(collection).aggregate(
+        [
+          {
+            $match: {
+              _id: new ObjectId(id)
+
+            }
+          },
+
+          {
+            $lookup: {
+              from: 'sms-sdo',
+              localField: 'designation.division',
+              foreignField: '_id',
+              as: 'division'
+            }
+          },
+          {
+            $lookup: {
+              from: 'sms-education',
+              localField: 'qualification.education',
+              foreignField: '_id',
+              as: 'education'
+            }
+          },
+          {
+            $lookup: {
+              from: 'sms-experience',
+              localField: 'qualification.experience',
+              foreignField: '_id',
+              as: 'experience'
+            }
+          }, {
+            $lookup: {
+              from: 'sms-leadership-and-potential',
+              localField: 'qualification.experience',
+              foreignField: '_id',
+              as: 'experience'
+            }
+          },
+          {
+            $lookup: {
+              from: 'sms-qualification-standards',
+              localField: 'qualification.position',
+              foreignField: '_id',
+              as: 'position'
+            }
+          },
+          {
+            $lookup: {
+              from: 'sms-salary-grade',
+              localField: 'designation.current_sg',
+              foreignField: '_id',
+              as: 'sg'
+            }
+          },
+          {
+            $unwind: {
+              path: '$division',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+
+          {
+            $unwind: {
+              path: '$position',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $unwind: {
+              path: '$sg',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $set: {
+              position_sg: '$position.sg'
+            }
+          }, {
+            $lookup: {
+              from: 'sms-salary-grade',
+              localField: 'position_sg',
+              foreignField: '_id',
+              as: 'qs_sg'
+            }
+          },
+          {
+            $project: {
+              education: "$education.title",
+              experience: "$experience.title",
+              leadership_points: "$eleadership_points.title",
+              personal_information: 1,
+              designation: 1,
+              qualification: 1,
+              educational_attainment: 1,
+              equivalent_unit: 1,
+              transcript: 1,
+              service_record: 1,
+              professional_study: 1,
+              current_sg: '$sg.salary_grade',
+              current_sg_equivalent: '$sg.equivalent',
+
+
+
+              assignees: 1,
+              division: '$division.title',
+
+
+              control_number: '$control_number',
+
+              full_name: {
+                $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
+              },
+              created_date: '$created_date',
+              principal: 1,
+              position: '$position.title',
+              qs_sg: { $arrayElemAt: ['$qs_sg.salary_grade', 0] }
+            }
+          }
+        ]
+      ).next()
 
     },
     async get_selected_qs() {
@@ -1149,7 +1296,14 @@ export default REST({
               as: "sg",
             }
           },
-
+          {
+            $lookup: {
+              from: "sms-leadership-and-potential",
+              localField: "leadership_points",
+              foreignField: "_id",
+              as: "leadership",
+            }
+          },
 
 
           {
@@ -1158,8 +1312,10 @@ export default REST({
               preserveNullAndEmptyArrays: true,
             }
           },
+
           {
             $project: {
+
               title: 1,
               "sg.salary_grade": 1,
               "sg.equivalent": 1,
@@ -1173,7 +1329,7 @@ export default REST({
               ma_units: 1,
               with_erf: 1,
               "education.high_degree": 1,
-              leadership_points: 1,
+              "leadership.title": 1,
               or_20_ma_units: 1,
               supplemented_units: 1,
               status_of_appointment: 1,
@@ -1345,9 +1501,31 @@ export default REST({
         return Promise.resolve("Successfully generated endorsement!");
       }));
     },
-    async update_applicant(data: any) {
 
-      const { status, attachments, _id, personal_information, designation, qualification } = data.applicant;
+
+    async update_applicant(data: any, spaces) {
+
+      const { status, attachments, _id, personal_information, designation, qualification } = data.applicant
+
+      const application = await this.db.collection("applicant").findOne({ _id: new ObjectId(_id) }, { projection: { attachments: 1 } });
+      if (!application) return Promise.reject("Could not find application");
+
+      const for_deletion: any = [];
+
+      Object.entries(application.attachments).forEach(([k, v]: [string, any]) => {
+        const { link, valid } = v;
+        if (!valid && typeof link === 'string') {
+          for_deletion.push(link);
+        } else if (!valid && Array.isArray(link) && link.length > 0 && typeof link[0] === 'string') {
+          for_deletion.push(link[0]);
+        }
+      });
+
+      for (const link of for_deletion) {
+        const delete_links = await spaces["hris"].delete_object(link);
+        console.log(delete_links);
+      }
+
 
       const request_logs = {
         signatory: `${personal_information.first_name} ${personal_information.last_name}`,
@@ -1364,6 +1542,16 @@ export default REST({
       designation.division = designation.division ? new ObjectId(designation.division) : "";
       designation.school = designation.school ? new ObjectId(designation.school) : "";
       designation.current_sg = designation.current_sg ? new ObjectId(designation.current_sg) : "";
+
+      Object.entries(application.attachments).forEach(([k, v]: [string, any]) => {
+        v.timestamp = null;
+        v.valid = null;
+        v.remarks = "";
+      });
+
+
+      console.log('Applicant ID', _id);
+
       const result = await this.db.collection("applicant").updateOne(
         {
           _id: new ObjectId(_id)
@@ -1382,8 +1570,7 @@ export default REST({
             "designation.item_no": designation.item_no,
             "designation.school": designation.school,
             "designation.ipcrf_rating": designation.ipcrf_rating,
-
-            attachment: attachments,
+            attachments: application.attachments,
             status: "For Signature",
             "assignees.0.approved": true,
           },
@@ -1394,7 +1581,7 @@ export default REST({
       );
 
       if (!result) return Promise.reject("Failed to submit!");
-      return Promise.resolve("Successfully updated!");
+      return Promise.resolve("Successfully re-apply reclass!");
     }
 
 

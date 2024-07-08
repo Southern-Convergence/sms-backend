@@ -39,8 +39,13 @@ export default REST({
             title: Joi.string(),
             sg: Joi.string(),
         },
-        "get-qs": {},
-        "get-school-position": {},
+        "get-qs": {
+            // id: object_id
+        },
+        "get-applicant-details": {
+            id: object_id
+        },
+
         "update-position": {
             _id: object_id,
             position: Joi.object()
@@ -69,17 +74,22 @@ export default REST({
             "get-qs"(req, res) {
                 this.get_qs().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
             },
-            "get-school-position"(req, res) {
-                this.get_school_position().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
-            },
+
             "get-submission-status"(req, res) {
                 this.get_submission_status().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
-            }
+            },
+            "get-applicant-details"(req, res) {
+                const { id } = req.query
+                this.get_applicant_details(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+            },
 
         },
         "PUT": {
             "update-position"(req, res) {
                 const { _id, position } = req.body
+
+                console.log(position);
+
                 this.update_position(_id, position).then(() => res.json({ data: "Successfully Update Position!" }))
                     .catch((error) => res.status(400).json({ error }))
             },
@@ -270,21 +280,19 @@ export default REST({
             ]).next();
         },
 
-        async get_school_position() {
-            return this.db?.collection("sms-school-position").find({}).toArray()
-        },
-        async update_position(_id, position) {
+
+        async update_position(_id, new_position) {
+            console.log('ID', _id);
+            console.log('UPDATE', _id);
+
             const result = await this.db?.collection(collection).updateOne(
                 { _id: new ObjectId(_id) },
-                { $set: { position } }
+                { $set: { position: new_position } }
             );
-
-            if (result.matchedCount === 0) {
-                return Promise.reject("Item not found, failed to update!");
-            }
-
-            return result;
+            if (result.modifiedCount === 0) return Promise.reject("Failed to update position");
+            return Promise.resolve("Successfully updated position");
         },
+
 
         async update_application(enable_application) {
             const count = await this.db.collection('counters').findOne({});
@@ -300,7 +308,64 @@ export default REST({
                 return Promise.reject("Item not found, failed to update!");
             }
             return result;
-        }
+        },
+        async get_applicant_details(id) {
+            return this.db?.collection('applicant').aggregate(
+
+                [
+                    {
+                        $match: {
+                            _id: new ObjectId(id)
+
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: 'sms-school',
+                            localField: 'designation.school',
+                            foreignField: '_id',
+                            as: 'school'
+                        }
+                    },
+                    {
+                        $lookup: {
+                            from: 'sms-sdo',
+                            localField: 'designation.division',
+                            foreignField: '_id',
+                            as: 'division'
+                        }
+                    },
+                    {
+                        $unwind: {
+                            path: '$division',
+                            preserveNullAndEmptyArrays: true,
+                        },
+                    },
+                    {
+                        $unwind: {
+                            path: '$school',
+                            preserveNullAndEmptyArrays: true,
+                        },
+                    },
+                    {
+                        $project: {
+                            division: '$division.title',
+                            school: '$school.title',
+                            request_log: '$request_log',
+                            control_number: '$control_number',
+
+                            full_name: {
+                                $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
+                            },
+                            created_date: '$created_date',
+                            status: '$status'
+                        }
+                    }
+
+                ]
+            ).next()
+
+        },
 
     }
 })

@@ -1,6 +1,7 @@
 import Database from "@lib/database.mjs";
 import { log } from "handlebars";
 import { ObjectId } from "mongodb";
+import { ALLOWED_ORIGIN } from '@cfg/index.mjs';
 import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
 
 import { PostOffice } from "@lib/mailman.mjs";
@@ -52,6 +53,7 @@ export default class App {
           remarks: [],
           timestamp: null,
 
+
         },
         {
           name: "Administrative Officer IV",
@@ -68,27 +70,7 @@ export default class App {
           remarks: [],
           timestamp: null,
         },
-        // {
-        //   name: "Verifier",
-        //   id: verifier?._id,
-        //   approved: null,
-        //   remarks: [],
-        //   timestamp: null,
-        // },
-        // {
-        //   name: "Recommending Approver",
-        //   id: recommending_approver?._id,
-        //   approved: null,
-        //   remarks: [],
-        //   timestamp: null,
-        // },
-        // {
-        //   name: "Approver",
-        //   id: approver?._id,
-        //   approved: null,
-        //   remarks: [],
-        //   timestamp: null,
-        // },
+
         {
           name: "RO Administrative Officer V",
           id: admin5?._id,
@@ -136,7 +118,7 @@ export default class App {
 
       case ROLES.EVALUATOR:
         if (side == SIDE.SDO) {
-          const EVALUATOR_PENDING = await App.GET_PENDING_EVALUATOR(division_id)
+          const EVALUATOR_PENDING = await App.GET_PENDING_EVALUATOR(division_id, user_id)
           return Promise.resolve({ data: EVALUATOR_PENDING, error: null });
         }
         const EVALUATOR_PENDING = await App.GET_PENDING_EVALUATOR_RO(filter, user_id);
@@ -150,22 +132,7 @@ export default class App {
         const VERIFIER_PENDING = await App.GET_PENDING_VERIFIER_RO()
         return Promise.resolve({ data: VERIFIER_PENDING, error: null });
 
-      // case ROLES.RECOMMENDING_APPROVER:
-      //   if (side === SIDE.SDO) {
-      //     const RECOMMENDING_PENDING = await App.GET_PENDING_RECOMMENDING(division_id)
-      //     return Promise.resolve({ data: RECOMMENDING_PENDING, error: null });
-      //   }
-      //   const RECOMMENDING_PENDING = await App.GET_PENDING_RECOMMENDING_APPROVER_RO()
-      //   return Promise.resolve({ data: RECOMMENDING_PENDING, error: null });
 
-      // case ROLES.APPROVER:
-      //   if (side === SIDE.SDO) {
-      //     const APPROVER_PENDING = await App.GET_PENDING_APPROVER(division_id)
-      //     return Promise.resolve({ data: APPROVER_PENDING, error: null })
-      //   }
-
-      //   const APPROVER_PENDING = await App.GET_PENDING_APPROVER_RO()
-      //   return Promise.resolve({ data: APPROVER_PENDING, error: null })
 
       case ROLES.ADMIN_5:
         const ADMIN_5_PENDING = await App.GET_PENDING_ADMIN_5(filter)
@@ -274,6 +241,8 @@ export default class App {
     ]).toArray();
   };
   private static async GET_PENDING_ADMIN_4(division_id: ObjectId, filter: any) {
+    console.log(filter);
+
     const { position, sdo, status } = filter;
     let query = {};
     if (sdo && position && status) {
@@ -304,7 +273,7 @@ export default class App {
                 $and: [{ "assignees.0.approved": true }, { "assignees.1.approved": { $ne: true } }, { status: "Pending" }]
               },
               { $and: [{ "assignees.2.approved": true }, { "assignees.1.approved": true }, { status: "For Checking" }] },
-              { $and: [{ "assignees.2.approved": false }, { "assignees.3.approved": false }, { "assignees.3.evaluator_approved": false }, { status: "Disapproved" }] },
+              { $and: [{ "assignees.3.approved": false }, { "assignees.3.evaluator_approved": false }, { status: "Disapproved" }] },
               { $and: [{ "assignees.1.approved": true }, { "assignees.2.approved": false }, { "assignees.1.evaluator_approved": false }, { status: "Disapproved" }] },
               { status: { $in: ["Approved for Printing"] } }
             ]
@@ -353,10 +322,24 @@ export default class App {
         },
       },
       {
+        $lookup: {
+          from: 'sms-qualification-standards',
+          localField: 'qualification.position',
+          foreignField: '_id',
+          as: 'is_with_erf'
+        }
+      },
+      {
         $unwind: {
           path: "$position",
           preserveNullAndEmptyArrays: true,
         },
+      },
+      {
+        $unwind: {
+          path: "$is_with_erf",
+          preserveNullAndEmptyArrays: true,
+        }
       },
       {
         $set: {
@@ -393,12 +376,13 @@ export default class App {
           first_name: "$personal_information.first_name",
           position: "$position.title",
           district: "$designation.district",
-          current_position: "$designation.current_position"
+          current_position: "$designation.current_position",
+          is_with_erf: '$is_with_erf.with_erf'
         },
       },
     ]).toArray();
   };
-  private static async GET_PENDING_EVALUATOR(division_id: ObjectId) {
+  private static async GET_PENDING_EVALUATOR(division_id: ObjectId, user_id: ObjectId) {
     return await Database.collection('applicant')?.aggregate([
       {
         $match: {
@@ -407,6 +391,7 @@ export default class App {
               $or: [
                 {
                   $and: [
+                    { "assignees.2.id": user_id },
                     { "designation.division": division_id },
                     { "assignees.1.approved": true },
                     { "assignees.2.approved": { "$not": { "$eq": true } } },
@@ -416,6 +401,7 @@ export default class App {
                 },
                 {
                   $and: [
+                    { "assignees.2.id": user_id },
                     { "designation.division": division_id },
                     { "assignees.1.evaluator_approved": true },
                     { "assignees.2.approved": true },
@@ -964,7 +950,7 @@ export default class App {
    */
 
   static async HANDLE_PRINCIPAL(data: any) {
-    const { app_id, attachment, sdo_attachment, principal_esig, principal_name } = data;
+    const { app_id, attachment, principal_esig, principal_name } = data;
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
 
@@ -986,11 +972,7 @@ export default class App {
       remarks: attachment_log,
       timestamp: new Date()
     };
-
-
-
     const status = !statuses.includes(false)
-
 
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
@@ -1000,8 +982,8 @@ export default class App {
           "assignees.0.timestamp": new Date(),
           status: request_logs.status,
           attachments: attachment,
-          sdo_attachments: data.sdo_attachment,
           "principal.signature": data.principal_esig,
+          "principal.name": data.principal_name,
 
         },
         $push: {
@@ -1015,12 +997,13 @@ export default class App {
   };
 
   static async HANDLE_ADMIN4(data: any, user: ObjectId) {
+
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.ADMIN_4) return Promise.reject({ data: null, error: "Not principal" });
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
-    const { app_id, attachment, sdo_attachment } = data;
+    const { app_id, attachment } = data;
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
       if (!v.valid && v.remarks && v.remarks.length > 0) {
@@ -1036,15 +1019,63 @@ export default class App {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : (data.sdo_attachment ? "Pending" : "For Evaluation"),
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : (data.status === 'For Checking' ? "Pending" : "For Evaluation"),
       remarks: attachment_log,
       timestamp: new Date()
     };
 
+    const applicant = await Database.collection('applicant')?.aggregate(
+      [
+        {
+          $match:
+          {
+            _id: new ObjectId(app_id),
+          },
+        },
+        {
+          $set: {
+            full_name: {
+              $concat: [
+                "$personal_information.first_name",
+                " ",
+                {
+                  "$cond": {
+                    "if": { "$ne": ["$personal_information.middle_name", ""] },
+                    "then": {
+                      "$concat": [
+                        { "$substr": ["$personal_information.middle_name", 0, 1] },
+                        "."
+                      ]
+                    },
+                    "else": ""
+                  }
+                },
+                " ",
+                "$personal_information.last_name",
+              ]
+            }
+          },
+        },
+
+        {
+          $project:
+
+          {
+            _id: 1,
+            "principal.email": 1,
+            "principal.name": 1,
+            control_number: 1,
+            full_name: 1
+          }
+
+        }
+      ]
+    ).next()
+
     const status = !statuses.includes(false);
 
     // if (data.sdo_attachment) {
-    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
+    return await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
           "assignees.1.approved": status,
@@ -1057,30 +1088,38 @@ export default class App {
           "assignees.1.remarks": { $each: attachment_log },
           request_log: request_logs
         }
-      })
+      }).then((data) => {
+        if (request_logs.status === 'Disapproved') {
+          console.log('Principal', applicant?.principal.name);
+          console.log('Hiiiii', applicant);
+          console.log('Link:', `${ALLOWED_ORIGIN}/sms/erf?id=${applicant?._id}`);
 
-    if (!result?.modifiedCount) return Promise.reject("Failed to verify!")
-    return Promise.resolve("Successfully Checked!")
-    // };
+          PostOffice.get_instances()[EMAIL_TRANSPORT].post(
+            {
+              from: "mariannemaepaclian@gmail.com",
+              to: applicant?.principal.email,
+              subject: "Returned Reclass",
+            },
+            {
+              context: {
+                name: `${applicant?.principal.name} `,
+                control_number: `${applicant?.control_number}`,
+                full_name: `${applicant?.full_name}`,
+                link: `${ALLOWED_ORIGIN}/sms/erf${`?id=`}${applicant?._id}`
 
-    // const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-    //   {
-    //     $set: {
-    //       "assignees.1.approved": status,
-    //       status: request_logs.status,
-    //       attachments: attachment,
-    //       "assignees.1.timestamp": new Date()
-    //     },
-    //     $push: {
-    //       "assignees.1.remarks": { $each: attachment_log },
-    //       request_log: request_logs
-    //     }
-    //   });
-
-    // if (!result?.modifiedCount) return Promise.reject("Failed to verify!")
+              },
+              template: "sms-disapproved",
+              layout: "centered"
+            }
+          );
+        }
 
 
-    // return Promise.resolve("Successfully Checked!")
+        return Promise.resolve("Successfully Verify!")
+      }).catch(() => Promise.reject("Failed to Verify"));
+
+
+
   };
 
   static async HANDLE_EVALUATOR(data: any, user: ObjectId) {
@@ -1088,7 +1127,7 @@ export default class App {
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.EVALUATOR) return Promise.reject({ data: null, error: "Not Evaluator" });
 
-    const { app_id, attachment, sdo_attachments } = data;
+    const { app_id, attachment } = data;
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
 
@@ -1114,26 +1153,33 @@ export default class App {
 
 
 
+
+
     if (designation.side === 'SDO') {
       const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
         {
           $set: {
-            "assignees.1.evaluator_approved": true,
+            "assignees.1.evaluator_approved": status,
             "assignees.2.approved": status,
             "assignees.2.timestamp": new Date(),
             status: request_logs.status,
             attachments: attachment,
-            sdo_attachments: sdo_attachments
+
           },
           $push: {
             "assignees.2.remarks": { $each: attachment_log },
             request_log: request_logs,
           }
 
-        });
+        })
       if (!result?.modifiedCount) return Promise.reject("Failed to submit")
-      return Promise.resolve("Successfully Evaluated! ");
-    }
+      return Promise.resolve("Successfully Evaluated!")
+
+
+    };
+
+
+
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
@@ -1150,10 +1196,9 @@ export default class App {
         }
       });
     if (!result?.modifiedCount) return Promise.reject("Failed to submit")
-    return Promise.resolve("Successfully Evaluated! ");
 
 
-
+    return Promise.resolve("Successfully Evaluated!");
 
 
   };
@@ -1210,6 +1255,7 @@ export default class App {
     };
     const status = !statuses.includes(false)
 
+
     if (data.sdo_attachment && designation.side === SIDE.SDO) {
       const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
         {
@@ -1247,7 +1293,8 @@ export default class App {
         PostOffice.get_instances()[EMAIL_TRANSPORT].post(
           {
             from: "mariannemaepaclian@gmail.com",
-            to: applicant?.personal_information.email
+            to: applicant?.personal_information.email,
+            subject: "SMS Approved for Printing",
           },
           {
             context: {
@@ -1275,27 +1322,7 @@ export default class App {
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
 
-    const applicant = await Database.collection('applicant')?.aggregate(
-      [
-        {
-          $match:
 
-          {
-            _id: new ObjectId(app_id),
-          },
-        },
-        {
-          $project:
-
-          {
-            "personal_information.last_name": 1,
-            "personal_information.first_name": 1,
-            "personal_information.email": 1,
-            control_number: 1,
-          },
-        },
-      ]
-    ).next()
 
 
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
@@ -1309,16 +1336,8 @@ export default class App {
       }
     });
 
-    Object.entries(sdo_attachment).forEach(([k, v]: [any, any]) => {
-      statuses.push(v.valid);
-      if (!v.valid && v.remarks && v.remarks.length > 0) {
-        attachment_log.push({
-          description: v.description,
-          remarks: v.remarks,
-          timestamp: new Date()
-        });
-      }
-    });
+
+
 
 
     const request_logs = {
@@ -1330,11 +1349,7 @@ export default class App {
       timestamp: new Date()
     };
 
-
-
     const status = !statuses.includes(false)
-
-    console.log(request_logs);
 
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
@@ -1350,25 +1365,9 @@ export default class App {
           "assignees.3.remarks": attachment_log,
           request_log: request_logs
         }
-      }).then((data) => {
-        PostOffice.get_instances()[EMAIL_TRANSPORT].post(
-          {
-            from: "mariannemaepaclian@gmail.com",
-            to: applicant?.personal_information.email
-          },
-          {
-            context: {
-              name: `${applicant?.personal_information.last_name} ${applicant?.personal_information.first_name}`,
-              control_number: `${applicant?.control_number}`,
-
-            },
-            template: "sms-for-printing",
-            layout: "centered"
-          }
-        );
-
-        return Promise.resolve("Successfully Approved for Printing!")
-      }).catch(() => Promise.reject("Failed to Recommend for  Approval"));
+      })
+    if (!result?.modifiedCount) return Promise.reject("Failed to checked")
+    return Promise.resolve("Successfully Checked!")
 
   };
   /**

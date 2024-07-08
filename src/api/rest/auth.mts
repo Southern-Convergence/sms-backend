@@ -14,6 +14,8 @@ const EXPIRY = 3600000 * 72; //72 Hours
 const SALT_ROUNDS = 10;
 
 import { EMAIL_TRANSPORT, ALLOWED_ORIGIN } from "@cfg/index.mjs";
+import { v4 } from "uuid";
+import e from "express";
 
 export default REST({
   cfg: {
@@ -51,8 +53,13 @@ export default REST({
       middle_name: Joi.string().allow(""),
       last_name: Joi.string().required(),
 
+      e_signature: Joi.string().required(),
+
       username: Joi.string().min(MIN_USERNAME_LENGTH).required(),
       password: Joi.string().min(MIN_PASSWORD_LENGTH).required(),
+
+      role: object_id,
+      side: Joi.string().required()
     },
 
     "update-credentials": {
@@ -65,7 +72,34 @@ export default REST({
       username: Joi.string().min(MIN_USERNAME_LENGTH)
     },
 
-    "profile-completion": {}
+    "profile-completion": {},
+
+    "invite-user": {
+      first_name: Joi.string().required(),
+      middle_name: Joi.string().allow(""),
+      last_name: Joi.string().required(),
+      appellation: Joi.string().allow(""),
+      email: Joi.string().email().required(),
+      contact_number: Joi.string().required(),
+
+
+      domain: {
+        id: object_id,
+        name: Joi.string().required(),
+      },
+      apts: Joi.array().required(),
+      group: Joi.any().allow(""),
+      side: Joi.string().required(),
+
+      designation: {
+        division: object_id.allow(""),
+      },
+    },
+
+    "deactivate-user": {
+      user_id: object_id,
+      reason: Joi.string().required(),
+    },
   },
 
   handlers: {
@@ -193,7 +227,62 @@ export default REST({
         this.finalize_user(req.body)
           .then(() => res.json({ data: "Successfully finalized user account." }))
           .catch((error) => res.status(400).json({ error }));
-      }
+      },
+
+      async "invite-user"(req, res) {
+        const { first_name, last_name, email, apts, group, designation } =
+          req.body;
+
+        const { user } = req.session;
+        if (!user)
+          return res
+            .status(400)
+            .json({ error: "Failed to invite user, invalid session." });
+
+        const invitation_code = v4();
+        const { division } = designation;
+
+        this.invite_user(req.body, invitation_code, user)
+          .then(() => {
+            console.log(req.body);
+            try {
+              this.postoffice[EMAIL_TRANSPORT].post(
+                {
+                  from: "systems@mail.com",
+                  to: email,
+                  subject: "SMS Invitation",
+                },
+                {
+                  template: "sms-invite",
+                  layout: "default",
+                  context: {
+                    invited_by_name: user.username,
+                    invited_by_email: user.email,
+                    invited_domain: "DepEd's SMS",
+
+                    name: `${first_name} ${last_name}`,
+                    roles: apts.map((v: any) => v.name).toString(),
+                    group: group ? group.name : "None",
+                    link: `${ALLOWED_ORIGIN}/onboarding?ref=${invitation_code}`,
+                  },
+                }
+              ).then(() => res.json({ data: "Successfully sent invitation" }))
+                .catch((error) => console.log(error));
+            } catch (err) {
+              console.log(err);
+            }
+          })
+          .catch((error) => res.status(400).json({ error }));
+      },
+      "deactivate-user"(req, res) {
+        const { user_id, reason } = req.body;
+
+        this.deactivate_user(user_id, reason)
+          .then(() => res.json({ data: "Successfully deactivated user." }))
+          .catch(() =>
+            res.status(400).json({ error: "Failed to deactivate user." })
+          );
+      },
     },
 
     GET: {
@@ -469,7 +558,7 @@ export default REST({
     },
 
     finalize_user(user) {
-      const { user_id, invite_id, username, password, first_name, middle_name, last_name } = user;
+      const { user_id, invite_id, username, password, first_name, middle_name, last_name, role, side } = user;
 
       const session = this.instance.startSession();
 
@@ -483,7 +572,8 @@ export default REST({
           $set: {
             username,
             status: "active",
-
+            role: new ObjectId(role),
+            side: side,
             password: hashed_password,
             first_name, middle_name, last_name
           }
@@ -501,6 +591,145 @@ export default REST({
       return this.db.collection("users").updateOne({ _id: new ObjectId(user_id) }, {
         $set: { ...obj }
       })
-    }
+    },
+
+    async invite_user(user: any, code, invited_by) {
+      const {
+        first_name,
+        middle_name,
+        last_name,
+        appellation,
+        email,
+        group,
+        apts,
+        domain,
+        designation,
+      } = user;
+      const domain_id = new ObjectId(domain.id);
+      const session = this.instance.startSession();
+      invited_by.id = new ObjectId(invited_by.id);
+
+      const { division } = designation;
+
+      const [user_res, invite_res] = await Promise.all([
+        this.db.collection("users").findOne({ domain_id, email: user.email }),
+        this.db
+          .collection("invites")
+          .findOne({ domain_id, "user.email": user.email }),
+      ]);
+
+      if (user_res)
+        return Promise.reject("Failed to invite user, user already exists.");
+      if (invite_res)
+        return Promise.reject(
+          "Failed to invite user, invitation already sent."
+        );
+
+
+      return session
+        .withTransaction(async () => {
+          const temp = await this.db.collection("users").insertOne({
+            username: null,
+            password: null,
+            email,
+
+            access: apts.map((v: any) => new ObjectId(v._id)),
+            status: "invited",
+            type: "regional",
+            first_name,
+            middle_name,
+            last_name,
+            appellation,
+
+            designation_information: {
+              salary_grade: 0,
+              division: new ObjectId(division)
+            },
+
+            domain_id,
+
+            //Create embedded refs
+            gov_ids: {},
+            personal_information: {},
+            compensation: {},
+            civic_organizations: [],
+            educational_records: [],
+            eligibilities: [],
+            references: [],
+            other_information: {
+              skills: [],
+              non_academic_distinctions: [],
+              organizations: [],
+            },
+          });
+
+          this.db.collection("invites").insertOne({
+            created: new Date(),
+            code,
+            domain_id,
+            group,
+            apts,
+            user: { ...user, id: temp.insertedId },
+            invited_by,
+          });
+        })
+        .finally(() => session.endSession());
+    },
+
+    async deactivate_user(user_id, reason) {
+      //Reason will be used as basis for updating service records.
+      const session = this.instance.startSession();
+
+      return session
+        .withTransaction(async () => {
+          const user = await this.db
+            .collection("users")
+            .findOne({ _id: new ObjectId(user_id) });
+          if (!user)
+            return Promise.reject("Failed to deactivate user, no such user.");
+
+          const item_no = user.designation_information.item_number;
+          const vacate_stamp = new Date();
+
+          this.db.collection("users").updateOne(
+            { _id: new ObjectId(user_id) },
+            {
+              $set: {
+                status: "deactivated",
+                "designation_information.item_number": null,
+              },
+            }
+          );
+          this.db.collection("plantilla").updateOne(
+            { _id: item_no },
+            {
+              $set: {
+                vacation_stamp: vacate_stamp,
+                vice: user._id,
+              },
+            }
+          );
+          this.db.collection("plantilla-logs").updateOne(
+            { item_no },
+            {
+              $push: {
+                activities: {
+                  type: "vacate",
+                  timestamp: vacate_stamp,
+                  subject: {
+                    user_id: user._id,
+                    first_name: user.first_name,
+                    middle_name: user.middle_name,
+                    last_name: user.last_name,
+                  },
+                  reason,
+                },
+              },
+            },
+            { upsert: true }
+          );
+        })
+        .finally(async () => await session.endSession());
+    },
   },
 });

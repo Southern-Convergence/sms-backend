@@ -77,7 +77,7 @@ export default REST({
             if (division) data.designation_information.division = new ObjectId(division);
             if (school) data.designation_information.school = new ObjectId(school);
 
-            // logic send mai
+            // logic send mail
 
             const result = await this.db.collection(collection).insertOne(data);
             if (!result.insertedId) return Promise.reject("Failed to insert user");

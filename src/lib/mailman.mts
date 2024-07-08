@@ -40,7 +40,7 @@ export class MailMan {
     (async () => {
       if (!IS_DEV && namespace !== "ethereal") cfg.transport_options.accessToken = await gsuite_client({ CLIENT_ID: clientId, REFRESH_TOKEN: refreshToken, SECRET: clientSecret, REDIRECT_URL: GOOGLE_API_REDIRECT }).getAccessToken();
       this._cfg = cfg;
-
+      console.log(!IS_DEV ? cfg.transport_options : CFG["ethereal"].transport_options);
       this.transport = nodemailer.createTransport(!IS_DEV ? cfg.transport_options : CFG["ethereal"].transport_options)
     })()
       .catch((err) => logger.error(`Failed to initialize MailMan: ${namespace}.${err}`))
@@ -65,6 +65,8 @@ export class PostOffice {
     this.#instances = Object.fromEntries(Object.entries(CFG).map(([namespace, cfg]) => {
       return [namespace, new MailMan(namespace, cfg)];
     }));
+
+    console.log(this.#instances);
   }
 
   static get_instances() {
