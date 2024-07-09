@@ -233,6 +233,10 @@ export default REST({
         const { first_name, last_name, email, apts, group, designation } =
           req.body;
 
+        console.log(req.body);
+
+
+
         const { user } = req.session;
         if (!user)
           return res
@@ -244,7 +248,7 @@ export default REST({
 
         this.invite_user(req.body, invitation_code, user)
           .then(() => {
-            console.log(req.body);
+
             try {
               this.postoffice[EMAIL_TRANSPORT].post(
                 {
@@ -558,7 +562,7 @@ export default REST({
     },
 
     finalize_user(user) {
-      const { user_id, invite_id, username, password, first_name, middle_name, last_name, role, side } = user;
+      const { user_id, invite_id, username, password, first_name, middle_name, last_name, role, side, e_signature } = user;
 
       const session = this.instance.startSession();
 
@@ -575,7 +579,7 @@ export default REST({
             role: new ObjectId(role),
             side: side,
             password: hashed_password,
-            first_name, middle_name, last_name
+            first_name, middle_name, last_name, e_signature
           }
         });
 
@@ -641,6 +645,8 @@ export default REST({
             last_name,
             appellation,
 
+            apts,
+
             designation_information: {
               salary_grade: 0,
               division: new ObjectId(division)
@@ -648,19 +654,20 @@ export default REST({
 
             domain_id,
 
+
             //Create embedded refs
-            gov_ids: {},
-            personal_information: {},
-            compensation: {},
-            civic_organizations: [],
-            educational_records: [],
-            eligibilities: [],
-            references: [],
-            other_information: {
-              skills: [],
-              non_academic_distinctions: [],
-              organizations: [],
-            },
+            // gov_ids: {},
+            // personal_information: {},
+            // compensation: {},
+            // civic_organizations: [],
+            // educational_records: [],
+            // eligibilities: [],
+            // references: [],
+            // other_information: {
+            //   skills: [],
+            //   non_academic_distinctions: [],
+            //   organizations: [],
+            // },
           });
 
           this.db.collection("invites").insertOne({

@@ -1,9 +1,9 @@
-import { Link } from '../../../../frontend/.nuxt/components';
+
 import { ObjectId } from 'mongodb'
 import Joi from 'joi'
 import { REST } from 'sfr'
 import { object_id } from '@lib/api-utils.mjs'
-import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
+
 
 const collection = "sms-qualification-standards"
 
@@ -35,10 +35,7 @@ export default REST({
 
         },
 
-        "create-school-position": {
-            title: Joi.string(),
-            sg: Joi.string(),
-        },
+
         "get-qs": {
             // id: object_id
         },
@@ -64,11 +61,7 @@ export default REST({
                     .then((data) => res.json({ data }))
                     .catch((error) => res.status(400).json({ error }));
             },
-            "create-school-position"(req, res) {
-                this.create_school_position(req.body)
-                    .then((data) => res.json({ data }))
-                    .catch((error) => res.status(400).json({ error }));
-            },
+
         },
         "GET": {
             "get-qs"(req, res) {
@@ -114,13 +107,7 @@ export default REST({
             if (!result.insertedId) return Promise.reject("Failed to insert position");
             return Promise.resolve("Successfully inserted new position");
         },
-        async create_school_position(data) {
-            data.sg = new ObjectId(data.sg);
-            const result = await this.db?.collection("sms-school-position").insertOne(data);
 
-            if (!result.insertedId) return Promise.reject("Failed to insert position");
-            return Promise.resolve("Successfully inserted new position");
-        },
         async get_qs() {
             return this.db?.collection(collection).aggregate([
                 {
@@ -319,14 +306,7 @@ export default REST({
 
                         }
                     },
-                    {
-                        $lookup: {
-                            from: 'sms-school',
-                            localField: 'designation.school',
-                            foreignField: '_id',
-                            as: 'school'
-                        }
-                    },
+
                     {
                         $lookup: {
                             from: 'sms-sdo',
@@ -341,16 +321,11 @@ export default REST({
                             preserveNullAndEmptyArrays: true,
                         },
                     },
-                    {
-                        $unwind: {
-                            path: '$school',
-                            preserveNullAndEmptyArrays: true,
-                        },
-                    },
+
                     {
                         $project: {
                             division: '$division.title',
-                            school: '$school.title',
+
                             request_log: '$request_log',
                             control_number: '$control_number',
 

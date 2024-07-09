@@ -1,4 +1,4 @@
-import { CustomAppConfig } from './../../../../frontend/.nuxt/schema/nuxt.schema.d';
+
 import { ObjectId, TransactionOptions } from 'mongodb'
 import Joi from 'joi'
 import { REST } from 'sfr'
@@ -6,14 +6,14 @@ import { object_id } from '@lib/api-utils.mjs'
 import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
 import { user_desig_resolver } from '@utils/marianne.mjs';
 
-import Spaces from '@lib/spaces.mjs'
+
 
 import multers from "@lib/multers.mjs";
 import { v4 } from "uuid";
 import App from 'class/App.mjs';
-import { assemble_upload_params } from '@utils/index.mjs';
+
 import { ALLOWED_ORIGIN } from '@cfg/index.mjs';
-import { log } from 'handlebars';
+
 // import { create } from 'connect-mongo';
 
 const pdf = multers["sms-docs"]
@@ -513,7 +513,7 @@ export default REST({
       data.qualification.experience = data.qualification.experience ? data.qualification.experience.map((v: string) => new ObjectId(v)) : "";
       data.qualification.per_rating = data.qualification.per_rating ? new ObjectId(data.qualification.per_rating) : "";
       data.designation.division = data.designation.division ? new ObjectId(data.designation.division) : "";
-      data.designation.school = data.designation.school ? new ObjectId(data.designation.school) : "";
+
       data.designation.current_sg = data.designation.current_sg ? new ObjectId(data.designation.current_sg) : "";
       data.qualification.leadership_points = data.qualification.leadership_points ? data.qualification.leadership_points.map((v: string) => new ObjectId(v)) : "";
 
@@ -1088,14 +1088,7 @@ export default REST({
 
             }
           },
-          {
-            $lookup: {
-              from: 'sms-school',
-              localField: 'designation.school',
-              foreignField: '_id',
-              as: 'school'
-            }
-          },
+
           {
             $lookup: {
               from: 'sms-sdo',
@@ -1110,16 +1103,11 @@ export default REST({
               preserveNullAndEmptyArrays: true,
             },
           },
-          {
-            $unwind: {
-              path: '$school',
-              preserveNullAndEmptyArrays: true,
-            },
-          },
+
           {
             $project: {
               division: '$division.title',
-              school: '$school.title',
+
               request_log: '$request_log',
               control_number: '$control_number',
 
@@ -1365,20 +1353,8 @@ export default REST({
           $match: query
 
         },
-        {
-          $lookup: {
-            from: "sms-school",
-            localField: "designation.school",
-            foreignField: "_id",
-            as: "school",
-          },
-        },
-        {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
+
         {
           $lookup: {
             from: "sms-sdo",
@@ -1434,7 +1410,7 @@ export default REST({
         {
           $project: {
             division: "$division.title",
-            school: "$school.title",
+
             control_number: 1,
             status: 1,
             full_name: 1,
@@ -1540,7 +1516,7 @@ export default REST({
       qualification.experience = qualification.experience ? qualification.experience.map((v: string) => new ObjectId(v)) : "";
       qualification.per_rating = qualification.per_rating ? new ObjectId(qualification.per_rating) : "";
       designation.division = designation.division ? new ObjectId(designation.division) : "";
-      designation.school = designation.school ? new ObjectId(designation.school) : "";
+
       designation.current_sg = designation.current_sg ? new ObjectId(designation.current_sg) : "";
 
       Object.entries(application.attachments).forEach(([k, v]: [string, any]) => {

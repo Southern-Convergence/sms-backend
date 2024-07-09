@@ -340,14 +340,7 @@ export default class Application {
             as: "position",
           },
         },
-        {
-          $lookup: {
-            from: "sms-school",
-            localField: "requests.designation.school",
-            foreignField: "_id",
-            as: "school",
-          },
-        },
+
         {
           $lookup: {
             from: "sms-sdo",
@@ -369,12 +362,7 @@ export default class Application {
             preserveNullAndEmptyArrays: true,
           },
         },
-        {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
         {
           $project: {
             _id: "$requests._id",
@@ -448,14 +436,7 @@ export default class Application {
             as: "position",
           },
         },
-        {
-          $lookup: {
-            from: "sms-school",
-            localField: "requests.designation.school",
-            foreignField: "_id",
-            as: "school",
-          },
-        },
+
         {
           $lookup: {
             from: "sms-sdo",
@@ -477,12 +458,7 @@ export default class Application {
             preserveNullAndEmptyArrays: true,
           },
         },
-        {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
         {
           $project: {
             _id: "$requests._id",
@@ -555,14 +531,7 @@ export default class Application {
             as: "position",
           },
         },
-        {
-          $lookup: {
-            from: "sms-school",
-            localField: "requests.designation.school",
-            foreignField: "_id",
-            as: "school",
-          },
-        },
+
         {
           $lookup: {
             from: "sms-sdo",
@@ -584,12 +553,7 @@ export default class Application {
             preserveNullAndEmptyArrays: true,
           },
         },
-        {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
         {
           $project: {
             _id: "$requests._id",
@@ -663,14 +627,7 @@ export default class Application {
             as: "position",
           },
         },
-        {
-          $lookup: {
-            from: "sms-school",
-            localField: "requests.designation.school",
-            foreignField: "_id",
-            as: "school",
-          },
-        },
+
         {
           $lookup: {
             from: "sms-sdo",
@@ -692,12 +649,7 @@ export default class Application {
             preserveNullAndEmptyArrays: true,
           },
         },
-        {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
         {
           $project: {
             _id: "$requests._id",
@@ -770,14 +722,7 @@ export default class Application {
             as: "position",
           },
         },
-        {
-          $lookup: {
-            from: "sms-school",
-            localField: "requests.designation.school",
-            foreignField: "_id",
-            as: "school",
-          },
-        },
+
         {
           $lookup: {
             from: "sms-sdo",
@@ -799,12 +744,7 @@ export default class Application {
             preserveNullAndEmptyArrays: true,
           },
         },
-        {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
         {
           $project: {
             _id: "$requests._id",
@@ -882,14 +822,7 @@ export default class Application {
             as: "position",
           },
         },
-        {
-          $lookup: {
-            from: "sms-school",
-            localField: "requests.designation.school",
-            foreignField: "_id",
-            as: "school",
-          },
-        },
+
         {
           $lookup: {
             from: "sms-sdo",
@@ -911,12 +844,7 @@ export default class Application {
             preserveNullAndEmptyArrays: true,
           },
         },
-        {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
         {
           $project: {
             _id: "$requests._id",

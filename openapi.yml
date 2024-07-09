@@ -14,8 +14,6 @@ schemes:
 paths:
   /auth:
     $ref: docs/auth.yml
-  /erf-form:
-    $ref: docs/erf-form.yml
   /hbs-samples:
     $ref: docs/hbs-samples.yml
   /hris:
@@ -36,8 +34,6 @@ paths:
     $ref: docs/sms-attachment.yml
   /sms-education:
     $ref: docs/sms-education.yml
-  /sms-eligibility:
-    $ref: docs/sms-eligibility.yml
   /sms-endorsement:
     $ref: docs/sms-endorsement.yml
   /sms-experience:
@@ -54,8 +50,6 @@ paths:
     $ref: docs/sms-roles.yml
   /sms-salary-grade:
     $ref: docs/sms-salary-grade.yml
-  /sms-school:
-    $ref: docs/sms-school.yml
   /sms-sdo:
     $ref: docs/sms-sdo.yml
   /admin/subject-authority:

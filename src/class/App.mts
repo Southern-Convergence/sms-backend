@@ -25,7 +25,7 @@ const enum SIDE {
 interface Designation {
   name: string;
   division_id: ObjectId;
-  school_id: ObjectId;
+
   role_name: string;
   role_id: ObjectId;
   side: string;
@@ -104,12 +104,12 @@ export default class App {
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (!designation) return Promise.reject({ data: null, error: "Could not resolve designation." });
 
-    const { role_name, division_id, school_id, side } = designation;
+    const { role_name, division_id, side } = designation;
     if (!role_name) return Promise.reject({ data: null, error: "hello world" });
 
     switch (role_name) {
       case ROLES.PRINCIPAL:
-        const PRINCIPAL_PENDING = await App.GET_PENDING_PRINCIPAL(division_id, school_id, filter);
+        const PRINCIPAL_PENDING = await App.GET_PENDING_PRINCIPAL(division_id, filter);
         return Promise.resolve({ data: PRINCIPAL_PENDING, error: null });
 
       case ROLES.ADMIN_4:
@@ -145,13 +145,13 @@ export default class App {
   /**
    * PENDING APPLICATION
    */
-  private static async GET_PENDING_PRINCIPAL(division_id: ObjectId, school_id: ObjectId, filter: any) {
+  private static async GET_PENDING_PRINCIPAL(division_id: ObjectId, filter: any) {
 
     return await Database.collection('applicant')?.aggregate([
       {
         $match: {
           $and: [
-            { "designation.school": school_id },
+
             { "designation.division": division_id },
             // { "assignees.0.approved": null },
             { status: { $in: ["Disapproved", "For Signature"] } }
@@ -159,20 +159,8 @@ export default class App {
 
         },
       },
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+
+
       {
         $lookup: {
           from: "sms-sdo",
@@ -228,7 +216,7 @@ export default class App {
       {
         $project: {
           division: "$division.title",
-          school: "$school.title",
+
           control_number: 1,
           status: 1,
           full_name: 1,
@@ -285,20 +273,8 @@ export default class App {
     };
     return await Database.collection('applicant')?.aggregate([
       match,
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+
+
       {
         $lookup: {
           from: "sms-sdo",
@@ -368,7 +344,7 @@ export default class App {
       {
         $project: {
           division: "$division.title",
-          school: "$school.title",
+
           control_number: 1,
           status: 1,
           full_name: 1,
@@ -419,20 +395,8 @@ export default class App {
 
       },
 
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+
+
       {
         $lookup: {
           from: "sms-sdo",
@@ -488,7 +452,7 @@ export default class App {
       {
         $project: {
           division: "$division.title",
-          school: "$school.title",
+
           control_number: 1,
           status: 1,
           full_name: 1,
@@ -514,20 +478,8 @@ export default class App {
           ]
         }
       },
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+
+
       {
         $lookup: {
           from: "sms-sdo",
@@ -583,7 +535,7 @@ export default class App {
       {
         $project: {
           division: "$division.title",
-          school: "$school.title",
+
           control_number: 1,
           status: 1,
           full_name: 1,
@@ -636,20 +588,8 @@ export default class App {
 
     return await Database.collection('applicant')?.aggregate([
       match,
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+
+
       {
         $lookup: {
           from: "sms-sdo",
@@ -705,7 +645,7 @@ export default class App {
       {
         $project: {
           division: "$division.title",
-          school: "$school.title",
+
           control_number: 1,
           status: 1,
           full_name: 1,
@@ -771,20 +711,8 @@ export default class App {
     }
     return await Database.collection('applicant')?.aggregate([
       match,
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+
+
       {
         $lookup: {
           from: "sms-sdo",
@@ -840,7 +768,7 @@ export default class App {
       {
         $project: {
           division: "$division.title",
-          school: "$school.title",
+
           control_number: 1,
           status: 1,
           full_name: 1,
@@ -864,20 +792,8 @@ export default class App {
           ]
         }
       },
-      {
-        $lookup: {
-          from: "sms-school",
-          localField: "designation.school",
-          foreignField: "_id",
-          as: "school",
-        },
-      },
-      {
-        $unwind: {
-          path: "$school",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
+
+
       {
         $lookup: {
           from: "sms-sdo",
@@ -932,7 +848,7 @@ export default class App {
       {
         $project: {
           division: "$division.title",
-          school: "$school.title",
+
           control_number: 1,
           status: 1,
           full_name: 1,
@@ -1415,8 +1331,7 @@ export default class App {
         $project: {
           division_id:
             "$designation_information.division",
-          school_id:
-            "$designation_information.school",
+
           role_id: "$role._id",
           role_name: "$role.name",
           name: 1,

@@ -1,9 +1,9 @@
-import { Link } from '../../../../frontend/.nuxt/components';
+
 import { ObjectId } from 'mongodb'
 import Joi from 'joi'
 import { REST } from 'sfr'
 import { object_id } from '@lib/api-utils.mjs'
-import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
+
 
 const collection = "sms-sdo"
 
@@ -29,7 +29,7 @@ export default REST({
       status: Joi.string(),
       designation_information: Joi.object({
         division: Joi.string().allow(""),
-        school: Joi.string().allow("")
+
       })
 
     },
@@ -38,7 +38,6 @@ export default REST({
       title: Joi.string(),
       address: Joi.string(),
       email: Joi.string(),
-      telephone: Joi.string(),
       code: Joi.string(),
     },
     "get-sdo": {},
@@ -115,14 +114,7 @@ export default REST({
           },
 
         },
-        {
-          $lookup: {
-            from: 'sms-school',
-            localField: "designation_information.school",
-            foreignField: "_id",
-            as: "school"
-          }
-        },
+
         {
           $lookup: {
             from: 'sms-sdo',
@@ -137,12 +129,7 @@ export default REST({
             preserveNullAndEmptyArrays: true,
           },
         },
-        {
-          $unwind: {
-            path: "$school",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+
         {
           $unwind: {
             path: "$division",
@@ -152,7 +139,7 @@ export default REST({
         {
           $set: {
             role: "$role.name",
-            school: "$school.title",
+
             school_id: "$school._id",
             division: "$division.title"
           }
