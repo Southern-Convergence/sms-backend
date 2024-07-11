@@ -80,9 +80,6 @@ export default REST({
       last_name: Joi.string().required(),
       appellation: Joi.string().allow(""),
       email: Joi.string().email().required(),
-      contact_number: Joi.string().required(),
-
-
       domain: {
         id: object_id,
         name: Joi.string().required(),
@@ -90,7 +87,6 @@ export default REST({
       apts: Joi.array().required(),
       group: Joi.any().allow(""),
       side: Joi.string().required(),
-
       designation: {
         division: object_id.allow(""),
       },
@@ -230,51 +226,40 @@ export default REST({
       },
 
       async "invite-user"(req, res) {
-        const { first_name, last_name, email, apts, group, designation } =
-          req.body;
 
+        const { first_name, last_name, email, apts, group, designation } = req.body;
         console.log(req.body);
-
-
-
         const { user } = req.session;
-        if (!user)
-          return res
-            .status(400)
-            .json({ error: "Failed to invite user, invalid session." });
+        if (!user) return res.status(400).json({ error: "Failed to invite user, invalid session." });
 
         const invitation_code = v4();
-        const { division } = designation;
+        // const { division } = designation;
 
         this.invite_user(req.body, invitation_code, user)
           .then(() => {
+            this.postoffice[EMAIL_TRANSPORT].post(
+              {
+                from: "systems@mail.com",
+                to: email,
+                subject: "SMS Invitation",
+              },
+              {
+                template: "sms-invite",
+                layout: "default",
+                context: {
+                  invited_by_name: user.username,
+                  invited_by_email: user.email,
+                  invited_domain: "DepEd's SMS",
 
-            try {
-              this.postoffice[EMAIL_TRANSPORT].post(
-                {
-                  from: "systems@mail.com",
-                  to: email,
-                  subject: "SMS Invitation",
+                  name: `${first_name} ${last_name}`,
+                  roles: apts.map((v: any) => v.name).toString(),
+                  group: group ? group.name : "None",
+                  link: `${ALLOWED_ORIGIN}/onboarding?ref=${invitation_code}`,
                 },
-                {
-                  template: "sms-invite",
-                  layout: "default",
-                  context: {
-                    invited_by_name: user.username,
-                    invited_by_email: user.email,
-                    invited_domain: "DepEd's SMS",
+              }
+            ).then(() => res.json({ data: "Successfully sent invitation" }))
+              .catch((error) => console.log(error));
 
-                    name: `${first_name} ${last_name}`,
-                    roles: apts.map((v: any) => v.name).toString(),
-                    group: group ? group.name : "None",
-                    link: `${ALLOWED_ORIGIN}/onboarding?ref=${invitation_code}`,
-                  },
-                }
-              ).then(() => res.json({ data: "Successfully sent invitation" }))
-                .catch((error) => console.log(error));
-            } catch (err) {
-              console.log(err);
-            }
           })
           .catch((error) => res.status(400).json({ error }));
       },
@@ -484,6 +469,7 @@ export default REST({
               last_name: 1,
               appelation: 1,
               type: 1,
+              e_signature: 1,
               status: 1,
               access: {
                 _id: 1,
@@ -609,7 +595,11 @@ export default REST({
         domain,
         designation,
       } = user;
+
+      console.log(apts);
+
       const domain_id = new ObjectId(domain.id);
+
       const session = this.instance.startSession();
       invited_by.id = new ObjectId(invited_by.id);
 
@@ -622,13 +612,8 @@ export default REST({
           .findOne({ domain_id, "user.email": user.email }),
       ]);
 
-      if (user_res)
-        return Promise.reject("Failed to invite user, user already exists.");
-      if (invite_res)
-        return Promise.reject(
-          "Failed to invite user, invitation already sent."
-        );
-
+      if (user_res) return Promise.reject("Failed to invite user, user already exists.");
+      if (invite_res) return Promise.reject("Failed to invite user, invitation already sent.");
 
       return session
         .withTransaction(async () => {
@@ -644,30 +629,12 @@ export default REST({
             middle_name,
             last_name,
             appellation,
-
             apts,
-
             designation_information: {
               salary_grade: 0,
-              division: new ObjectId(division)
+              division: new ObjectId(division ? division : null)
             },
-
             domain_id,
-
-
-            //Create embedded refs
-            // gov_ids: {},
-            // personal_information: {},
-            // compensation: {},
-            // civic_organizations: [],
-            // educational_records: [],
-            // eligibilities: [],
-            // references: [],
-            // other_information: {
-            //   skills: [],
-            //   non_academic_distinctions: [],
-            //   organizations: [],
-            // },
           });
 
           this.db.collection("invites").insertOne({
