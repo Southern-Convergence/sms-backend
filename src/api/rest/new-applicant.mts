@@ -200,6 +200,7 @@ export default REST({
 
         this.create_application(form)
 
+
           .catch(console.error)
           .then((data: any) => {
 
@@ -1049,6 +1050,8 @@ export default REST({
      * APPROVAL PROCCESS
      */
     async handle_principal(data: any) {
+
+
       const result = App.HANDLE_PRINCIPAL(data)
       if (!result) return Promise.reject("Failed to submit!");
 
@@ -1060,11 +1063,15 @@ export default REST({
 
       const result = App.HANDLE_ADMIN4(data, user)
       if (!result) return Promise.reject("Failed to submit!");
+
       return Promise.resolve("Successfully checked!");
     },
+
     async handle_evaluator(data: any, user: ObjectId) {
       const result = App.HANDLE_EVALUATOR(data, user)
       if (!result) return Promise.reject("Failed to submit!");
+
+
       return Promise.resolve("Successfully evaluated!");
     },
     async handle_verifier(data: any, user: ObjectId) {
@@ -1075,9 +1082,15 @@ export default REST({
     },
 
     async handle_admin5(data: any, user: ObjectId) {
+
       const result = App.HANDLE_ADMIN5(data, user)
       if (!result) return Promise.reject("Failed to submit!");
+
       return Promise.resolve("Successfully checked!");
+
+
+
+
     },
     async get_signatory(id) {
       return this.db?.collection(collection).aggregate(
@@ -1210,6 +1223,34 @@ export default REST({
             }
           },
           {
+            $lookup: {
+              from: 'users',
+              localField: 'assignees.2.id',
+              foreignField: '_id',
+              as: 'sdo_evaluator'
+            }
+          },
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'assignees.4.id',
+              foreignField: '_id',
+              as: 'ro_evaluator'
+            }
+          },
+          {
+            $unwind: {
+              path: '$sdo_evaluator',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $unwind: {
+              path: '$ro_evaluator',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
             $project: {
               education: "$education.title",
               experience: "$experience.title",
@@ -1239,7 +1280,16 @@ export default REST({
               created_date: '$created_date',
               principal: 1,
               position: '$position.title',
-              qs_sg: { $arrayElemAt: ['$qs_sg.salary_grade', 0] }
+              qs_sg: { $arrayElemAt: ['$qs_sg.salary_grade', 0] },
+              sdo_evaluator_name: {
+                $concat: ["$sdo_evaluator.first_name", " ", "$sdo_evaluator.last_name"]
+              },
+              sdo_evaluator_esig: { "$toString": "$sdo_evaluator.e_signature" },
+              ro_evaluator_name: {
+                $concat: ["$ro_evaluator.first_name", " ", "$ro_evaluator.last_name"]
+              },
+              ro_evaluator_esig: { "$toString": "$ro_evaluator.e_signature" },
+
             }
           }
         ]

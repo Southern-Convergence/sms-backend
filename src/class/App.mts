@@ -257,8 +257,9 @@ export default class App {
           { "designation.division": division_id },
           {
             $or: [
+              // { "assignees.1.approved": { $ne: null } },
               {
-                $and: [{ "assignees.0.approved": true }, { "assignees.1.approved": { $ne: true } }, { status: "Pending" }]
+                $and: [{ "assignees.0.approved": true }, { status: "Pending" }]
               },
               { $and: [{ "assignees.2.approved": true }, { "assignees.1.approved": true }, { status: "For Checking" }] },
               { $and: [{ "assignees.3.approved": false }, { "assignees.3.evaluator_approved": false }, { status: "Disapproved" }] },
@@ -889,7 +890,11 @@ export default class App {
       timestamp: new Date()
     };
     const status = !statuses.includes(false)
-
+    Object.entries(attachment).forEach(([k, v]: [string, any]) => {
+      attachment[k].valid = null;
+      attachment[k].remarks = [];
+      attachment[k].timestamp = null;
+    });
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
@@ -990,7 +995,11 @@ export default class App {
 
     const status = !statuses.includes(false);
 
-    // if (data.sdo_attachment) {
+    Object.entries(attachment).forEach(([k, v]: [string, any]) => {
+      attachment[k].valid = null;
+      attachment[k].remarks = [];
+      attachment[k].timestamp = null;
+    });
     return await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
@@ -998,7 +1007,7 @@ export default class App {
           status: request_logs.status,
           attachments: attachment,
           "assignees.1.timestamp": new Date(),
-          sdo_attachments: data.sdo_attachment
+
         },
         $push: {
           "assignees.1.remarks": { $each: attachment_log },
@@ -1067,54 +1076,78 @@ export default class App {
     };
     const status = !statuses.includes(false)
 
+    Object.entries(attachment).forEach(([k, v]: [string, any]) => {
+      attachment[k].valid = null;
+      attachment[k].remarks = [];
+      attachment[k].timestamp = null;
+    });
 
 
 
 
-    if (designation.side === 'SDO') {
-      const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.1.evaluator_approved": status,
-            "assignees.2.approved": status,
-            "assignees.2.timestamp": new Date(),
-            status: request_logs.status,
-            attachments: attachment,
-
-          },
-          $push: {
-            "assignees.2.remarks": { $each: attachment_log },
-            request_log: request_logs,
-          }
-
-        })
-      if (!result?.modifiedCount) return Promise.reject("Failed to submit")
-      return Promise.resolve("Successfully Evaluated!")
-
-
+    const query = designation.side === 'SDO' ? {
+      $set: {
+        "assignees.1.evaluator_approved": status,
+        "assignees.2.approved": status,
+        "assignees.2.timestamp": new Date(),
+        status: request_logs.status,
+        attachments: attachment,
+      },
+      $push: {
+        "assignees.2.remarks": { $each: attachment_log },
+        request_log: request_logs,
+      }
+    } : {
+      $set: {
+        "assignees.3.evaluator_approved": status,
+        "assignees.4.approved": status,
+        "assignees.4.timestamp": new Date(),
+        status: request_logs.status,
+        attachments: attachment,
+      },
+      $push: {
+        "assignees.4.remarks": { $each: attachment_log },
+        request_log: request_logs,
+      }
     };
 
+    const result = await Database.collection('applicant')?.updateOne(
+      { _id: new ObjectId(app_id) },
+      query
+    );
 
-
-    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-      {
-        $set: {
-          "assignees.3.evaluator_approved": status,
-          "assignees.4.approved": status,
-          "assignees.4.timestamp": new Date(),
-          status: request_logs.status,
-          attachments: attachment,
-
-        },
-        $push: {
-          "assignees.4.remarks": { $each: attachment_log },
-          request_log: request_logs,
-        }
-      });
-    if (!result?.modifiedCount) return Promise.reject("Failed to submit")
-
-
+    if (!result?.modifiedCount) return Promise.reject("Failed to submit");
     return Promise.resolve("Successfully Evaluated!");
+
+
+
+    // } else if (designation.side === 'RO') {
+    //   console.log("Condition RO met");
+    //   const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
+    //     {
+    //       $set: {
+    //         "assignees.3.evaluator_approved": status,
+    //         "assignees.4.approved": status,
+    //         "assignees.4.timestamp": new Date(),
+    //         status: request_logs.status,
+    //         attachments: attachment,
+
+    //       },
+    //       $push: {
+    //         "assignees.4.remarks": { $each: attachment_log },
+    //         request_log: request_logs,
+    //       }
+    //     });
+    //   if (!result?.modifiedCount) return Promise.reject("Failed to submit")
+
+
+
+    //   return Promise.resolve("Successfully Evaluated!");
+    // }
+
+
+
+
 
 
   };
@@ -1239,8 +1272,6 @@ export default class App {
     const attachment_log: any[] = [];
 
 
-
-
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
       if (!v.valid && v.remarks && v.remarks.length > 0) {
@@ -1253,9 +1284,6 @@ export default class App {
     });
 
 
-
-
-
     const request_logs = {
       signatory: designation.name,
       role: designation.role_name,
@@ -1264,16 +1292,21 @@ export default class App {
       remarks: attachment_log,
       timestamp: new Date()
     };
-
+    console.log(statuses);
+    console.log(request_logs.status);
     const status = !statuses.includes(false)
 
+    Object.entries(attachment).forEach(([k, v]: [string, any]) => {
+      attachment[k].valid = null;
+      attachment[k].remarks = [];
+      attachment[k].timestamp = null;
+    });
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
           "assignees.3.approved": status,
           status: request_logs.status,
           attachments: attachment,
-          sdo_attachments: sdo_attachment,
           "assignees.3.timestamp": new Date(),
 
         },
@@ -1283,6 +1316,9 @@ export default class App {
         }
       })
     if (!result?.modifiedCount) return Promise.reject("Failed to checked")
+
+    console.log(attachment);
+
     return Promise.resolve("Successfully Checked!")
 
   };
@@ -1315,12 +1351,11 @@ export default class App {
               input: {
                 $concat: [
                   "$first_name",
-                  " ",
-                  "$middle_name",
+
                   " ",
                   "$last_name",
                   " ",
-                  "$appelation",
+
                 ],
               },
             },
