@@ -11,7 +11,7 @@ import logger from "@lib/logger.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const directory = path.dirname(__filename);
-const IS_DEV = NODE_ENV === "production";
+const IS_DEV = NODE_ENV === "development";
 
 const hbs = create({
   extname: ".hbs",
