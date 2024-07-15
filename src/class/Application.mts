@@ -1,4 +1,3 @@
-import { MenusSubsystemSelect } from './../../../frontend/.nuxt/components.d';
 import Database from "@lib/database.mjs";
 import { ObjectId } from "mongodb";
 
