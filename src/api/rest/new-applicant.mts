@@ -1266,7 +1266,7 @@ export default REST({
               current_sg: '$sg.salary_grade',
               current_sg_equivalent: '$sg.equivalent',
 
-
+              attachments: 1,
 
               assignees: 1,
               division: '$division.title',
