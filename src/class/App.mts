@@ -12,8 +12,6 @@ const enum ROLES {
   ADMIN_4 = "Administrative Officer IV",
   EVALUATOR = "Evaluator",
   VERIFIER = "Verifier",
-  RECOMMENDING_APPROVER = "Recommending Approver",
-  APPROVER = "Approver",
   ADMIN_5 = "Administrative Officer V",
 };
 
@@ -40,8 +38,6 @@ export default class App {
       await Database.collection('ap-templates')?.findOne({ name: ROLES.ADMIN_4 }, { projection: { _id: 1 } }),
       await Database.collection('ap-templates')?.findOne({ name: ROLES.EVALUATOR }, { projection: { _id: 1 } }),
       await Database.collection('ap-templates')?.findOne({ name: ROLES.VERIFIER }, { projection: { _id: 1 } }),
-      // await Database.collection('ap-templates')?.findOne({ name: ROLES.RECOMMENDING_APPROVER }, { projection: { _id: 1 } }),
-      // await Database.collection('ap-templates')?.findOne({ name: ROLES.APPROVER }, { projection: { _id: 1 } }),
       await Database.collection('ap-templates')?.findOne({ name: ROLES.ADMIN_5 }, { projection: { _id: 1 } }),
     ]).then(([principal, admin4, evaluator, verifier, admin5]) => {
 

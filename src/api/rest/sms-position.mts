@@ -101,7 +101,8 @@ export default REST({
             data.rating = data.rating.map((v: string) => new ObjectId(v));
             data.sg = new ObjectId(data.sg);
             data.attachment = data.attachment.map((v: string) => new ObjectId(v));
-            data.sdo_attachment = data.sdo_attachment.map((v: string) => new ObjectId(v));
+            // data.sdo_attachment = data.sdo_attachment.map((v: string) => new ObjectId(v));
+            data.leadership_points = data.leadership_points.map((v: string) => new ObjectId(v));
             const result = await this.db?.collection(collection).insertOne(data);
 
             if (!result.insertedId) return Promise.reject("Failed to insert position");

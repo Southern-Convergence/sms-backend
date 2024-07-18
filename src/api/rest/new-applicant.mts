@@ -150,9 +150,7 @@ export default REST({
   handlers: {
     "POST": {
       async "create-application"(req, res) {
-
-        let form = Object.assign({}, JSON.parse(req.body.form));
-
+        let form = Object.assign({}, JSON.parse(req.body.form))
         if (req.files?.length) {
           //@ts-ignore
           const x = Object.fromEntries(req.files?.map((v: any) => v.fieldname.split("-")[0]).map((v: any) => [v, []]));
@@ -179,8 +177,7 @@ export default REST({
                 mimetype: v.mimetype
               },
             }).then(() => `${dir}/${uuid}`)
-          }))
-            .catch(console.error)
+          })).catch(console.error)
 
           Object.entries(form.attachments).forEach(([key, value]) => {
             const links = result?.filter((v: string) => v.match(key));
@@ -196,15 +193,8 @@ export default REST({
           })
         }
 
-
-
         this.create_application(form)
-
-
-          .catch(console.error)
           .then((data: any) => {
-
-
             this.postoffice[EMAIL_TRANSPORT].post(
               {
                 from: "mariannemaepaclian@gmail.com",
@@ -223,7 +213,6 @@ export default REST({
 
               }
             );
-
 
             this.postoffice[EMAIL_TRANSPORT].post(
               {
@@ -244,7 +233,7 @@ export default REST({
               }
             );
             res.json({ data });
-          });
+          }).catch((error) => res.status(400).json({ error }));
       },
 
 
@@ -460,7 +449,6 @@ export default REST({
   },
   controllers: {
     async create_application(data) {
-
 
       /**
        * TODO: UPLOAD ONLY WHEN REQUEST IS VALID
