@@ -35,7 +35,7 @@ export default async () => {
   const sdo = JSON.parse(await fs.readFile('sdo.json', 'utf-8'));
   const school = JSON.parse(await fs.readFile('school.json', 'utf-8'));
   const school_user = JSON.parse(await fs.readFile('school_user.json', 'utf-8'));
-  const ro_user = JSON.parse(await fs.readFile('ro_user.json', 'utf-8'));
+  //const ro_user = JSON.parse(await fs.readFile('ro_user.json', 'utf-8'));
   const sdo_user = JSON.parse(await fs.readFile('sdo_user.json', 'utf-8'));
 
   let sdo_id: ObjectId;
@@ -87,17 +87,6 @@ export default async () => {
   if (!so_result?.insertedIds) return console.log("[SYSTEM] Failed to insert SDO Users");
 
   const rrr = Object.values(r_map);
-  const rx = ro_user.map((v: any, index: number) => {
-    return {
-      ...v,
-      access: uv.access,
-      domain_id: uv.domain_id,
-      role: rrr[index],
-      password: uv.password
-    }
-  });
 
-  const ro_result = await Database.collection("users")?.insertMany(rx);
-  if (!ro_result?.insertedIds) return console.log("[SYSTEM] Failed to insert RO Users")
   console.log("[SYSTEM] Sample Seeder Successfully executed.")
 }
