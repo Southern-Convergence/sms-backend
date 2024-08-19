@@ -6,9 +6,10 @@
   "scripts": {
     "copy-files": "copyfiles -u 1 ./src/**/*.json ./src/**/*.hbs ./build",
     "clean": "rimraf ./build",
-    "dev": "cross-env NODE_ENV=development  nodemon --require dotenv/config --experimental-modules --inspect ./build/index.mjs",
-    "start": "cross-env NODE_ENV=production node --require dotenv/config --experimental-modules ./build/index.mjs",
-    "build": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
+    "dev": "cross-env NODE_ENV=development nodemon --require dotenv/config --experimental-modules ./build/index.mjs",
+    "start": "node --require dotenv/config --experimental-modules ./build/index.mjs",
+    "deploy": "tsc --project tsconfig.json && tsc-alias -p tsconfig.json && npm run copy-files",
+    "build": "npm install --production=false && npm run deploy",
     "build:watch": "yarn clean && tsc && yarn copy-files && (concurrently \"tsc -w\" \"tsc-alias -w\")"
   },
   "keywords": [],
