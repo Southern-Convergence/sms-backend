@@ -50,7 +50,7 @@ export default class Grant {
 
     resources.forEach((v) => {
       this.#resources_map[v._id.toString()] = v;
-      const target_service = this.#services[v.domain_id][v.service_id];
+      const target_service = this.#services[v.domain_id]?.[v.service_id]; //todo: nick added
 
       if (v.type === "endpoint") {
         /* @ts-ignore not optimal but meh */
