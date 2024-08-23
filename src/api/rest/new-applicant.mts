@@ -140,6 +140,7 @@ export default REST({
     },
     "get-dashboard": {
       sdo: Joi.string().allow(""),
+      status: Joi.string().allow(""),
     },
     "update-applicant": {
       applicant: Joi.object(),
@@ -507,7 +508,18 @@ export default REST({
       data.qualification.leadership_points = data.qualification.leadership_points ? data.qualification.leadership_points.map((v: string) => new ObjectId(v)) : "";
 
 
+      const request_logs = {
+        signatory: `${data.personal_information.first_name} ${data.personal_information.last_name}`,
+        role: 'Applicant',
+        side: 'School',
+        status: 'Created Reclass Application',
+        timestamp: new Date()
+      }
 
+
+
+
+      data.request_log = [request_logs]
       const session = this.instance.startSession();
 
       const transactionOptions: TransactionOptions = {
@@ -973,6 +985,7 @@ export default REST({
     async attach_output_requirement(app_id, fn, dir, user_id) {
 
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
       if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
 
@@ -1086,10 +1099,8 @@ export default REST({
           {
             $match: {
               _id: new ObjectId(id)
-
             }
           },
-
           {
             $lookup: {
               from: 'sms-sdo',
@@ -1101,25 +1112,27 @@ export default REST({
           {
             $unwind: {
               path: '$division',
-              preserveNullAndEmptyArrays: true,
-            },
+              preserveNullAndEmptyArrays: true
+            }
           },
-
           {
             $project: {
               division: '$division.title',
-
               request_log: '$request_log',
               control_number: '$control_number',
-
               full_name: {
-                $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
+                $concat: [
+                  '$personal_information.first_name',
+                  ' ',
+                  '$personal_information.last_name'
+                ]
               },
               created_date: '$created_date',
               status: '$status'
             }
           }
-        ]
+        ],
+        { maxTimeMS: 60000, allowDiskUse: true }
       ).next()
     },
     async get_applicant_erf(id) {
@@ -1381,17 +1394,28 @@ export default REST({
     },
 
     async get_dashboard_data(filter: any) {
-      const { sdo } = filter;
+      const { sdo, status } = filter;
       let query = {};
       if (sdo) {
         query = { "designation.division": new ObjectId(sdo) };
       }
+      if (status) {
+        query = {
+          status: status
+        };
+      }
+      if (sdo && status) {
+        query = {
+          "designation.division": new ObjectId(sdo),
+          status: status
+        };
+      }
+
       return this.db?.collection('applicant').aggregate([
         {
           $match: query
 
         },
-
 
         {
           $lookup: {

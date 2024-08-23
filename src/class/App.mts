@@ -571,7 +571,7 @@ export default class App {
         $and: [
           {
             $or: [
-              { $and: [{ "assignees.1.approved": true }, { "assignees.1.evaluator_approved": true }, { status: "Pending" }] },
+              { $and: [{ "assignees.1.approved": true }, { "assignees.1.evaluator_approved": true }, { status: "RO Pending" }] },
               { $and: [{ "assignees.4.approved": true }, { "assignees.3.approved": true }, { "assignees.3.evaluator_approved": true }, { status: "For Checking" }] },
               { $and: [{ "assignees.4.approved": true }, { "assignees.3.approved": true }, { "assignees.3.evaluator_approved": true }, { status: "Received Printout/s" }] },
               { $and: [{ "assignees.4.approved": false }, { "assignees.3.evaluator_approved": false }, { status: "Disapproved" }] }
@@ -936,7 +936,7 @@ export default class App {
       signatory: designation.name,
       role: designation.role_name,
       side: designation.side,
-      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : (data.status === 'For Checking' ? "Pending" : "For Evaluation"),
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : (data.status === 'For Checking' ? "RO Pending" : "For Evaluation"),
       remarks: attachment_log,
       timestamp: new Date()
     };
