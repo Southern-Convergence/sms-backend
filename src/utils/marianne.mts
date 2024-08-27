@@ -38,11 +38,8 @@ export async function user_desig_resolver(user: ObjectId) {
               $concat: [
                 "$first_name",
                 " ",
-                "$middle_name",
-                " ",
                 "$last_name",
-                " ",
-                "$appelation",
+
               ],
             },
           },

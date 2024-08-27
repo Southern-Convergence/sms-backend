@@ -5,6 +5,7 @@ import { REST } from 'sfr'
 import { object_id } from '@lib/api-utils.mjs'
 import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
 import { user_desig_resolver } from '@utils/marianne.mjs';
+import { log } from 'winston';
 
 
 
@@ -23,7 +24,10 @@ export default REST({
       generated_by: object_id,
       genarated_date: Joi.string().required(),
     },
-    "get-endorsement": {},
+    "get-endorsement": {
+      sdo: Joi.string().allow(""),
+      position: object_id.allow(""),
+    },
     "get-batch-endorsement": {
       id: object_id
     },
@@ -48,7 +52,7 @@ export default REST({
     },
     "GET": {
       "get-endorsement"(req, res) {
-        this.get_endorsement().then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        this.get_endorsement(req.query).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       "get-batch-endorsement"(req, res) {
 
@@ -72,6 +76,10 @@ export default REST({
   controllers: {
 
     async generate_endorsement(division_id, position_id, applicants: string[], generated_by) {
+
+      const { data: designation, error: designation_error } = await user_desig_resolver(new ObjectId(generated_by));
+      if (designation_error) return Promise.reject({ data: null, error: designation_error });
+
       const session = this.instance.startSession();
 
       session.withTransaction(async () => {
@@ -82,12 +90,26 @@ export default REST({
         if (!position) return Promise.reject("No such position");
 
         const keyed_applicants = applicants.map((id) => new ObjectId(id));
+        console.log("keyed_applicants", keyed_applicants);
 
-        this.db.collection("applicant").updateMany({ $or: keyed_applicants.map((_id) => ({ _id })) }, {
-          $set: {
-            status: "For Verification"
-          }
-        });
+        const request_logs = {
+          signatory: designation.name,
+          role: designation.role_name,
+          side: designation.side,
+          status: "Generate Endorsement",
+          timestamp: new Date()
+        };
+
+        // Correct this shit
+        this.db.collection("applicant").updateMany({ $or: keyed_applicants.map((_id) => ({ _id })) },
+          {
+            $set: {
+              status: "For Verification",
+            },
+
+            $push: { request_log: { $each: [request_logs] } } as any
+
+          });
 
         const counters = await this.db.collection("counters").find().toArray();
         if (!counters.length) return Promise.reject("Failed to increment counter");
@@ -129,10 +151,27 @@ export default REST({
       session.endSession();
     },
 
-    async get_endorsement() {
+    async get_endorsement(filter: any) {
+      const { sdo, position } = filter;
+      let query = {};
+      if (sdo) {
+        query = { divison: new ObjectId(sdo) };
+      }
+      if (position) {
+        query = {
+          position: new ObjectId(position)
+        };
+      }
+      if (sdo && position) {
+        query = {
+          division: new ObjectId(sdo),
+          position: new ObjectId(position)
+        };
+      }
+
       return this.db?.collection(collection).aggregate([
         {
-          $match: {}
+          $match: query
         },
         {
           $lookup: {
@@ -257,8 +296,7 @@ export default REST({
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
       if (designation?.role_name !== 'Verifier') return Promise.reject({ data: null, error: "Not Verifier" });
 
-      console.log(designation);
-      console.log(data);
+
 
 
       const { app_id, status, remarks, applicants, position } = data;
