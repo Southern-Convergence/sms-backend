@@ -3,8 +3,6 @@ import Joi from 'joi';
 import { REST } from 'sfr';
 import { object_id } from '@lib/api-utils.mjs';
 
-
-
 const collection = "sms-rd";
 
 export default REST({

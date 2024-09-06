@@ -32,6 +32,7 @@ export default REST({
       position: Joi.string().allow(""),
       sdo: Joi.string().allow(""),
       status: Joi.string().allow(""),
+      school: Joi.string().allow(""),
     },
     "get-applicant": {
       id: object_id
@@ -51,9 +52,7 @@ export default REST({
     /**
      * PAGE: /sms/new-application-form
      */
-    "get-application-qs": {
-
-    },
+    "get-application-qs": {},
 
     "get-evaluators": {
       division_id: object_id
@@ -64,7 +63,9 @@ export default REST({
       evaluator: object_id
     },
 
-    "attach-output-requirement": multers["sms-docs"].any(),
+    "attach-output-requirement": {
+      app_id: object_id,
+    },
     "complete-application": {
       app_id: object_id,
       approved: Joi.boolean()
@@ -144,6 +145,9 @@ export default REST({
     },
     "update-applicant": {
       applicant: Joi.object(),
+    },
+    "get-school": {
+      // user_id: object_id
     }
 
   },
@@ -241,30 +245,10 @@ export default REST({
 
       "attach-output-requirement"(req, res) {
         const { app_id } = req.body
-        //@ts-ignore:watch
-        const { fieldname, originalname, encoding, mimetype, buffer, size } = req.files[0];
-        //@ts-ignore
-        const fn = fieldname.split("-")[0];
-        const dir = `sms/${req.body.app_id}/applicant-requirements/${fn}`
-        const uuid = v4();
-        const mime = originalname.split(".")[1];
-
-        this.spaces["hris"].upload({
-          body: buffer,
-          content_type: mimetype,
-          dir: 'sms-docs/',
-          key: uuid,
-          metadata: {
-            original_name: originalname,
-            timestamp: `${Date.now()}`,
-            ext: mime,
-            mimetype: mimetype
-          },
-        }).then(() => `${dir}/${uuid}`)
-        this.attach_output_requirement(app_id, fn, dir, new ObjectId(req.session.user?._id))
+        this.attach_output_requirement(app_id, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
-      },
+      }
 
     },
     "GET": {
@@ -322,6 +306,9 @@ export default REST({
       },
       "get-all-position"(req, res) {
         this.get_all_position().then((data) => res.status(200).json({ data })).catch((error) => res.status(400).json({ error }));
+      },
+      "get-school"(req, res) {
+        this.get_school(new ObjectId(req.session.user?._id)).then((data) => res.status(200).json({ data })).catch((error) => res.status(400).json({ error }));
       }
     },
     "PUT": {
@@ -982,13 +969,12 @@ export default REST({
       if (!result) return Promise.reject("Failed to assign!");
       return Promise.resolve("Successfully assigned evaluator!");
     },
-    async attach_output_requirement(app_id, fn, dir, user_id) {
-
+    async attach_output_requirement(app_id: ObjectId, user_id: ObjectId) {
+      // app_id, fn, dir,
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
 
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
       if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
-
 
       const request_logs = {
         signatory: designation.name,
@@ -998,12 +984,12 @@ export default REST({
         timestamp: new Date()
       };
       const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, {
-        $set: { status: "Received Printout/s", output_requirement: fn, output_requirement_link: dir },
+        $set: { status: "Received Printout/s" },
         $push: {
           request_log: request_logs
         }
       });
-      if (!result) return Promise.reject("Failed to assign!");
+      if (!result) return Promise.reject("Failed to update!");
       return Promise.resolve("Successfully upload received printed  outputs!");
     },
     async complete_reclass(data: any, user_id: ObjectId) {
@@ -1392,6 +1378,37 @@ export default REST({
     async get_all_position() {
       return this.db.collection('sms-qualification-standards').find({}, { projection: { title: 1 } }).toArray()
     },
+    async get_school(user: ObjectId) {
+      return this.db?.collection(collection).aggregate(
+        [
+          {
+            $match: {
+              status: "For Evaluation",
+              "assignees.4.id": new ObjectId(user),
+              "designation.school": { $exists: true, $ne: null }
+            }
+          },
+          {
+            $project: {
+              name: "$designation.school"
+            }
+          },
+          {
+            $group: {
+              _id: "$name"
+            }
+          },
+          {
+            $project: {
+              _id: 0,
+              name: "$_id"
+            }
+          }
+        ]
+
+      ).toArray()
+    },
+
 
     async get_dashboard_data(filter: any) {
       const { sdo, status } = filter;

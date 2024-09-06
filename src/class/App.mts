@@ -655,7 +655,7 @@ export default class App {
     ]).toArray();
   };
   private static async GET_PENDING_EVALUATOR_RO(filter: any, user_id: ObjectId) {
-    const { position, sdo } = filter;
+    const { position, sdo, school } = filter;
     let query = {};
     if (sdo && position) {
       query = {
@@ -668,6 +668,8 @@ export default class App {
       query = { "designation.division": new ObjectId(sdo) };
     } else if (position) {
       query = { "qualification.position": new ObjectId(position) };
+    } else if (school) {
+      query = { "designation.school": school };
     }
 
 
