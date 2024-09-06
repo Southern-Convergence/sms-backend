@@ -52,6 +52,8 @@ paths:
     $ref: docs/sms-salary-grade.yml
   /sms-sdo:
     $ref: docs/sms-sdo.yml
+  /sms-sds:
+    $ref: docs/sms-sds.yml
   /admin/subject-authority:
     $ref: docs/admin/subject-authority.yml
   /user-uploads:

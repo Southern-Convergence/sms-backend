@@ -308,7 +308,7 @@ export default REST({
         this.get_all_position().then((data) => res.status(200).json({ data })).catch((error) => res.status(400).json({ error }));
       },
       "get-school"(req, res) {
-        this.get_school(req.session.user?._id).then((data) => res.status(200).json({ data })).catch((error) => res.status(400).json({ error }));
+        this.get_school(new ObjectId(req.session.user?._id)).then((data) => res.status(200).json({ data })).catch((error) => res.status(400).json({ error }));
       }
     },
     "PUT": {
