@@ -1130,7 +1130,6 @@ export default REST({
 
             }
           },
-
           {
             $lookup: {
               from: 'sms-sdo',
@@ -1212,6 +1211,14 @@ export default REST({
           {
             $lookup: {
               from: 'users',
+              localField: 'assignees.1.id',
+              foreignField: '_id',
+              as: 'sdo_admin4'
+            }
+          },
+          {
+            $lookup: {
+              from: 'users',
               localField: 'assignees.2.id',
               foreignField: '_id',
               as: 'sdo_evaluator'
@@ -1220,7 +1227,7 @@ export default REST({
           {
             $lookup: {
               from: 'users',
-              localField: 'assignees.4.id',
+              localField: 'assignees.3.id',
               foreignField: '_id',
               as: 'ro_evaluator'
             }
@@ -1234,6 +1241,12 @@ export default REST({
           {
             $unwind: {
               path: '$ro_evaluator',
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $unwind: {
+              path: '$sdo_admin4',
               preserveNullAndEmptyArrays: true,
             },
           },
@@ -1257,7 +1270,7 @@ export default REST({
 
               assignees: 1,
               division: '$division.title',
-
+              status: 1,
 
               control_number: '$control_number',
 
@@ -1276,7 +1289,10 @@ export default REST({
                 $concat: ["$ro_evaluator.first_name", " ", "$ro_evaluator.last_name"]
               },
               ro_evaluator_esig: { "$toString": "$ro_evaluator.e_signature" },
-
+              sdo_admin4_name: {
+                $concat: ["$sdo_admin4.first_name", " ", "$sdo_admin4.last_name"]
+              },
+              sdo_admin4_esig: { "$toString": "$sdo_admin4.e_signature" },
             }
           }
         ]
