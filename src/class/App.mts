@@ -1119,32 +1119,6 @@ export default class App {
 
 
 
-    // } else if (designation.side === 'RO') {
-    //   console.log("Condition RO met");
-    //   const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-    //     {
-    //       $set: {
-    //         "assignees.3.evaluator_approved": status,
-    //         "assignees.4.approved": status,
-    //         "assignees.4.timestamp": new Date(),
-    //         status: request_logs.status,
-    //         attachments: attachment,
-
-    //       },
-    //       $push: {
-    //         "assignees.4.remarks": { $each: attachment_log },
-    //         request_log: request_logs,
-    //       }
-    //     });
-    //   if (!result?.modifiedCount) return Promise.reject("Failed to submit")
-
-
-
-    //   return Promise.resolve("Successfully Evaluated!");
-    // }
-
-
-
 
 
 
