@@ -58,6 +58,7 @@ export default class App {
           evaluator_approved: null,
           remarks: [],
           timestamp: null,
+
         },
         {
           name: "Evaluator",
@@ -65,6 +66,10 @@ export default class App {
           approved: null,
           remarks: [],
           timestamp: null,
+          range_assignment: {
+            name: null,
+            remarks: null
+          }
         },
 
         {
@@ -81,6 +86,10 @@ export default class App {
           approved: null,
           remarks: [],
           timestamp: null,
+          range_assignment: {
+            name: null,
+            remarks: null
+          }
         },
         {
           name: "RO Verifier",
