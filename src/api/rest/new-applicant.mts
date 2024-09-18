@@ -13,6 +13,7 @@ import { v4 } from "uuid";
 import App from 'class/App.mjs';
 
 import { ALLOWED_ORIGIN } from '@cfg/index.mjs';
+import { log } from 'winston';
 
 // import { create } from 'connect-mongo';
 
@@ -335,12 +336,13 @@ export default REST({
       "handle-evaluator"(req, res) {
         /* @ts-ignore */
         const pal_attachment = req.files[0];
+        console.log('pal_attachment', pal_attachment);
 
         if (!pal_attachment) return res.status(400).json({ error: "No attachment found" });
 
         const uuid = v4();
         const fn = pal_attachment.fieldname.split("-")[0];
-        const dir = `sms/${req.session.user?._id}/sdsd/${fn}`;
+        const dir = `sms/${req.session.user?._id}/plantilla-allocation-list/${fn}`;
         const mime = pal_attachment?.originalname.split(".")[1];
         const pal = `${dir}/${uuid}`;
 
@@ -976,6 +978,7 @@ export default REST({
     },
 
     async handle_evaluator(data: any, user: ObjectId, pal: any) {
+      console.log("PALLLLLL", pal);
       const { data: result, error } = await App.HANDLE_EVALUATOR(data, user, pal)
       if (error) return Promise.reject(error);
       return Promise.resolve(result);
