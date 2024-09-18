@@ -69,7 +69,8 @@ export default class App {
           range_assignment: {
             name: null,
             remarks: null
-          }
+          },
+          pal: null
         },
 
         {
@@ -89,7 +90,7 @@ export default class App {
           range_assignment: {
             name: null,
             remarks: null
-          }
+          },
         },
         {
           name: "RO Verifier",
@@ -234,7 +235,6 @@ export default class App {
     ]).toArray();
   };
   private static async GET_PENDING_ADMIN_4(division_id: ObjectId, filter: any) {
-    console.log(filter);
 
     const { position, sdo, status } = filter;
     let query = {};
@@ -375,9 +375,9 @@ export default class App {
                   $and: [
                     { "assignees.2.id": user_id },
                     { "designation.division": division_id },
-                    { "assignees.1.approved": true },
-                    { "assignees.2.approved": { "$not": { "$eq": true } } },
-                    { "assignees.3.approved": { "$not": { "$eq": true } } },
+                    // { "assignees.1.approved": true },
+                    // { "assignees.2.approved": { "$not": { "$eq": true } } },
+                    // { "assignees.3.approved": { "$not": { "$eq": true } } },
                     { status: "For Evaluation" }
                   ]
                 },
@@ -1022,9 +1022,7 @@ export default class App {
         }
       }).then((data) => {
         if (request_logs.status === 'Disapproved') {
-          console.log('Principal', applicant?.principal.name);
-          console.log('Hiiiii', applicant);
-          console.log('Link:', `${ALLOWED_ORIGIN}/sms/erf?id=${applicant?._id}`);
+
 
           PostOffice.get_instances()[EMAIL_TRANSPORT].post(
             {
@@ -1054,14 +1052,20 @@ export default class App {
 
   };
 
-  static async HANDLE_EVALUATOR(data: any, user: ObjectId) {
+  static async HANDLE_EVALUATOR(data: any, user: ObjectId, pal: any) {
+
+
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.EVALUATOR) return Promise.reject({ data: null, error: "Not Evaluator" });
 
-    const { app_id, attachment } = data;
+    const { app_id, attachment, range_assessment } = data;
+
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
+
+
+    if (!attachment || typeof attachment !== 'object') return Promise.reject({ data: null, error: "Invalid attachment data" });
 
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
@@ -1073,6 +1077,7 @@ export default class App {
         });
       }
     });
+
     const request_logs = {
       signatory: designation.name,
       role: designation.role_name,
@@ -1099,6 +1104,8 @@ export default class App {
         "assignees.2.timestamp": new Date(),
         status: request_logs.status,
         attachments: attachment,
+        "assignees.2.range_assessment": range_assessment,
+        "assignees.2.pal": pal,
       },
       $push: {
         "assignees.2.remarks": { $each: attachment_log },
@@ -1109,6 +1116,7 @@ export default class App {
         "assignees.3.evaluator_approved": status,
         "assignees.4.approved": status,
         "assignees.4.timestamp": new Date(),
+        "assignees.4.range_assessment": range_assessment,
         status: request_logs.status,
         attachments: attachment,
       },
@@ -1118,18 +1126,10 @@ export default class App {
       }
     };
 
-    const result = await Database.collection('applicant')?.updateOne(
-      { _id: new ObjectId(app_id) },
-      query
-    );
+    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) }, query);
 
-    if (!result?.modifiedCount) return Promise.reject("Failed to submit");
-    return Promise.resolve("Successfully Evaluated!");
-
-
-
-
-
+    if (!result?.modifiedCount) return Promise.reject({ data: null, error: "Failed to submit" });
+    return Promise.resolve({ data: "Successfully Evaluated!", error: null });
 
   };
 
@@ -1273,8 +1273,7 @@ export default class App {
       remarks: attachment_log,
       timestamp: new Date()
     };
-    console.log(statuses);
-    console.log(request_logs.status);
+
     const status = !statuses.includes(false)
 
     Object.entries(attachment).forEach(([k, v]: [string, any]) => {
@@ -1297,8 +1296,6 @@ export default class App {
         }
       })
     if (!result?.modifiedCount) return Promise.reject("Failed to checked")
-
-    console.log(attachment);
 
     return Promise.resolve("Successfully Checked!")
 
