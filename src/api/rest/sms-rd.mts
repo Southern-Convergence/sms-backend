@@ -18,7 +18,9 @@ export default REST({
         middle_name: Joi.string(),
         last_name: Joi.string(),
         ro_address: Joi.string(),
-        position: Joi.string()
+        position: Joi.string(),
+        government_agency: Joi.string(),
+        region: Joi.string(),
       },
       dbm: {
         first_name: Joi.string(),
@@ -58,7 +60,7 @@ export default REST({
     "PUT": {
       "update-rd"(req, res) {
         const { _id, rd, dbm } = req.body
-        console.log("Hiiii", req.body);
+
 
         this.update_rd(_id, rd, dbm).then(() => res.json({ data: "Successfully Update Regional Director!" }))
           .catch((error) => res.status(400).json({ error }))

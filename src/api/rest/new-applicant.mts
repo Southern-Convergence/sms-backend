@@ -85,18 +85,15 @@ export default REST({
      * APPROVAL PROCCESS
      */
     "evaluator-approved": {
-
       attachment: Joi.object().required(),
       status: Joi.string(),
       app_id: object_id
     },
     "handle-principal": {
-
       attachment: Joi.object().required(),
       status: Joi.string(),
       principal_esig: Joi.string().required(),
       principal_name: Joi.string().required(),
-
       app_id: object_id,
     },
     "handle-admin4": {
@@ -105,22 +102,16 @@ export default REST({
       status: Joi.string(),
       app_id: object_id
     },
-    "handle-evaluator": {
 
-      attachment: Joi.object().required(),
-      status: Joi.string(),
-      app_id: object_id
-    },
+    "handle-evaluator": multers["sms-docs"].any(),
 
     "handle-verifier": {
-
       attachment: Joi.object().required(),
       status: Joi.string(),
       app_id: object_id
     },
 
     "handle-admin5": {
-
       attachment: Joi.object().required(),
       status: Joi.string(),
       app_id: object_id
@@ -240,9 +231,6 @@ export default REST({
             res.json({ data });
           }).catch((error) => res.status(400).json({ error }));
       },
-
-
-
       "attach-output-requirement"(req, res) {
         const { app_id } = req.body
         this.attach_output_requirement(app_id, new ObjectId(req.session.user?._id))
@@ -289,8 +277,6 @@ export default REST({
         const { id } = req.query
         this.get_applicant_erf(id).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
-
-
       "get-evaluators"(req, res) {
         this.get_evaluators(new ObjectId(req.query.division_id?.toString())).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
@@ -330,6 +316,7 @@ export default REST({
           .catch((error) => res.status(400).json({ error }));
       },
       "evaluator-approved"(req, res) {
+        /* @ts-ignore */
         this.handle_evaluator(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
       /**
@@ -344,54 +331,38 @@ export default REST({
         this.handle_admin4(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
 
+
       "handle-evaluator"(req, res) {
-        this.handle_evaluator(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+        /* @ts-ignore */
+        const pal_attachment = req.files[0];
+
+        if (!pal_attachment) return res.status(400).json({ error: "No attachment found" });
+
+        const uuid = v4();
+        const fn = pal_attachment.fieldname.split("-")[0];
+        const dir = `sms/${req.session.user?._id}/sdsd/${fn}`;
+        const mime = pal_attachment?.originalname.split(".")[1];
+        const pal = `${dir}/${uuid}`;
+
+
+        this.spaces["hris"].upload({
+          body: pal_attachment?.buffer,
+          content_type: pal_attachment?.mimetype,
+          dir: dir,
+          key: uuid,
+          metadata: {
+            original_name: pal_attachment?.originalname,
+            timestamp: `${Date.now()}`,
+            ext: mime,
+            mimetype: pal_attachment?.mimetype,
+          },
+        }).then(() => `${dir}/${uuid}`).catch(error => console.log(error))
+
+        this.handle_evaluator(JSON.parse(req.body.form), new ObjectId(req.session.user?._id), pal)
+          .then(({ data }) => res.json({ data })).catch(({ error }) => res.status(400).json({ error }))
       },
-      // async "handle-evaluator"(req, res) {
-      //   // const form = Object.assign({}, JSON.parse(req.body.form));
-      //   // if (req.files?.length) {
-
-      //   //   //@ts-ignore
-      //   //   const x = Object.fromEntries(req.files?.map((v: any) => v.fieldname.split("-")[0]).map((v: any) => [v, []]));
-      //   //   form.sdo_attachments = x;
-
-      //   //   //@ts-ignore
-      //   //   const result = await Promise.all(Array.from(req.files).map(async (v: any) => {
-      //   //     const uuid = v4();
-
-      //   //     const fn = v.fieldname.split("-")[0];
-      //   //     const dir = `sms/${req.session.user?._id}/applicant-requirements/SDO-${fn}`
-      //   //     const mime = v.originalname.split(".")[1]; //bug this shit
 
 
-      //   //     return await this.spaces["hris"].upload({
-      //   //       body: v.buffer,
-      //   //       content_type: v.mimetype,
-      //   //       dir: dir,
-      //   //       key: uuid,
-      //   //       metadata: {
-      //   //         original_name: v.originalname,
-      //   //         timestamp: `${Date.now()}`,
-      //   //         ext: mime,
-      //   //         mimetype: v.mimetype
-      //   //       },
-      //   //     }).then(() => `${dir}/${uuid}`)
-      //   //   }));
-      //   //   Object.entries(form.sdo_attachments).forEach(([key, value]) => {
-      //   //     const links = result.filter((v: string) => v.match(key));
-      //   //     const payload = {
-      //   //       link: links,
-      //   //       valid: null,
-      //   //       remarks: "",
-      //   //       description: key,
-      //   //       timestamp: Date.now()
-      //   //     }
-      //   //     form.sdo_attachments[key] = payload;
-      //   //   })
-      //   // };
-
-      //   this.handle_evaluator(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
-      // },
       "handle-verifier"(req, res) {
         this.handle_verifier(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
@@ -891,56 +862,6 @@ export default REST({
             }
           },
 
-
-          // {
-
-          //   $project: {
-          //     full_name: {
-          //       $concat: ["$personal_information.first_name", " ", "$personal_information.last_name"]
-          //     },
-          //     birthday: "$personal_information.birthday",
-          //     plantilla_no: "$designation.plantilla_no",
-          //     signature: "$personal_information.signature",
-          //     item_no: "$designation.item_no",
-          //     current_position: "$designation.current_position",
-          //     educational_attainment: 1,
-          //     service_record: 1,
-          //     public_years_teaching: "$equivalent_unit.public_years_teaching",
-          //     yt_equivalent: "$equivalent_unit.yt_equivalent",
-          //     professional_study: 1,
-          //     ipcrf_rating: "$designation.ipcrf_rating",
-          //     assignees: 1,
-          //     created_date: 1,
-          //     qualification: 1,
-          //     principal: 1,
-          //     education_level: "$qualification.education_level",
-          //     training_hours: "$qualification.training",
-          //     ma_units: "$qualification.ma_units",
-          //     total_ma: "$qualification.total_ma",
-          //     status_of_appointment: "$qualification.status_of_appointment",
-          //     position: "$position.title",
-          //     education: "$education.title",
-          //     leadership: "$leadership.title",
-          //     experience: "$experience.title",
-          //     rating: "$rating.title",
-          //     graduate_units: "$qualification.supplemented_units",
-          //     attachments: {
-          //       $map: {
-          //         input: { $objectToArray: "$attachments" },
-          //         as: "attachment",
-          //         in: "$$attachment.v.description"
-          //       }
-          //     },
-          //     sdo_attachments: {
-          //       $map: {
-          //         input: { $objectToArray: "$sdo_attachments" },
-          //         as: "attachment",
-          //         in: "$$attachment.v.description"
-          //       }
-          //     },
-
-          //   }
-          // }
         ]
       ).next()
 
@@ -1054,15 +975,12 @@ export default REST({
       return Promise.resolve("Successfully checked!");
     },
 
-    async handle_evaluator(data: any, user: ObjectId) {
-      const result = App.HANDLE_EVALUATOR(data, user)
-      if (!result) return Promise.reject("Failed to submit!");
-
-
-      return Promise.resolve("Successfully evaluated!");
+    async handle_evaluator(data: any, user: ObjectId, pal: any) {
+      const { data: result, error } = await App.HANDLE_EVALUATOR(data, user, pal)
+      if (error) return Promise.reject(error);
+      return Promise.resolve(result);
     },
     async handle_verifier(data: any, user: ObjectId) {
-
       const result = App.HANDLE_VERIFIER(data, user)
       if (!result) return Promise.reject("Failed to submit!");
       return Promise.resolve("Successfully verified!");
@@ -1259,6 +1177,7 @@ export default REST({
               designation: 1,
               qualification: 1,
               educational_attainment: 1,
+              adm_experience: 1,
               equivalent_unit: 1,
               transcript: 1,
               service_record: 1,
