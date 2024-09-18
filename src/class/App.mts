@@ -11,6 +11,7 @@ const enum ROLES {
   PRINCIPAL = "Principal",
   ADMIN_4 = "Administrative Officer IV",
   EVALUATOR = "Evaluator",
+  ROEVALUATOR = "RO Evaluator",
   VERIFIER = "Verifier",
   ADMIN_5 = "Administrative Officer V",
 };
@@ -69,12 +70,6 @@ export default class App {
           range_assignment: {
             name: null,
             remarks: null
-          },
-          pal: {
-            link: null,
-            approved: null,
-            timestamp: null,
-            remarks: []
           }
         },
 
@@ -128,12 +123,13 @@ export default class App {
         return Promise.resolve({ data: ADMIN_4_PENDING, error: null });
 
       case ROLES.EVALUATOR:
-        if (side == SIDE.SDO) {
-          const EVALUATOR_PENDING = await App.GET_PENDING_EVALUATOR(division_id, user_id)
-          return Promise.resolve({ data: EVALUATOR_PENDING, error: null });
-        }
-        const EVALUATOR_PENDING = await App.GET_PENDING_EVALUATOR_RO(filter, user_id);
+        const EVALUATOR_PENDING = await App.GET_PENDING_EVALUATOR(division_id, user_id)
         return Promise.resolve({ data: EVALUATOR_PENDING, error: null });
+
+
+      case ROLES.ROEVALUATOR:
+        const ROEVALUATOR_PENDING = await App.GET_PENDING_EVALUATOR_RO(filter, user_id);
+        return Promise.resolve({ data: ROEVALUATOR_PENDING, error: null });
 
       case ROLES.VERIFIER:
         if (side === SIDE.SDO) {
@@ -378,8 +374,8 @@ export default class App {
               $or: [
                 {
                   $and: [
-                    { "assignees.2.id": user_id },
-                    { "designation.division": division_id },
+                    // { "assignees.2.id": user_id },
+                    // { "designation.division": division_id },
                     // { "assignees.1.approved": true },
                     // { "assignees.2.approved": { "$not": { "$eq": true } } },
                     // { "assignees.3.approved": { "$not": { "$eq": true } } },
@@ -930,13 +926,14 @@ export default class App {
   };
 
   static async HANDLE_ADMIN4(data: any, user: ObjectId) {
-
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.ADMIN_4) return Promise.reject({ data: null, error: "Not principal" });
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
     const { app_id, attachment } = data;
+
+
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
       if (!v.valid && v.remarks && v.remarks.length > 0) {
@@ -1027,8 +1024,6 @@ export default class App {
         }
       }).then((data) => {
         if (request_logs.status === 'Disapproved') {
-
-
           PostOffice.get_instances()[EMAIL_TRANSPORT].post(
             {
               from: "mariannemaepaclian@gmail.com",
@@ -1058,7 +1053,6 @@ export default class App {
   };
 
   static async HANDLE_EVALUATOR(data: any, user: ObjectId, pal: any) {
-
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.EVALUATOR) return Promise.reject({ data: null, error: "Not Evaluator" });
@@ -1069,7 +1063,90 @@ export default class App {
     const attachment_log: any[] = [];
 
 
-    if (!attachment || typeof attachment !== 'object') return Promise.reject({ data: null, error: "Invalid attachment data" });
+    const pal_data = {
+      description: "Plantialla Allocation List",
+      link: pal,
+      timestamp: new Date,
+      remarks: [],
+      valid: true
+    }
+    attachment.pal = pal_data
+    const all_attachment = attachment
+
+
+    Object.entries(all_attachment).forEach(([k, v]: [any, any]) => {
+      statuses.push(v.valid);
+      if (!v.valid && v.remarks && v.remarks.length > 0) {
+        attachment_log.push({
+          description: v.description,
+          remarks: v.remarks,
+          timestamp: new Date()
+        });
+      }
+    });
+
+    const request_logs = {
+      signatory: designation.name,
+      role: designation.role_name,
+      side: designation.side,
+      status: statuses.includes(false) && attachment_log.length > 0 ? "Disapproved" : "For Checking",
+      remarks: attachment_log,
+      timestamp: new Date()
+    };
+    const status = !statuses.includes(false)
+
+    Object.entries(all_attachment).forEach(([k, v]: [string, any]) => {
+      attachment[k].valid = null;
+      attachment[k].remarks = [];
+      attachment[k].timestamp = null;
+    });
+
+    const query = designation.side === 'SDO' ? {
+      $set: {
+        "assignees.1.evaluator_approved": status,
+        "assignees.2.approved": status,
+        "assignees.2.timestamp": new Date(),
+        status: request_logs.status,
+        attachments: all_attachment,
+        "assignees.2.range_assignment": range_assignment,
+
+
+      },
+      $push: {
+        "assignees.2.remarks": { $each: attachment_log },
+        request_log: request_logs,
+      }
+    } : {
+      $set: {
+        "assignees.3.evaluator_approved": status,
+        "assignees.4.approved": status,
+        "assignees.4.timestamp": new Date(),
+        "assignees.4.range_assignment": range_assignment,
+        status: request_logs.status,
+        attachments: attachment,
+      },
+      $push: {
+        "assignees.4.remarks": { $each: attachment_log },
+        request_log: request_logs,
+      }
+    };
+
+    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) }, query);
+
+    if (!result?.modifiedCount) return Promise.reject({ data: null, error: "Failed to submit" });
+    return Promise.resolve({ data: "Successfully Evaluated!", error: null });
+
+  };
+  static async HANDLE_RO_EVALUATOR(data: any, user: ObjectId) {
+    const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
+    if (designation_error) return Promise.reject({ data: null, error: designation_error });
+    if (designation?.role_name !== ROLES.ROEVALUATOR) return Promise.reject({ data: null, error: "Not RO Evaluator" });
+
+    const { app_id, attachment, range_assignment } = data;
+
+    const statuses: boolean[] = [];
+    const attachment_log: any[] = [];
+
 
     Object.entries(attachment).forEach(([k, v]: [any, any]) => {
       statuses.push(v.valid);
@@ -1097,22 +1174,8 @@ export default class App {
       attachment[k].remarks = [];
       attachment[k].timestamp = null;
     });
-    const query = designation.side === 'SDO' ? {
-      $set: {
-        "assignees.1.evaluator_approved": status,
-        "assignees.2.approved": status,
-        "assignees.2.timestamp": new Date(),
-        status: request_logs.status,
-        attachments: attachment,
-        "assignees.2.range_assignment": range_assignment,
-        "assignees.2.pal.link": pal,
 
-      },
-      $push: {
-        "assignees.2.remarks": { $each: attachment_log },
-        request_log: request_logs,
-      }
-    } : {
+    const query = {
       $set: {
         "assignees.3.evaluator_approved": status,
         "assignees.4.approved": status,

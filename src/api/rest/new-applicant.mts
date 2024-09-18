@@ -112,6 +112,12 @@ export default REST({
       app_id: object_id
     },
 
+    "handle-ro-evaluator": {
+      attachment: Joi.object().required(),
+      status: Joi.string(),
+      app_id: object_id,
+      range_assignment: Joi.object()
+    },
     "handle-admin5": {
       attachment: Joi.object().required(),
       status: Joi.string(),
@@ -328,13 +334,13 @@ export default REST({
       },
 
       "handle-admin4"(req, res) {
-
         this.handle_admin4(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
       },
 
 
       "handle-evaluator"(req, res) {
         /* @ts-ignore */
+        console.log("REQQQQQQQQQQQQQQQ", req.body);
         const pal_attachment = req.files[0];
         console.log('pal_attachment', pal_attachment);
 
@@ -362,8 +368,13 @@ export default REST({
 
         this.handle_evaluator(JSON.parse(req.body.form), new ObjectId(req.session.user?._id), pal)
           .then(({ data }) => res.json({ data })).catch(({ error }) => res.status(400).json({ error }))
-      },
 
+      },
+      "handle-ro-evaluator"(req, res) {
+        /* @ts-ignore */
+        this.handle_ro_evaluator(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
+
+      },
 
       "handle-verifier"(req, res) {
         this.handle_verifier(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
@@ -674,7 +685,7 @@ export default REST({
                     },
                     {
                       $expr: {
-                        $eq: ["$name", "Evaluator"],
+                        $eq: ["$name", "RO Evaluator"],
                       },
                     },
                   ],
@@ -692,7 +703,7 @@ export default REST({
         },
         {
           $match: {
-            "evaluator.name": "Evaluator"
+            "evaluator.name": "RO Evaluator"
           }
         },
         {
@@ -978,8 +989,12 @@ export default REST({
     },
 
     async handle_evaluator(data: any, user: ObjectId, pal: any) {
-      console.log("PALLLLLL", pal);
       const { data: result, error } = await App.HANDLE_EVALUATOR(data, user, pal)
+      if (error) return Promise.reject(error);
+      return Promise.resolve(result);
+    },
+    async handle_ro_evaluator(data: any, user: ObjectId) {
+      const { data: result, error } = await App.HANDLE_RO_EVALUATOR(data, user)
       if (error) return Promise.reject(error);
       return Promise.resolve(result);
     },
