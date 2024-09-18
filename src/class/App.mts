@@ -1,6 +1,6 @@
 import Database from "@lib/database.mjs";
 import { log } from "handlebars";
-import { ObjectId } from "mongodb";
+import { ObjectId, Timestamp } from "mongodb";
 import { ALLOWED_ORIGIN } from '@cfg/index.mjs';
 import { EMAIL_TRANSPORT } from "@cfg/index.mjs";
 
@@ -70,7 +70,12 @@ export default class App {
             name: null,
             remarks: null
           },
-          pal: null
+          pal: {
+            link: null,
+            approved: null,
+            timestamp: null,
+            remarks: []
+          }
         },
 
         {
@@ -1054,7 +1059,6 @@ export default class App {
 
   static async HANDLE_EVALUATOR(data: any, user: ObjectId, pal: any) {
 
-
     const { data: designation, error: designation_error } = await App.GET_DESIGNATION(user);
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.EVALUATOR) return Promise.reject({ data: null, error: "Not Evaluator" });
@@ -1093,10 +1097,6 @@ export default class App {
       attachment[k].remarks = [];
       attachment[k].timestamp = null;
     });
-
-
-
-
     const query = designation.side === 'SDO' ? {
       $set: {
         "assignees.1.evaluator_approved": status,
@@ -1105,7 +1105,8 @@ export default class App {
         status: request_logs.status,
         attachments: attachment,
         "assignees.2.range_assessment": range_assessment,
-        "assignees.2.pal": pal,
+        "assignees.2.pal.link": pal,
+
       },
       $push: {
         "assignees.2.remarks": { $each: attachment_log },
