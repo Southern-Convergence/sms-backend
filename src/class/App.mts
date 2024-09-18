@@ -1063,7 +1063,7 @@ export default class App {
     if (designation_error) return Promise.reject({ data: null, error: designation_error });
     if (designation?.role_name !== ROLES.EVALUATOR) return Promise.reject({ data: null, error: "Not Evaluator" });
 
-    const { app_id, attachment, range_assessment } = data;
+    const { app_id, attachment, range_assignment } = data;
 
     const statuses: boolean[] = [];
     const attachment_log: any[] = [];
@@ -1104,7 +1104,7 @@ export default class App {
         "assignees.2.timestamp": new Date(),
         status: request_logs.status,
         attachments: attachment,
-        "assignees.2.range_assessment": range_assessment,
+        "assignees.2.range_assignment": range_assignment,
         "assignees.2.pal.link": pal,
 
       },
@@ -1117,7 +1117,7 @@ export default class App {
         "assignees.3.evaluator_approved": status,
         "assignees.4.approved": status,
         "assignees.4.timestamp": new Date(),
-        "assignees.4.range_assessment": range_assessment,
+        "assignees.4.range_assignment": range_assignment,
         status: request_logs.status,
         attachments: attachment,
       },
