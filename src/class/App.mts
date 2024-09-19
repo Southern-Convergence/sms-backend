@@ -1327,7 +1327,27 @@ export default class App {
         });
       }
     });
+    const applicant = await Database.collection('applicant')?.aggregate(
+      [
+        {
+          $match:
 
+          {
+            _id: new ObjectId(app_id),
+          },
+        },
+        {
+          $project:
+
+          {
+            "personal_information.last_name": 1,
+            "personal_information.first_name": 1,
+            "personal_information.email": 1,
+            control_number: 1,
+          },
+        },
+      ]
+    ).next()
 
     const request_logs = {
       signatory: designation.name,
@@ -1358,10 +1378,26 @@ export default class App {
           "assignees.3.remarks": attachment_log,
           request_log: request_logs
         }
-      })
-    if (!result?.modifiedCount) return Promise.reject("Failed to checked")
+      }).then((data) => {
+        PostOffice.get_instances()[EMAIL_TRANSPORT].post(
+          {
+            from: "mariannemaepaclian@gmail.com",
+            to: applicant?.personal_information.email,
+            subject: "SMS Approved for Printing",
+          },
+          {
+            context: {
+              name: `${applicant?.personal_information.last_name} ${applicant?.personal_information.first_name}`,
+              control_number: `${applicant?.control_number}`,
 
-    return Promise.resolve("Successfully Checked!")
+            },
+            template: "sms-for-printing",
+            layout: "centered"
+          }
+        );
+
+        return Promise.resolve("Successfully Approved for Printing!")
+      }).catch(() => Promise.reject("Failed to Approved"));
 
   };
   /**
