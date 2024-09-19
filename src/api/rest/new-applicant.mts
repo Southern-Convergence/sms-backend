@@ -316,7 +316,6 @@ export default REST({
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
-
       "complete-application"(req, res) {
         this.complete_reclass(req.body, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
@@ -926,6 +925,9 @@ export default REST({
       if (!result) return Promise.reject("Failed to update!");
       return Promise.resolve("Successfully upload received printed  outputs!");
     },
+
+
+
     async complete_reclass(data: any, user_id: ObjectId) {
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
@@ -938,15 +940,62 @@ export default REST({
         status: "Completed",
         timestamp: new Date()
       };
+      const applicant = await this.db.collection('applicant')?.aggregate(
+        [
+          {
+            $match:
+            {
+              _id: new ObjectId(app_id),
+            },
+          },
+          {
+            $set: {
+              full_name: {
+                $concat: [
+                  "$personal_information.first_name",
+                  " ",
+                  "$personal_information.last_name",
+                ]
+              }
+            },
+          },
+
+          {
+            $project:
+
+            {
+              _id: 1,
+              full_name: 1,
+              email: "$personal_information.email",
+            }
+          }
+        ]
+      ).next()
+      console.log("appppppppppppppp", data);
+      console.log("appppppppppppppp", applicant);
+
       const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } });
       if (!result) return Promise.reject("Failed to assign!");
+      this.postoffice[EMAIL_TRANSPORT].post(
+        {
+          from: "mariannemaepaclian@gmail.com",
+          to: `${applicant?.email}`
+        },
+        {
+          context: {
+            name: `${applicant?.full_name}`,
+            // approved: approved
+          },
+          template: "sms-complete",
+          layout: "centered"
+        }
+      );
       return Promise.resolve("Successfully completed!");
     },
     async assign_ro_evaluator_application(data: any, user_id: ObjectId) {
-
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
-      if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
+      if (designation?.role_name !== 'RO Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
       const { app_id, evaluator, status } = data;
 
       const request_logs = {
@@ -963,21 +1012,15 @@ export default REST({
         }
       });
       if (!result) return Promise.reject("Failed to assign!");
-
-
       return Promise.resolve("Successfully assigned evaluator!");
     },
     /**
      * APPROVAL PROCCESS
      */
     async handle_principal(data: any) {
-
-
       const result = App.HANDLE_PRINCIPAL(data)
       if (!result) return Promise.reject("Failed to submit!");
-
       return Promise.resolve("Successfully submitted to Schools Division Office!");
-
     },
 
     async handle_admin4(data: any, user: ObjectId) {

@@ -1249,41 +1249,20 @@ export default class App {
     };
     const status = !statuses.includes(false)
 
-
-    if (data.sdo_attachment && designation.side === SIDE.SDO) {
-      const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
-        {
-          $set: {
-            "assignees.3.approved": status,
-            status: request_logs.status,
-            "assignees.3.timestamp": new Date(),
-            attachments: attachment,
-            sdo_attachments: data.sdo_attachment
-          },
-          $push: {
-            "assignees.3.remarks": { $each: attachment_log },
-            request_log: request_logs
-          }
-        });
-
-      if (!result?.modifiedCount) return Promise.reject("Failed to Recommend for  Approval")
-      return Promise.resolve("Successfully Recommended!")
-    };
-
-    return Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
+    const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
-          "assignees.8.approved": status,
+          "assignees.3.approved": status,
           status: request_logs.status,
-          "assignees.8.timestamp": new Date(),
+          "assignees.3.timestamp": new Date(),
           attachments: attachment,
+          sdo_attachments: data.sdo_attachment
         },
         $push: {
-          "assignees.8.remarks": { $each: attachment_log },
+          "assignees.3.remarks": { $each: attachment_log },
           request_log: request_logs
         }
-      })
-      .then((data) => {
+      }).then((data) => {
         PostOffice.get_instances()[EMAIL_TRANSPORT].post(
           {
             from: "mariannemaepaclian@gmail.com",
@@ -1300,7 +1279,6 @@ export default class App {
             layout: "centered"
           }
         );
-
         return Promise.resolve("Successfully Approved for Printing!")
       }).catch(() => Promise.reject("Failed to Recommend for  Approval"));
 
@@ -1337,13 +1315,38 @@ export default class App {
           },
         },
         {
-          $project:
-
-          {
-            "personal_information.last_name": 1,
-            "personal_information.first_name": 1,
+          $lookup: {
+            from: "users",
+            localField: "assignees.2.id",
+            foreignField: "_id",
+            as: "sdo_evaluator"
+          }
+        },
+        {
+          $unwind: {
+            path: "$sdo_evaluator",
+            preserveNullAndEmptyArrays: false
+          }
+        },
+        {
+          $project: {
+            full_name: {
+              $concat: [
+                "$personal_information.first_name",
+                " ",
+                "$personal_information.last_name"
+              ]
+            },
             "personal_information.email": 1,
             control_number: 1,
+            evaluator_name: {
+              $concat: [
+                "$sdo_evaluator.first_name",
+                " ",
+                "$sdo_evaluator.last_name"
+              ]
+            },
+            evaluator_email: "$sdo_evaluator.email"
           },
         },
       ]
@@ -1357,7 +1360,6 @@ export default class App {
       remarks: attachment_log,
       timestamp: new Date()
     };
-
     const status = !statuses.includes(false)
 
     Object.entries(attachment).forEach(([k, v]: [string, any]) => {
@@ -1387,11 +1389,29 @@ export default class App {
           },
           {
             context: {
-              name: `${applicant?.personal_information.last_name} ${applicant?.personal_information.first_name}`,
+              name: `${applicant?.full_name}`,
               control_number: `${applicant?.control_number}`,
 
             },
             template: "sms-for-printing",
+            layout: "centered"
+          }
+        );
+        PostOffice.get_instances()[EMAIL_TRANSPORT].post(
+          {
+            from: "mariannemaepaclian@gmail.com",
+            to: `${applicant?.evaluator_email}`,
+            subject: `Approved for Printing - ${applicant?.full_name}`,
+
+          },
+          {
+            context: {
+              name: `${applicant?.full_name}`,
+              evaluator: `${applicant?.evaluator_name}`,
+              control_number: `${applicant?.control_number}`,
+
+            },
+            template: "sms-evaluator-for-printing",
             layout: "centered"
           }
         );
