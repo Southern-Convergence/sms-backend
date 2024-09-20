@@ -926,8 +926,6 @@ export default REST({
       return Promise.resolve("Successfully upload received printed  outputs!");
     },
 
-
-
     async complete_reclass(data: any, user_id: ObjectId) {
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
@@ -940,58 +938,65 @@ export default REST({
         status: "Completed",
         timestamp: new Date()
       };
-      const applicant = await this.db.collection('applicant')?.aggregate(
-        [
-          {
-            $match:
-            {
-              _id: new ObjectId(app_id),
-            },
-          },
-          {
-            $set: {
-              full_name: {
-                $concat: [
-                  "$personal_information.first_name",
-                  " ",
-                  "$personal_information.last_name",
-                ]
+
+      return this.db.collection("applicant")
+        .updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } }).
+        then(async () => {
+          const applicant = await this.db.collection('applicant')?.aggregate(
+            [
+              {
+                $match:
+                {
+                  _id: new ObjectId(app_id),
+                },
+              },
+              {
+                $set: {
+                  full_name: {
+                    $concat: [
+                      "$personal_information.first_name",
+                      " ",
+                      "$personal_information.last_name",
+                    ]
+                  }
+                },
+              },
+
+              {
+                $project:
+
+                {
+                  _id: 1,
+                  full_name: 1,
+                  email: "$personal_information.email",
+                }
               }
-            },
-          },
+            ]
+          ).next();
 
-          {
-            $project:
-
+          this.postoffice[EMAIL_TRANSPORT].post(
             {
-              _id: 1,
-              full_name: 1,
-              email: "$personal_information.email",
-            }
-          }
-        ]
-      ).next()
-      console.log("appppppppppppppp", data);
-      console.log("appppppppppppppp", applicant);
+              from: "mariannemaepaclian@gmail.com",
+              to: `${applicant?.email}`
+            },
+            {
+              context: {
+                name: `${applicant?.full_name}`,
 
-      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } });
-      if (!result) return Promise.reject("Failed to assign!");
-      this.postoffice[EMAIL_TRANSPORT].post(
-        {
-          from: "mariannemaepaclian@gmail.com",
-          to: `${applicant?.email}`
-        },
-        {
-          context: {
-            name: `${applicant?.full_name}`,
-            // approved: approved
-          },
-          template: "sms-complete",
-          layout: "centered"
-        }
-      );
-      return Promise.resolve("Successfully completed!");
+              },
+              template: "sms-complete",
+              layout: "centered"
+            }
+          );
+
+          return Promise.resolve("Successfully completed!");
+        }).catch((error: any) => {
+          console.log(error);
+          return Promise.reject("Failed to assign!")
+        });
+
     },
+
     async assign_ro_evaluator_application(data: any, user_id: ObjectId) {
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
