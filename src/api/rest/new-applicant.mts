@@ -140,6 +140,8 @@ export default REST({
     "get-dashboard": {
       sdo: Joi.string().allow(""),
       status: Joi.string().allow(""),
+      position: Joi.string().allow(""),
+      // current_year: Joi.number().optional(),
     },
     "update-applicant": {
       applicant: Joi.object(),
@@ -339,7 +341,6 @@ export default REST({
 
       "handle-evaluator"(req, res) {
         /* @ts-ignore */
-        console.log("REQQQQQQQQQQQQQQQ", req.body);
         const pal_attachment = req.files[0];
         console.log('pal_attachment', pal_attachment);
 
@@ -366,6 +367,7 @@ export default REST({
         }).then(() => `${dir}/${uuid}`).catch(error => console.log(error))
 
         this.handle_evaluator(JSON.parse(req.body.form), new ObjectId(req.session.user?._id), pal)
+          /* @ts-ignore */
           .then(({ data }) => res.json({ data })).catch(({ error }) => res.status(400).json({ error }))
 
       },
@@ -792,7 +794,6 @@ export default REST({
             $set: {
               current_sg: { $arrayElemAt: ["$current_sg.salary_grade", 0] },
               division: '$division.title',
-
               is_with_erf: '$is_with_erf.with_erf'
             }
           }
@@ -1412,7 +1413,11 @@ export default REST({
 
 
     async get_dashboard_data(filter: any) {
-      const { sdo, status } = filter;
+
+
+      const { sdo, status, position } = filter;
+
+
       let query = {};
       if (sdo) {
         query = { "designation.division": new ObjectId(sdo) };
@@ -1428,6 +1433,42 @@ export default REST({
           status: status
         };
       }
+      if (sdo && position) {
+        query = {
+          "designation.division": new ObjectId(sdo),
+          "qualification.position": new ObjectId(position),
+        };
+      }
+      if (position) {
+        query = {
+          "qualification.position": new ObjectId(position),
+        };
+      }
+      // if (position && current_year) {
+      //   query = {
+      //     "qualification.position": new ObjectId(position),
+      //     current_year: Number(current_year),
+      //   };
+      // }
+      // if (sdo && current_year) {
+      //   query = {
+      //     "designation.division": new ObjectId(sdo),
+      //     current_year: Number(current_year),
+      //   };
+      // }
+      // if (sdo && position && current_year) {
+      //   query = {
+      //     "designation.division": new ObjectId(sdo),
+      //     "qualification.position": new ObjectId(position),
+      //     current_year: Number(current_year),
+      //   };
+      // }
+      // if (current_year) {
+      //   query = {
+      //     current_year: current_year,
+      //   };
+      // }
+      console.log("Queeeeryy", query);
 
       return this.db?.collection('applicant').aggregate([
         {
@@ -1499,7 +1540,8 @@ export default REST({
             position: "$position.title",
             current_position: "$designation.current_position",
             approved: 1,
-            created_date: 1
+            created_date: 1,
+            display: 1
           },
         },
       ]).toArray();
