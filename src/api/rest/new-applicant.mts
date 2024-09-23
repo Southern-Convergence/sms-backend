@@ -917,7 +917,7 @@ export default REST({
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
 
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
-      if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
+      if (designation?.role_name !== 'RO Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
 
       const request_logs = {
         signatory: designation.name,
