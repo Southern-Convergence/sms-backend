@@ -155,7 +155,9 @@ export default REST({
   handlers: {
     "POST": {
       async "create-application"(req, res) {
-        let form = Object.assign({}, JSON.parse(req.body.form))
+
+        let form = typeof req.body.form === 'string' ? JSON.parse(req.body.form) : req.body.form;
+        // let form = Object.assign({}, JSON.parse(req.body.form))
         if (req.files?.length) {
           //@ts-ignore
           const x = Object.fromEntries(req.files?.map((v: any) => v.fieldname.split("-")[0]).map((v: any) => [v, []]));
@@ -244,7 +246,13 @@ export default REST({
         const { app_id } = req.body
         this.attach_output_requirement(app_id, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
-          .catch((error) => res.status(400).json({ error }));
+          .catch((error) => {
+            // Log the error to the console
+            console.error("Error attaching output requirement:", error);
+
+            // Send the error response to the client
+            res.status(400).json({ error: error.message || "An error occurred" });
+          });
       }
 
     },
@@ -342,7 +350,7 @@ export default REST({
       "handle-evaluator"(req, res) {
         /* @ts-ignore */
         const pal_attachment = req.files[0];
-        console.log('pal_attachment', pal_attachment);
+
 
         if (!pal_attachment) return res.status(400).json({ error: "No attachment found" });
 
@@ -422,7 +430,6 @@ export default REST({
   },
   controllers: {
     async create_application(data) {
-
       /**
        * TODO: UPLOAD ONLY WHEN REQUEST IS VALID
        */
@@ -477,7 +484,9 @@ export default REST({
       data.designation.division = data.designation.division ? new ObjectId(data.designation.division) : "";
 
       data.designation.current_sg = data.designation.current_sg ? new ObjectId(data.designation.current_sg) : "";
-      data.qualification.leadership_points = data.qualification.leadership_points ? data.qualification.leadership_points.map((v: string) => new ObjectId(v)) : "";
+      data.qualification.leadership_points = Array.isArray(data.qualification.leadership_points)
+        ? data.qualification.leadership_points.map((v: string) => new ObjectId(v))
+        : [];
 
 
       const request_logs = {
@@ -1468,7 +1477,7 @@ export default REST({
       //     current_year: current_year,
       //   };
       // }
-      console.log("Queeeeryy", query);
+
 
       return this.db?.collection('applicant').aggregate([
         {
@@ -1621,7 +1630,7 @@ export default REST({
 
       for (const link of for_deletion) {
         const delete_links = await spaces["hris"].delete_object(link);
-        console.log(delete_links);
+
       }
 
 
@@ -1648,7 +1657,7 @@ export default REST({
       });
 
 
-      console.log('Applicant ID', _id);
+
 
       const result = await this.db.collection("applicant").updateOne(
         {
