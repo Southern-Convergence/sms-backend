@@ -939,7 +939,7 @@ export default REST({
     async complete_reclass(data: any, user_id: ObjectId) {
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
-      if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
+      if (designation?.role_name !== 'RO Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
       const { app_id, status, approved } = data;
       const request_logs = {
         signatory: designation.name,
