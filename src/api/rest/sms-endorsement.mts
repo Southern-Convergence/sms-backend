@@ -119,11 +119,12 @@ export default REST({
         let batch_code = `${division.code || "DIV"}-${position.code || "POS"}-${counters[0].branch_number}`;
         const current_year = new Date().getFullYear();
 
-        const endorsement_log: any[] = [];
+        // const endorsement_log: any[] = [];
 
 
         const logs = {
-          signatory: new ObjectId(generated_by),
+          signatory: designation.name,
+          role: designation.role_name,
           status: "For Verification",
           timestamp: new Date(),
         }
@@ -296,11 +297,16 @@ export default REST({
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
       if (designation?.role_name !== 'Verifier') return Promise.reject({ data: null, error: "Not Verifier" });
 
-
-
-
       const { app_id, status, remarks, applicants, position } = data;
       const keyed_applicants = applicants.map((v: any) => new ObjectId(v._id));
+
+      const logs = {
+        signatory: designation.name,
+        role: designation.role_name,
+        status: "Verified",
+        timestamp: new Date(),
+      }
+
 
       const result = await this.db?.collection(collection).updateOne(
         { _id: new ObjectId(app_id) },
@@ -308,7 +314,11 @@ export default REST({
           $set: {
             status: status,
             remarks: remarks,
-            applicants: keyed_applicants
+            applicants: keyed_applicants,
+
+          },
+          $push: {
+            endorsement_log: logs
           }
         }
       );
@@ -320,6 +330,8 @@ export default REST({
           status: "For DBM",
           timestamp: new Date()
         };
+
+
         const update_applicant_to_dbm = await this.db.collection("applicant").updateMany(
           { _id: { $in: keyed_applicants } },
           {
