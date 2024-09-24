@@ -70,6 +70,8 @@ export default REST({
     "complete-application": {
       app_id: object_id,
       approved: Joi.boolean(),
+      email: Joi.string().required(),
+      name: Joi.string().required(),
     },
     "assign-ro-evaluator-application": {
       app_id: object_id,
@@ -323,11 +325,53 @@ export default REST({
           .then((data) => res.json({ data }))
           .catch((error) => res.status(400).json({ error }));
       },
+
       "complete-application"(req, res) {
+        const { email, approved, name } = req.body;
         this.complete_reclass(req.body, new ObjectId(req.session.user?._id))
-          .then((data) => res.json({ data }))
-          .catch((error) => res.status(400).json({ error }));
+          .then((data) => {
+            if (approved === true) {
+              return this.postoffice[EMAIL_TRANSPORT].post(
+                {
+                  from: "mariannemaepaclian@gmail.com",
+                  to: email,
+                  subject: "Reclassification Application Result",
+                },
+                {
+                  context: {
+                    name: name,
+                  },
+                  template: "sms-complete",
+                  layout: "centered",
+                }
+              );
+            } else {
+              return this.postoffice[EMAIL_TRANSPORT].post(
+                {
+                  from: "mariannemaepaclian@gmail.com",
+                  to: email,
+                  subject: "Reclassification Application Result"
+                },
+                {
+                  context: {
+                    name: name,
+                  },
+                  template: "sms-complete-disapproved",
+                  layout: "centered",
+                }
+              );
+            }
+
+          })
+          .then(() => {
+            res.status(200).send("Successfully re-applied reclass!");
+          })
+          .catch((err) => {
+            console.error("Error:", err);
+            res.status(500).send("Failed to assign!");
+          });
       },
+
       "evaluator-approved"(req, res) {
         /* @ts-ignore */
         this.handle_evaluator(req.body, new ObjectId(req.session.user?._id)).then((data) => res.json({ data })).catch((error) => res.status(400).json({ error }))
@@ -406,7 +450,8 @@ export default REST({
           this.postoffice[EMAIL_TRANSPORT].post(
             {
               from: "mariannemaepaclian@gmail.com",
-              to: principal.email
+              to: principal.email,
+
             },
             {
               context: {
@@ -415,7 +460,7 @@ export default REST({
                 link: `${ALLOWED_ORIGIN}/sms/erf${`?id=`}${_id}
         `
               },
-              template: "sms-reapply",
+              template: "sms-principal",
               layout: "centered"
             }
           );
@@ -933,93 +978,27 @@ export default REST({
       return Promise.resolve("Successfully upload received printed  outputs!");
     },
 
-    // async complete_reclass(data: any, user_id: ObjectId) {
-    //   const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
-    //   if (designation_error) return Promise.reject({ data: null, error: designation_error });
-    //   if (designation?.role_name !== 'RO Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
-    //   const { app_id, status, approved } = data;
-    //   const request_logs = {
-    //     signatory: designation.name,
-    //     role: designation.role_name,
-    //     side: designation.side,
-    //     status: "Completed",
-    //     timestamp: new Date()
-    //   };
-
-    //   return this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } }).
-    //     then(async () => {
-    //       const applicant = await this.db.collection('applicant')?.aggregate(
-    //         [
-    //           {
-    //             $match:
-    //             {
-    //               _id: new ObjectId(app_id),
-    //             },
-    //           },
-    //           {
-    //             $set: {
-    //               full_name: {
-    //                 $concat: [
-    //                   "$personal_information.first_name",
-    //                   " ",
-    //                   "$personal_information.last_name",
-    //                 ]
-    //               }
-    //             },
-    //           },
-
-    //           {
-    //             $project:
-
-    //             {
-    //               _id: 1,
-    //               full_name: 1,
-    //               email: "$personal_information.email",
-    //             }
-    //           }
-    //         ]
-    //       ).next();
-
-    //       this.postoffice[EMAIL_TRANSPORT].post(
-    //         {
-    //           from: "mariannemaepaclian@gmail.com",
-    //           to: `${applicant?.email}`
-    //         },
-    //         {
-    //           context: {
-    //             name: `${applicant?.full_name}`,
-
-    //           },
-    //           template: "sms-complete",
-    //           layout: "centered"
-    //         }
-    //       );
-
-    //       return Promise.resolve("Successfully completed!");
-    //     }).catch((error: any) => {
-    //       console.log(error);
-    //       return Promise.reject("Failed to assign!")
-    //     });
-
-    // },
-
     async complete_reclass(data: any, user_id: ObjectId) {
-      console.log('DATATATTA', data);
-
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
       if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
+
       const { app_id, approved } = data;
       const request_logs = {
         signatory: designation.name,
         role: designation.role_name,
         side: designation.side,
         status: "Completed",
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
-      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } })
-      if (!result) return Promise.reject("Failed to assign!");
+      const result = await this.db.collection("applicant").updateOne(
+        { _id: new ObjectId(app_id) },
+        { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } }
+      );
+
+      if (result.modifiedCount === 0) return Promise.reject("Failed to assign!");
       return Promise.resolve("Successfully completed reclass!");
     },
 
@@ -1079,14 +1058,9 @@ export default REST({
     },
 
     async handle_admin5(data: any, user: ObjectId) {
-
       const result = App.HANDLE_ADMIN5(data, user)
       if (!result) return Promise.reject("Failed to submit!");
-
       return Promise.resolve("Successfully checked!");
-
-
-
 
     },
     async get_signatory(id) {
@@ -1480,30 +1454,7 @@ export default REST({
           "qualification.position": new ObjectId(position),
         };
       }
-      // if (position && current_year) {
-      //   query = {
-      //     "qualification.position": new ObjectId(position),
-      //     current_year: Number(current_year),
-      //   };
-      // }
-      // if (sdo && current_year) {
-      //   query = {
-      //     "designation.division": new ObjectId(sdo),
-      //     current_year: Number(current_year),
-      //   };
-      // }
-      // if (sdo && position && current_year) {
-      //   query = {
-      //     "designation.division": new ObjectId(sdo),
-      //     "qualification.position": new ObjectId(position),
-      //     current_year: Number(current_year),
-      //   };
-      // }
-      // if (current_year) {
-      //   query = {
-      //     current_year: current_year,
-      //   };
-      // }
+
 
 
       return this.db?.collection('applicant').aggregate([
