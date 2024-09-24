@@ -229,7 +229,8 @@ export default class App {
           full_name: 1,
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
-          position: "$position.title"
+          position: "$position.title",
+          education_level: "$position.education_level",
 
         },
       },
@@ -360,7 +361,8 @@ export default class App {
           position: "$position.title",
           district: "$designation.district",
           current_position: "$designation.current_position",
-          is_with_erf: '$is_with_erf.with_erf'
+          is_with_erf: '$is_with_erf.with_erf',
+          education_level: "$position.education_level",
         },
       },
     ]).toArray();
@@ -466,7 +468,8 @@ export default class App {
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
           position: "$position.title",
-          current_position: "$designation.current_position"
+          current_position: "$designation.current_position",
+          education_level: "$position.education_level",
 
         },
       },
@@ -549,7 +552,8 @@ export default class App {
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
           position: "$position.title",
-          current_position: "$designation.current_position"
+          current_position: "$designation.current_position",
+          education_level: "$position.education_level",
 
         },
       },
@@ -595,8 +599,6 @@ export default class App {
 
     return await Database.collection('applicant')?.aggregate([
       match,
-
-
       {
         $lookup: {
           from: "sms-sdo",
@@ -659,7 +661,8 @@ export default class App {
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
           position: "$position.title",
-          current_position: "$designation.current_position"
+          current_position: "$designation.current_position",
+          education_level: "$position.education_level",
         },
       },
     ]).toArray();
@@ -785,7 +788,8 @@ export default class App {
           first_name: "$personal_information.first_name",
           approved: 1,
           position: "$position.title",
-          current_position: "$designation.current_position"
+          current_position: "$designation.current_position",
+          education_level: "$position.education_level",
         },
       },
     ]).toArray();
@@ -864,7 +868,8 @@ export default class App {
           last_name: "$personal_information.last_name",
           first_name: "$personal_information.first_name",
           position: "$position.title",
-          current_position: "$designation.current_position"
+          current_position: "$designation.current_position",
+          education_level: "$position.education_level",
         },
       },
     ]).toArray();
@@ -1012,6 +1017,7 @@ export default class App {
     return await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
+          "assignees.1.id": new ObjectId(user),
           "assignees.1.approved": status,
           status: request_logs.status,
           attachments: attachment,
@@ -1370,6 +1376,7 @@ export default class App {
     const result = await Database.collection('applicant')?.updateOne({ _id: new ObjectId(app_id) },
       {
         $set: {
+          "assignees.3.id": new ObjectId(user),
           "assignees.3.approved": status,
           status: request_logs.status,
           attachments: attachment,

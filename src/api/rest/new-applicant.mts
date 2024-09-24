@@ -69,7 +69,7 @@ export default REST({
     },
     "complete-application": {
       app_id: object_id,
-      approved: Joi.boolean()
+      approved: Joi.boolean(),
     },
     "assign-ro-evaluator-application": {
       app_id: object_id,
@@ -936,11 +936,83 @@ export default REST({
       return Promise.resolve("Successfully upload received printed  outputs!");
     },
 
+    // async complete_reclass(data: any, user_id: ObjectId) {
+    //   const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
+    //   if (designation_error) return Promise.reject({ data: null, error: designation_error });
+    //   if (designation?.role_name !== 'RO Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
+    //   const { app_id, status, approved } = data;
+    //   const request_logs = {
+    //     signatory: designation.name,
+    //     role: designation.role_name,
+    //     side: designation.side,
+    //     status: "Completed",
+    //     timestamp: new Date()
+    //   };
+
+    //   return this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } }).
+    //     then(async () => {
+    //       const applicant = await this.db.collection('applicant')?.aggregate(
+    //         [
+    //           {
+    //             $match:
+    //             {
+    //               _id: new ObjectId(app_id),
+    //             },
+    //           },
+    //           {
+    //             $set: {
+    //               full_name: {
+    //                 $concat: [
+    //                   "$personal_information.first_name",
+    //                   " ",
+    //                   "$personal_information.last_name",
+    //                 ]
+    //               }
+    //             },
+    //           },
+
+    //           {
+    //             $project:
+
+    //             {
+    //               _id: 1,
+    //               full_name: 1,
+    //               email: "$personal_information.email",
+    //             }
+    //           }
+    //         ]
+    //       ).next();
+
+    //       this.postoffice[EMAIL_TRANSPORT].post(
+    //         {
+    //           from: "mariannemaepaclian@gmail.com",
+    //           to: `${applicant?.email}`
+    //         },
+    //         {
+    //           context: {
+    //             name: `${applicant?.full_name}`,
+
+    //           },
+    //           template: "sms-complete",
+    //           layout: "centered"
+    //         }
+    //       );
+
+    //       return Promise.resolve("Successfully completed!");
+    //     }).catch((error: any) => {
+    //       console.log(error);
+    //       return Promise.reject("Failed to assign!")
+    //     });
+
+    // },
+
     async complete_reclass(data: any, user_id: ObjectId) {
+      console.log('DATATATTA', data);
+
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
-      if (designation?.role_name !== 'RO Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
-      const { app_id, status, approved } = data;
+      if (designation?.role_name !== 'Evaluator') return Promise.reject({ data: null, error: "Not Evaluator" });
+      const { app_id, approved } = data;
       const request_logs = {
         signatory: designation.name,
         role: designation.role_name,
@@ -949,62 +1021,9 @@ export default REST({
         timestamp: new Date()
       };
 
-      return this.db.collection("applicant")
-        .updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } }).
-        then(async () => {
-          const applicant = await this.db.collection('applicant')?.aggregate(
-            [
-              {
-                $match:
-                {
-                  _id: new ObjectId(app_id),
-                },
-              },
-              {
-                $set: {
-                  full_name: {
-                    $concat: [
-                      "$personal_information.first_name",
-                      " ",
-                      "$personal_information.last_name",
-                    ]
-                  }
-                },
-              },
-
-              {
-                $project:
-
-                {
-                  _id: 1,
-                  full_name: 1,
-                  email: "$personal_information.email",
-                }
-              }
-            ]
-          ).next();
-
-          this.postoffice[EMAIL_TRANSPORT].post(
-            {
-              from: "mariannemaepaclian@gmail.com",
-              to: `${applicant?.email}`
-            },
-            {
-              context: {
-                name: `${applicant?.full_name}`,
-
-              },
-              template: "sms-complete",
-              layout: "centered"
-            }
-          );
-
-          return Promise.resolve("Successfully completed!");
-        }).catch((error: any) => {
-          console.log(error);
-          return Promise.reject("Failed to assign!")
-        });
-
+      const result = await this.db.collection("applicant").updateOne({ _id: new ObjectId(app_id) }, { $set: { status: "Completed", approved: approved }, $push: { request_log: request_logs } })
+      if (!result) return Promise.reject("Failed to assign!");
+      return Promise.resolve("Successfully completed reclass!");
     },
 
     async assign_ro_evaluator_application(data: any, user_id: ObjectId) {
@@ -1108,7 +1127,8 @@ export default REST({
                 ]
               },
               created_date: '$created_date',
-              status: '$status'
+              status: '$status',
+              principal: '$principal.email',
             }
           }
         ],
@@ -1387,7 +1407,17 @@ export default REST({
     },
 
     async get_all_position() {
-      return this.db.collection('sms-qualification-standards').find({}, { projection: { title: 1 } }).toArray()
+      return this.db.collection('sms-qualification-standards').find({}, {
+        projection: {
+          title: {
+            $cond: {
+              if: { $ne: ["$education_level", ""] },
+              then: { $concat: ["$title", " - ", "$education_level"] },
+              else: "$title"
+            }
+          }
+        }
+      }).toArray()
     },
     async get_school(user: ObjectId) {
       return this.db?.collection(collection).aggregate(
