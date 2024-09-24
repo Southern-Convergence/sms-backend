@@ -247,10 +247,7 @@ export default REST({
         this.attach_output_requirement(app_id, new ObjectId(req.session.user?._id))
           .then((data) => res.json({ data }))
           .catch((error) => {
-            // Log the error to the console
             console.error("Error attaching output requirement:", error);
-
-            // Send the error response to the client
             res.status(400).json({ error: error.message || "An error occurred" });
           });
       }

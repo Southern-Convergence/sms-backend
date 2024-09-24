@@ -1070,7 +1070,7 @@ export default class App {
 
 
     const pal_data = {
-      description: "Plantialla Allocation List",
+      description: "Plantilla Allocation List",
       link: pal,
       timestamp: new Date,
       remarks: [],
