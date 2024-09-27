@@ -10,10 +10,11 @@ import { PostOffice } from "@lib/mailman.mjs";
 const enum ROLES {
   PRINCIPAL = "Principal",
   ADMIN_4 = "Administrative Officer IV",
+  ADMIN_5 = "Administrative Officer V",
   EVALUATOR = "Evaluator",
   ROEVALUATOR = "RO Evaluator",
   VERIFIER = "Verifier",
-  ADMIN_5 = "Administrative Officer V",
+
 };
 
 const enum SIDE {
@@ -268,7 +269,7 @@ export default class App {
               {
                 $and: [{ "assignees.0.approved": true }, { status: "Pending" }]
               },
-              { $and: [{ "assignees.2.approved": true }, { "assignees.1.approved": true }, { status: "For Checking" }] },
+              { $and: [{ "assignees.2.approved": true }, { "assignees.1.approved": true }, { status: "For Checking" }, { "assignees.3.approved": { $nin: [true, false] }, },] },
               { $and: [{ "assignees.3.approved": false }, { "assignees.3.evaluator_approved": false }, { status: "Disapproved" }] },
               { $and: [{ "assignees.1.approved": true }, { "assignees.2.approved": false }, { "assignees.1.evaluator_approved": false }, { status: "Disapproved" }] },
               { status: { $in: ["Approved for Printing"] } }
@@ -715,7 +716,7 @@ export default class App {
               }
             ]
           },
-          { status: { "$in": ["For Evaluation", "Approved for Printing", "For DBM", "Received Printout/s", "Completed"] } },
+          { status: { "$in": ["For Evaluation", "Approved for Printing", "For DBM", "Received Printout/s"] } },
           query
         ]
       }
