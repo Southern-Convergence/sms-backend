@@ -800,9 +800,8 @@ export default class App {
       {
         $match: {
           $and: [
-            { "assignees.7.approved": true },
-            { "assignees.8.approved": { "$eq": null } },
-            { "status": { "$in": ["Approved for Printing", "For DBM", "Received Printout/s", "Completed"] } }
+
+            { "status": { "$in": ["Approved for Printing", "For DBM", "Received Printout/s"] } }
           ]
         }
       },

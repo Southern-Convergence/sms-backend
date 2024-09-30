@@ -295,17 +295,20 @@ export default REST({
     async update_generated_endorsement(data: any, user_id: ObjectId) {
       const { data: designation, error: designation_error } = await user_desig_resolver(user_id);
       if (designation_error) return Promise.reject({ data: null, error: designation_error });
-      if (designation?.role_name !== 'Verifier') return Promise.reject({ data: null, error: "Not Verifier" });
-
+      if (designation?.role_name !== 'Verifier' && designation?.role_name !== 'Administrative Officer V') {
+        return Promise.reject({ data: null, error: "Not Verifier" });
+      }
       const { app_id, status, remarks, applicants, position } = data;
       const keyed_applicants = applicants.map((v: any) => new ObjectId(v._id));
+
 
       const logs = {
         signatory: designation.name,
         role: designation.role_name,
-        status: "Verified",
+        status: status,
         timestamp: new Date(),
-      }
+        remarks: remarks
+      };
 
 
       const result = await this.db?.collection(collection).updateOne(
